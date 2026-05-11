@@ -163,10 +163,6 @@ Architectural redesign of file storage, egress, and machine handoff. Decision ca
 
 ### Changed
 - **Play button styling**: Now uses IconButton component (grey circle) matching other action buttons
-- **SD card detection**: Now only detects Olympus voice recorder SD cards
-  - Checks for RECORDER, DSS_FLDR, DICT, OLYMPUS folders
-  - Checks for .dss/.ds2 audio files (Olympus proprietary formats)
-  - Rejects USB flash drives, camera memory cards, iPods, iPhones, iPads
 
 ### Fixed
 - Removed unused `startIndex` variable warning in ScrollingWaveformView
@@ -230,9 +226,7 @@ Architectural redesign of file storage, egress, and machine handoff. Decision ca
 ## [Unreleased]
 
 ### In Progress
-- Encrypted DS2 file support investigation (see BACKLOG.md)
-- SD card auto-detection and import functionality (Phase 3)
-- Olympus DS-9500 device integration
+- Phase 0 file storage migration (see ADR-1014)
 
 ### Changed - 2025-11-27
 - **Migrated to NavigationSplitView architecture** ✅ IMPLEMENTED

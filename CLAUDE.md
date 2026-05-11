@@ -87,7 +87,6 @@ All Swift sources live under `Sources/AudioRecordingManager/`. The file `main.sw
 - **no-transcribe** (Python) — NB-Whisper wrapper for Norwegian speech-to-text.
 - **no-anonymizer** (Python, `[ner]` extras) — HuggingFace BERT-based NER for anonymization. SpaCy dependency was removed in 1.4.0.
 - **Ollama** — local LLM runtime for analysis. Optional.
-- **DSS Player for Mac** (Olympus) — for decrypting DS2 files. License-blocked; see BACKLOG.md.
 - **Microsoft Graph (Entra ID)** — planned for Phase 1 upload. Requires Azure AD app registration in NAV tenant.
 
 ## Conventions

@@ -89,7 +89,7 @@ struct AuditLogViewer: View {
         // Keep separator lines, CHECK lines, and INIT lines for context
         if line.contains("────") || line.contains("CHECK") || line.contains("INIT") { return true }
         // Keep lines about audio and text files only
-        let audioExts = [".m4a", ".mp3", ".wav", ".aac", ".ds2"]
+        let audioExts = [".m4a", ".mp3", ".wav", ".aac"]
         let textExts = [".txt"]
         let allExts = audioExts + textExts
         return allExts.contains { line.contains($0) }

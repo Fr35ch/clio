@@ -7,17 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		067B47AF2FA363400050D9C9 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 067B47AD2FA363400050D9C9 /* README.md */; };
-		067B47B02FA363400050D9C9 /* D2ABridgeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 067B47A42FA363400050D9C9 /* D2ABridgeService.swift */; };
-		067B47B12FA363400050D9C9 /* SDCardWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 067B47A62FA363400050D9C9 /* SDCardWatcher.swift */; };
-		067B47B22FA363400050D9C9 /* PasswordPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 067B47AB2FA363400050D9C9 /* PasswordPromptView.swift */; };
-		067B47B32FA363400050D9C9 /* D2AImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 067B47A92FA363400050D9C9 /* D2AImportView.swift */; };
-		067B47B42FA363400050D9C9 /* DecryptionTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 067B47A12FA363400050D9C9 /* DecryptionTask.swift */; };
-		067B47B52FA363400050D9C9 /* VMServiceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 067B47A72FA363400050D9C9 /* VMServiceClient.swift */; };
-		067B47B62FA363400050D9C9 /* D2AFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 067B47A02FA363400050D9C9 /* D2AFile.swift */; };
-		067B47B72FA363400050D9C9 /* VMServiceConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 067B47A22FA363400050D9C9 /* VMServiceConfig.swift */; };
-		067B47B82FA363400050D9C9 /* D2AConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 067B47A52FA363400050D9C9 /* D2AConverter.swift */; };
-		067B47B92FA363400050D9C9 /* D2AProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 067B47AA2FA363400050D9C9 /* D2AProgressView.swift */; };
 		07081920212223240607FA07 /* TranscriptionProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18192021222324250708FB08 /* TranscriptionProgressView.swift */; };
 		143EDA0DADFD4967A6F0F15E /* StartupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65D0A8F892A14D8A95D0F699 /* StartupCoordinator.swift */; };
 		1735D4D03E55F22857571523 /* TranscriptManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47BA5316465B5EE74C44F4E0 /* TranscriptManager.swift */; };
@@ -78,17 +67,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		067B47A02FA363400050D9C9 /* D2AFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = D2AFile.swift; sourceTree = "<group>"; };
-		067B47A12FA363400050D9C9 /* DecryptionTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecryptionTask.swift; sourceTree = "<group>"; };
-		067B47A22FA363400050D9C9 /* VMServiceConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VMServiceConfig.swift; sourceTree = "<group>"; };
-		067B47A42FA363400050D9C9 /* D2ABridgeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = D2ABridgeService.swift; sourceTree = "<group>"; };
-		067B47A52FA363400050D9C9 /* D2AConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = D2AConverter.swift; sourceTree = "<group>"; };
-		067B47A62FA363400050D9C9 /* SDCardWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDCardWatcher.swift; sourceTree = "<group>"; };
-		067B47A72FA363400050D9C9 /* VMServiceClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VMServiceClient.swift; sourceTree = "<group>"; };
-		067B47A92FA363400050D9C9 /* D2AImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = D2AImportView.swift; sourceTree = "<group>"; };
-		067B47AA2FA363400050D9C9 /* D2AProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = D2AProgressView.swift; sourceTree = "<group>"; };
-		067B47AB2FA363400050D9C9 /* PasswordPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordPromptView.swift; sourceTree = "<group>"; };
-		067B47AD2FA363400050D9C9 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		18192021222324250708FB08 /* TranscriptionProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionProgressView.swift; sourceTree = "<group>"; };
 		3131B3745FCB4B0EA2C3DBB5 /* SystemRequirement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemRequirement.swift; sourceTree = "<group>"; };
 		315E34A816AD0598C50D5AF7 /* AudioRecordingManager.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AudioRecordingManager.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -150,52 +128,9 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		067B47A32FA363400050D9C9 /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				067B47A02FA363400050D9C9 /* D2AFile.swift */,
-				067B47A12FA363400050D9C9 /* DecryptionTask.swift */,
-				067B47A22FA363400050D9C9 /* VMServiceConfig.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		067B47A82FA363400050D9C9 /* Services */ = {
-			isa = PBXGroup;
-			children = (
-				067B47A42FA363400050D9C9 /* D2ABridgeService.swift */,
-				067B47A52FA363400050D9C9 /* D2AConverter.swift */,
-				067B47A62FA363400050D9C9 /* SDCardWatcher.swift */,
-				067B47A72FA363400050D9C9 /* VMServiceClient.swift */,
-			);
-			path = Services;
-			sourceTree = "<group>";
-		};
-		067B47AC2FA363400050D9C9 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				067B47A92FA363400050D9C9 /* D2AImportView.swift */,
-				067B47AA2FA363400050D9C9 /* D2AProgressView.swift */,
-				067B47AB2FA363400050D9C9 /* PasswordPromptView.swift */,
-			);
-			path = Views;
-			sourceTree = "<group>";
-		};
-		067B47AE2FA363400050D9C9 /* D2A */ = {
-			isa = PBXGroup;
-			children = (
-				067B47A32FA363400050D9C9 /* Models */,
-				067B47A82FA363400050D9C9 /* Services */,
-				067B47AC2FA363400050D9C9 /* Views */,
-				067B47AD2FA363400050D9C9 /* README.md */,
-			);
-			path = Sources/AudioRecordingManager/D2A;
-			sourceTree = "<group>";
-		};
 		0D20499F143447E789C45149 = {
 			isa = PBXGroup;
 			children = (
-				067B47AE2FA363400050D9C9 /* D2A */,
 				DF8884E58B3616241EF874EB /* AudioRecordingManager */,
 				A6DA9A383D3D8E951AB012ED /* Products */,
 			);
@@ -373,7 +308,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				067B47AF2FA363400050D9C9 /* README.md in Resources */,
 				E8D7C6B5A4F3E2D1C0B9A8F7 /* anonymize_bridge.py in Resources */,
 				F53FA62399314681B793A802 /* Assets.xcassets in Resources */,
 			);
@@ -429,16 +363,6 @@
 				97485D3055075FCF3EBD787D /* RecordingMetadataManager.swift in Sources */,
 				61F163805ECD6809207CB4E4 /* SVGImageView.swift in Sources */,
 				1735D4D03E55F22857571523 /* TranscriptManager.swift in Sources */,
-				067B47B02FA363400050D9C9 /* D2ABridgeService.swift in Sources */,
-				067B47B12FA363400050D9C9 /* SDCardWatcher.swift in Sources */,
-				067B47B22FA363400050D9C9 /* PasswordPromptView.swift in Sources */,
-				067B47B32FA363400050D9C9 /* D2AImportView.swift in Sources */,
-				067B47B42FA363400050D9C9 /* DecryptionTask.swift in Sources */,
-				067B47B52FA363400050D9C9 /* VMServiceClient.swift in Sources */,
-				067B47B62FA363400050D9C9 /* D2AFile.swift in Sources */,
-				067B47B72FA363400050D9C9 /* VMServiceConfig.swift in Sources */,
-				067B47B82FA363400050D9C9 /* D2AConverter.swift in Sources */,
-				067B47B92FA363400050D9C9 /* D2AProgressView.swift in Sources */,
 				2EBA562109053A8CE0AEB214 /* TranscriptsView.swift in Sources */,
 				BD19341D96FC6C34B54B4A1B /* main.swift in Sources */,
 				F70419BE261F4441AA8883E7 /* AnalysisResult.swift in Sources */,

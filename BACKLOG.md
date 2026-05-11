@@ -38,118 +38,7 @@ Moves storage off the Desktop and into `~/Library/Application Support/`, switche
 
 ---
 
-### 🔴 BLOCKED - Awaiting DSS Player License
-
-**Epic: Encrypted DS2 File Support**
-**Priority:** High
-**Status:** Blocked - DSS Player for Mac installed, awaiting license purchase
-
----
-
-## Active Investigations
-
-### Investigation: Encrypted Audio File Workflow
-**Started:** 2025-11-16
-**Updated:** 2025-11-24
-**Status:** BLOCKED - Awaiting DSS Player for Mac license purchase
-
-#### Context
-All audio files from the Olympus DS-9500 recorder are password-protected using 256-bit AES encryption. Current workflow cannot handle these files as Jojo Transcribe cannot open encrypted DS2 files directly.
-
-#### Current Status (2025-11-24)
-- ✅ DS2 test files available on SD card
-- ✅ DSS Player for Mac v7 installed
-- 🔴 **BLOCKED:** Need to purchase DSS Player license
-- ⚠️ DSS Player for Mac support ends March 31, 2025
-
-#### Key Findings
-
-**DSS Player (v7.7.8):**
-- Required for decryption - no SDK/API available
-- Bundle ID: `com.olympus.DSSPlayerV7`
-- Supported formats: DS2 (encrypted), DSS Classic
-- Can convert to: AIFF, WAV, MP3
-- No command-line tools or automation API
-- Limited AppleScript support
-
-**Jojo Transcribe (v1.7):**
-- Bundle ID: `no.vg.jojo`
-- Has macOS Service: "Transcribe with Jojo"
-- Accepts `public.file-url` (can receive files programmatically)
-- Unknown audio format support (needs testing)
-
-**Current Workflow Gap:**
-1. Audio Manager copies DS2 files to `~/Desktop/lydfiler`
-2. ❌ Files are encrypted - Jojo cannot open them
-3. ❌ Manual DSS Player step required for decryption
-
-#### Tasks
-
-- [x] ~~Obtain encrypted DS2 test file from Olympus DS-9500~~ (Available on SD card)
-- [x] ~~Install DSS Player for Mac~~ (Installed, awaiting license)
-- [ ] **BLOCKED:** Purchase DSS Player for Mac license (~$100-150)
-- [ ] Activate DSS Player with license key
-- [ ] Test DSS Player with encrypted DS2 files
-  - [ ] Test single file decryption/playback
-  - [ ] Test file conversion to AIFF/WAV
-  - [ ] Test auto-conversion folder monitoring feature
-  - [ ] Document password entry workflow
-- [ ] Test what audio formats Jojo accepts (WAV, M4A, AIFF, MP3)
-- [ ] Determine optimal workflow (manual, semi-auto, or guided)
-- [ ] Implement chosen workflow in Virgin Project
-
-#### Workflow Options Under Consideration
-
-**Option 1: Full UI Automation**
-- Use macOS Accessibility API to control DSS Player
-- Fully automated but complex to implement
-- May be fragile with DSS Player updates
-
-**Option 2: Guided Semi-Automated**
-- Audio Manager copies files
-- App pauses and prompts user to convert in DSS Player
-- App detects when conversion is complete and continues
-- Balanced approach - some automation, some manual steps
-
-**Option 3: Manual Process**
-- Document clear workflow instructions
-- User handles DSS Player manually
-- Audio Manager focuses on other automation
-- Simplest to implement, least automated
-
-#### Technical Constraints
-- No DSS Player SDK/API available
-- No command-line conversion tools
-- AppleScript support is minimal
-- Must maintain security (network isolation)
-
-#### Success Criteria
-- [ ] Encrypted DS2 files can be processed into format Jojo accepts
-- [ ] Workflow is documented and repeatable
-- [ ] User experience is clear and simple
-- [ ] Network isolation is maintained during file operations
-
----
-
-## Planned Features (Phase 3+)
-
-### Phase 3: SD Card Import & Olympus Integration
-
-**Status:** Planning
-
-#### Features
-- [ ] SD card auto-detection when inserted
-- [ ] Import audio files from SD card to `~/Desktop/lydfiler`
-- [ ] File verification before deleting originals from SD card
-- [ ] Olympus DS-9500 device integration
-- [ ] Handle encrypted DS2 files (see investigation above)
-
-#### Technical Requirements
-- SD card detection using DiskArbitration framework (already included)
-- File integrity verification (checksums)
-- Safe delete with confirmation
-
----
+## Planned Features
 
 ### Phase 4: Network Controls Enhancement
 
@@ -216,12 +105,6 @@ Review and redesign all UI components to align with NAV Design System (Aksel) fo
 - [ ] Test MP3 file support
 - [ ] Document optimal format for transcription quality
 
-### DSS Player Automation
-- [ ] Research macOS Accessibility API for UI automation
-- [ ] Test AppleScript capabilities in depth
-- [ ] Check for third-party DS2 decryption libraries
-- [ ] Investigate Automator workflow possibilities
-
 ---
 
 ## Technical Debt
@@ -244,7 +127,6 @@ None currently tracked.
 
 **File Locations:**
 - Audio storage: `~/Desktop/lydfiler`
-- DSS Player: `/Applications/DSS Player/DSS Player.app`
 - Jojo Transcribe: `/Applications/Jojo.app`
 
 **Security Requirements:**

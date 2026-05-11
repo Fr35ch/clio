@@ -9,8 +9,7 @@
 //     `originalTranscript` (and possibly `anonymizedTranscript`) inline
 //     rather than as separate `.txt` files. The primary pass only moved
 //     `.m4a` and `.txt`, so the sidecars were stranded.
-//   - Non-`.m4a` audio on the Desktop, e.g. `DS950008.MP3` from the
-//     Olympus DS-9500 recorder. The primary pass only moved `.m4a`.
+//   - Non-`.m4a` audio on the Desktop. The primary pass only moved `.m4a`.
 //   - The legacy `.audit_log.jsonl` dotfile inside `~/Desktop/lydfiler/`,
 //     which has been replaced by the Application-Support-hosted audit log.
 //
@@ -95,11 +94,9 @@ extension LegacyStorageScanner {
     }
 
     /// Enumerates audio files on the Desktop that the primary pass did not
-    /// migrate (anything whose extension is not `.m4a`). The Olympus
-    /// recorder output shows up as `.MP3`; other formats may appear over
-    /// time.
+    /// migrate (anything whose extension is not `.m4a`).
     static func legacyNonM4AAudio() -> [URL] {
-        let extensions: Set<String> = ["mp3", "wav", "aac", "ds2", "dss", "aiff", "aif"]
+        let extensions: Set<String> = ["mp3", "wav", "aac", "aiff", "aif"]
         let fm = FileManager.default
         let root = legacyAudioFolder
         guard fm.fileExists(atPath: root.path) else { return [] }

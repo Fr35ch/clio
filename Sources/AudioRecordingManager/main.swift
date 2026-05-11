@@ -214,404 +214,6 @@ class CursorTrackingView: NSView {
     }
 }
 
-// MARK: - Audio File Info Model
-struct AudioFileInfo: Identifiable, Hashable {
-    let id = UUID()
-    let name: String
-    let path: String
-    let size: Int64
-    let modificationDate: Date
-    let fileExtension: String
-
-    var formattedSize: String {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: size)
-    }
-
-    var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        return formatter.string(from: modificationDate)
-    }
-}
-
-// MARK: - SD Card Manager
-class SDCardManager: ObservableObject {
-    static let shared = SDCardManager()
-
-    @Published var isSDCardInserted = false
-    @Published var sdCardPath: String?
-    @Published var sdCardVolumeName: String?
-    @Published var audioFiles: [AudioFileInfo] = []
-    @Published var isScanning = false
-
-    private var session: DASession?
-
-    private init() {
-        setupDiskArbitration()
-    }
-
-    deinit {
-        if let session = session {
-            DASessionUnscheduleFromRunLoop(
-                session, CFRunLoopGetCurrent(), CFRunLoopMode.defaultMode.rawValue)
-        }
-    }
-
-    // MARK: - Polling Mechanism (Fallback)
-    // MARK: - Disk Arbitration Setup
-    private func setupDiskArbitration() {
-        print("🔧 Setting up DiskArbitration...")
-
-        guard let session = DASessionCreate(kCFAllocatorDefault) else {
-            print("❌ Failed to create DiskArbitration session")
-            return
-        }
-
-        self.session = session
-        print("✅ DiskArbitration session created")
-
-        // Schedule on MAIN run loop (not current, which might be different in SwiftUI)
-        DASessionScheduleWithRunLoop(
-            session, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
-        print("✅ Session scheduled on main run loop")
-
-        let appearedCallback: DADiskAppearedCallback = { disk, context in
-            print("🚨 DISK APPEARED CALLBACK FIRED!")
-            guard let context = context else {
-                print("❌ No context in callback")
-                return
-            }
-            let manager = Unmanaged<SDCardManager>.fromOpaque(context).takeUnretainedValue()
-            manager.diskAppeared(disk: disk)
-        }
-
-        let disappearedCallback: DADiskDisappearedCallback = { disk, context in
-            print("🚨 DISK DISAPPEARED CALLBACK FIRED!")
-            guard let context = context else { return }
-            let manager = Unmanaged<SDCardManager>.fromOpaque(context).takeUnretainedValue()
-            manager.diskDisappeared(disk: disk)
-        }
-
-        let context = Unmanaged.passUnretained(self).toOpaque()
-        DARegisterDiskAppearedCallback(session, nil, appearedCallback, context)
-        DARegisterDiskDisappearedCallback(session, nil, disappearedCallback, context)
-        print("✅ Callbacks registered")
-
-        print("✅ SD Card monitoring started - waiting for disk events...")
-    }
-
-    // MARK: - Disk Events
-    private func diskAppeared(disk: DADisk) {
-        guard let diskDescription = DADiskCopyDescription(disk) as? [String: Any] else { return }
-
-        // Get volume path - can be either a URL or a String
-        var volumePath: String? = nil
-        if let pathURL = diskDescription[kDADiskDescriptionVolumePathKey as String] as? URL {
-            volumePath = pathURL.path
-        } else if let pathString = diskDescription[kDADiskDescriptionVolumePathKey as String]
-            as? String
-        {
-            volumePath = pathString
-        }
-
-        print("\n🔍 ======== DISK APPEARED ========")
-        print(
-            "📀 Volume Name: \(diskDescription[kDADiskDescriptionVolumeNameKey as String] as? String ?? "Unknown")"
-        )
-        print("📂 Volume Path: \(volumePath ?? "None")")
-        print(
-            "🔌 Removable: \(diskDescription[kDADiskDescriptionMediaRemovableKey as String] as? Bool ?? false)"
-        )
-        print("================================\n")
-
-        if isValidSDCard(description: diskDescription) {
-            // Wait for volume to be mounted, then process
-            self.waitForVolumeMount(disk: disk, attempts: 0)
-        }
-    }
-
-    private func waitForVolumeMount(disk: DADisk, attempts: Int) {
-        guard attempts < 10 else {
-            print("⚠️ Failed to get volume path after 10 attempts")
-            return
-        }
-
-        // IMPORTANT: Re-query the disk description on each attempt!
-        // The disk description changes as the volume gets mounted
-        guard let diskDescription = DADiskCopyDescription(disk) as? [String: Any] else {
-            print("⚠️ Could not get disk description")
-            return
-        }
-
-        // Get volume path - can be either a URL or a String
-        var volumePath: String? = nil
-        if let pathURL = diskDescription[kDADiskDescriptionVolumePathKey as String] as? URL {
-            volumePath = pathURL.path
-        } else if let pathString = diskDescription[kDADiskDescriptionVolumePathKey as String]
-            as? String
-        {
-            volumePath = pathString
-        }
-
-        if let path = volumePath {
-            // Verify this is an Olympus voice recorder SD card
-            guard isOlympusRecorderMedia(at: path) else {
-                let volumeName = diskDescription[kDADiskDescriptionVolumeNameKey as String] as? String ?? "Unknown"
-                print("🔍 ======== NOT OLYMPUS MEDIA ========")
-                print("📍 Path: \(path)")
-                print("📛 Name: \(volumeName)")
-                print("🔍 No Olympus folders or DSS/DS2 files found")
-                print("====================================\n")
-                return
-            }
-
-            // Success! We have an Olympus recorder SD card
-            DispatchQueue.main.async {
-                self.sdCardVolumeName =
-                    diskDescription[kDADiskDescriptionVolumeNameKey as String] as? String
-                self.sdCardPath = path
-                self.isSDCardInserted = true
-
-                print("✅ ======== OLYMPUS SD CARD DETECTED ========")
-                print("📍 Path: \(path)")
-                print("📛 Name: \(self.sdCardVolumeName ?? "Unknown")")
-                print("🔍 Scanning for audio files...")
-                print("=============================================\n")
-
-                self.scanForAudioFiles()
-                self.launchDSSPlayer()
-            }
-        } else {
-            // No path yet, retry after a delay
-            print("⏳ Waiting for volume to mount (attempt \(attempts + 1)/10)...")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self.waitForVolumeMount(disk: disk, attempts: attempts + 1)
-            }
-        }
-    }
-
-    private func diskDisappeared(disk: DADisk) {
-        guard let diskDescription = DADiskCopyDescription(disk) as? [String: Any] else { return }
-
-        let volumeName =
-            diskDescription[kDADiskDescriptionVolumeNameKey as String] as? String ?? "Unknown"
-
-        if isValidSDCard(description: diskDescription) {
-            DispatchQueue.main.async {
-                print("\n⏏️ ======== SD CARD REMOVED ========")
-                print("📛 Name: \(volumeName)")
-                print("====================================\n")
-
-                self.isSDCardInserted = false
-                self.sdCardPath = nil
-                self.sdCardVolumeName = nil
-                self.audioFiles = []
-            }
-        }
-    }
-
-    // MARK: - SD Card Validation
-    /// Validates if the disk is an Olympus voice recorder SD card
-    /// Only accepts SD cards with Olympus recorder folder structure or audio files
-    private func isValidSDCard(description: [String: Any]) -> Bool {
-        // Check if media is removable
-        guard let removable = description[kDADiskDescriptionMediaRemovableKey as String] as? Bool,
-            removable
-        else {
-            print("🔍 Disk is not removable, skipping")
-            return false
-        }
-
-        // Exclude disk images by checking the device protocol
-        if let deviceProtocol = description[kDADiskDescriptionDeviceProtocolKey as String]
-            as? String
-        {
-            if deviceProtocol == "Disk Image" || deviceProtocol == "Virtual Interface" {
-                print("🔍 Disk is a disk image or virtual device, skipping")
-                return false
-            }
-            // Exclude Apple File Conduit (AFC) - used by iPods/iPhones
-            if deviceProtocol == "Apple File Conduit" || deviceProtocol == "AFC" {
-                print("🔍 Disk is an Apple device (AFC protocol), skipping")
-                return false
-            }
-        }
-
-        // Check if volume is read-only (many PKG/DMG installers are read-only)
-        if let volumeWritable = description[kDADiskDescriptionMediaWritableKey as String] as? Bool {
-            if !volumeWritable {
-                print("🔍 Volume is read-only (likely installer/disk image), skipping")
-                return false
-            }
-        }
-
-        // Note: Final validation for Olympus content happens in waitForVolumeMount
-        // after the volume path is available
-        print("🔍 Removable media detected, will verify Olympus content after mount...")
-        return true
-    }
-
-    /// Check if the mounted volume contains Olympus voice recorder content
-    private func isOlympusRecorderMedia(at path: String) -> Bool {
-        let fileManager = FileManager.default
-
-        // Check for Olympus-specific folder structures
-        let olympusFolders = [
-            "RECORDER",      // Common Olympus folder
-            "DSS_FLDR",      // DSS files folder
-            "DICT",          // Dictation folder
-            "MUSIC",         // Some Olympus recorders use this
-            "OLYMPUS",       // Olympus brand folder
-        ]
-
-        for folder in olympusFolders {
-            let folderPath = (path as NSString).appendingPathComponent(folder)
-            if fileManager.fileExists(atPath: folderPath) {
-                print("✅ Found Olympus folder: \(folder)")
-                return true
-            }
-        }
-
-        // Check for DSS/DS2 audio files (Olympus proprietary formats)
-        if let enumerator = fileManager.enumerator(atPath: path) {
-            for case let file as String in enumerator {
-                let ext = (file as NSString).pathExtension.lowercased()
-                if ext == "dss" || ext == "ds2" {
-                    print("✅ Found Olympus audio file: \(file)")
-                    return true
-                }
-            }
-        }
-
-        print("🔍 No Olympus content found at: \(path)")
-        return false
-    }
-
-    // MARK: - Audio File Scanning
-    func scanForAudioFiles() {
-        guard let sdPath = sdCardPath else {
-            audioFiles = []
-            return
-        }
-
-        isScanning = true
-        var foundFiles: [AudioFileInfo] = []
-        let fileManager = FileManager.default
-        let supportedExtensions = ["m4a", "mp3", "wav", "aiff", "aif", "dss", "ds2", "mp4"]
-
-        if let enumerator = fileManager.enumerator(atPath: sdPath) {
-            for case let file as String in enumerator {
-                let filePath = (sdPath as NSString).appendingPathComponent(file)
-                let fileURL = URL(fileURLWithPath: filePath)
-                let ext = fileURL.pathExtension.lowercased()
-
-                if supportedExtensions.contains(ext) {
-                    do {
-                        let attributes = try fileManager.attributesOfItem(atPath: filePath)
-                        if let fileSize = attributes[.size] as? Int64,
-                            let modificationDate = attributes[.modificationDate] as? Date
-                        {
-
-                            let fileInfo = AudioFileInfo(
-                                name: fileURL.lastPathComponent,
-                                path: filePath,
-                                size: fileSize,
-                                modificationDate: modificationDate,
-                                fileExtension: ext
-                            )
-                            foundFiles.append(fileInfo)
-                        }
-                    } catch {
-                        print("⚠️ Error getting file attributes: \(error)")
-                    }
-                }
-            }
-        }
-
-        foundFiles.sort { $0.modificationDate > $1.modificationDate }
-
-        DispatchQueue.main.async {
-            self.audioFiles = foundFiles
-            self.isScanning = false
-            print("✅ Found \(foundFiles.count) audio files")
-        }
-    }
-
-    // MARK: - DSS Player Launch
-    func launchDSSPlayer() {
-        if let appURL = NSWorkspace.shared.urlForApplication(
-            withBundleIdentifier: "com.olympus.dssplayer")
-        {
-            openDSSPlayerApp(at: appURL)
-            return
-        }
-
-        let appPaths = [
-            "/Applications/DSS Player.app",
-            "/Applications/Olympus DSS Player.app",
-            "/Applications/DSSPlayer.app",
-            "/Applications/DSS Player Plus.app",
-        ]
-
-        for path in appPaths {
-            if FileManager.default.fileExists(atPath: path) {
-                let appURL = URL(fileURLWithPath: path)
-                openDSSPlayerApp(at: appURL)
-                return
-            }
-        }
-
-        print("⚠️ DSS Player app not found")
-    }
-
-    private func openDSSPlayerApp(at url: URL) {
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = true
-
-        if let sdPath = sdCardPath {
-            configuration.arguments = [sdPath]
-        }
-
-        NSWorkspace.shared.openApplication(at: url, configuration: configuration) { app, error in
-            if let error = error {
-                print("❌ Error opening DSS Player: \(error.localizedDescription)")
-            } else {
-                print("✅ DSS Player opened successfully")
-            }
-        }
-    }
-
-    // MARK: - Eject SD Card
-    func ejectSDCard() {
-        guard let path = sdCardPath else {
-            print("⚠️ No SD card path to eject")
-            return
-        }
-
-        print("⏏️ Attempting to eject SD card at: \(path)")
-
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/sbin/diskutil")
-        task.arguments = ["eject", path]
-
-        do {
-            try task.run()
-            task.waitUntilExit()
-
-            if task.terminationStatus == 0 {
-                print("✅ SD card ejected successfully")
-                // State will be updated by diskDisappeared callback or polling
-            } else {
-                print("❌ Failed to eject SD card (status: \(task.terminationStatus))")
-            }
-        } catch {
-            print("❌ Error ejecting SD card: \(error.localizedDescription)")
-        }
-    }
-}
 
 // MARK: - Record Button with NAV Styling
 struct RecordButton: View {
@@ -1291,7 +893,6 @@ struct NavPanel: View {
                 navItem(tab: .record, label: "Ta opp lyd", icon: "mic.fill")
                 navItem(tab: .recordings, label: "Lydopptak", icon: "waveform")
                 navItem(tab: .transcripts, label: "Transkripsjoner", icon: "doc.text.fill")
-                navItem(tab: .d2aImport, label: "Importer D2A", icon: "sdcard")
             }
             .padding(.horizontal, 12)
             .padding(.top, 12)
@@ -2148,83 +1749,6 @@ struct RecordingPlayerNative: View {
     }
 }
 
-// MARK: - Recordings list panel (second column when Lydopptak is active)
-struct RecordingsSidebar: View {
-    let recordings: [RecordingItem]
-    @ObservedObject var audioPlayer: AudioPlayer
-    @ObservedObject var recordingsManager: RecordingsManager
-    @ObservedObject var folderManager: FolderManager
-    @ObservedObject var sdCardManager: SDCardManager
-    @Binding var showImportSheet: Bool
-    @Binding var selectedRecording: RecordingItem?
-
-    var body: some View {
-        VStack(spacing: 0) {
-            // Folder Tree & Recordings List
-            if recordings.isEmpty && folderManager.folderStructure.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "waveform")
-                        .font(.system(size: 40, weight: .ultraLight))
-                        .foregroundStyle(.secondary.opacity(0.4))
-                    Text("No recordings yet")
-                        .font(.system(size: 13, weight: .light))
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0, pinnedViews: []) {
-                        // Show folders first
-                        ForEach(folderManager.folderStructure) { folder in
-                            FolderTreeView(
-                                folderPath: folder.path,
-                                audioPlayer: audioPlayer,
-                                recordingsManager: recordingsManager,
-                                folderManager: folderManager
-                            )
-                        }
-
-                        // Show root-level recordings (not in folders)
-                        let rootRecordings = recordings.filter { recording in
-                            !folderManager.folderStructure.contains { folder in
-                                folder.recordings.contains { $0.path == recording.path }
-                            }
-                        }
-
-                        ForEach(rootRecordings) { recording in
-                            RecordingRowView(
-                                recording: recording,
-                                isPlaying: audioPlayer.currentPlayingURL == recording.audioURL && audioPlayer.isPlaying,
-                                audioPlayer: audioPlayer,
-                                recordingsManager: recordingsManager,
-                                isSelected: selectedRecording?.id == recording.id,
-                                onSelect: { selectedRecording = recording }
-                            )
-                        }
-                    }
-                }
-            }
-
-            Divider()
-
-            // Footer
-            VStack(spacing: 0) {
-                Text("Storage: \(folderManager.getTotalStorageUsed())")
-                    .font(.system(size: 10, weight: .light))
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 8)
-                SidebarMenuItem(
-                    icon: "sdcard.fill",
-                    title: "Import from SD Card",
-                    action: { showImportSheet = true }
-                )
-            }
-        }
-        .onAppear {
-            folderManager.loadFolderStructure()
-        }
-    }
-}
 
 // MARK: - Icon Button with Stable Hover
 struct IconButton: View {
@@ -2990,10 +2514,6 @@ struct AboutView: View {
                             FeatureRow(
                                 icon: "mic.fill",
                                 text: "Built-in voice recorder with waveform visualization")
-                            FeatureRow(
-                                icon: "sdcard.fill", text: "SD card auto-detection and import")
-                            FeatureRow(
-                                icon: "lock.shield", text: "Support for encrypted DS2 audio files")
                             FeatureRow(icon: "arrow.up.doc", text: "Secure file upload to Teams")
                         }
                     }
@@ -3029,19 +2549,14 @@ struct AboutView: View {
                             Text("   Click 'Record with Voice Recorder' to start")
                                 .foregroundStyle(.secondary)
 
-                            Text("2. Import from SD Card")
-                                .fontWeight(.semibold)
-                                .padding(.top, 4)
-                            Text("   Insert SD card with DS2 files from Olympus DS-9500")
-                                .foregroundStyle(.secondary)
 
-                            Text("3. Transkriber")
+                            Text("2. Transkriber")
                                 .fontWeight(.semibold)
                                 .padding(.top, 4)
                             Text("   Velg opptaket og klikk «Transkriber med NB-Whisper»")
                                 .foregroundStyle(.secondary)
 
-                            Text("4. Upload to Teams")
+                            Text("3. Upload to Teams")
                                 .fontWeight(.semibold)
                                 .padding(.top, 4)
                             Text("   Enable network temporarily for secure upload")
@@ -3059,9 +2574,7 @@ struct AboutView: View {
 
                         VStack(alignment: .leading, spacing: 6) {
                             Text("• Swift 6.1+ & SwiftUI")
-                            Text("• DiskArbitration for SD card detection")
                             Text("• AVFoundation for audio recording")
-                            Text("• DSS Player for encrypted DS2 files")
                             Text("• no-transcribe / NB-Whisper (Nasjonalbiblioteket)")
                         }
                         .font(.body)
@@ -3096,7 +2609,6 @@ struct AboutView: View {
                             Text("Developed for NAV (Norwegian Labour and Welfare Administration)")
                                 .fontWeight(.semibold)
                             Text("• NAV Design System (Aksel)")
-                            Text("• OM System / Olympus (DSS Player)")
                             Text("• Nasjonalbiblioteket (NB-Whisper via no-transcribe)")
                             Text("• National Library of Norway (NB-Whisper)")
                             Text("• OpenAI (Whisper ASR)")
@@ -3241,7 +2753,6 @@ struct SidebarMenuItem: View {
 
 // MARK: - Main View
 struct MainView: View {
-    @StateObject private var sdCardManager = SDCardManager.shared
     @StateObject private var audioRecorder = AudioRecorder.shared
     @StateObject private var recordingsManager = RecordingsManager.shared
     @StateObject private var audioPlayer = AudioPlayer.shared
@@ -3250,7 +2761,6 @@ struct MainView: View {
     }()
     @State private var showSuccessMessage = false
     @State private var successMessage = ""
-    @State private var showImportSheet = false
     @State private var showAbout = false
     @State private var showSidebar: Bool = true
     @State private var showNewFolderDialog = false
@@ -3293,8 +2803,6 @@ struct MainView: View {
                         transcriptManager: transcriptManager,
                         selectedTranscript: $selectedTranscript
                     )
-                case .d2aImport:
-                    Color.clear
                 }
             }
             .navigationSplitViewColumnWidth(
@@ -3340,9 +2848,6 @@ struct MainView: View {
                         description: Text("Klikk på en fil til venstre for å vise innhold og kjøre anonymisering.")
                     )
                 }
-            case .d2aImport:
-                D2AImportView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .navigationSplitViewStyle(.balanced)
@@ -3355,11 +2860,6 @@ struct MainView: View {
             }
         }
         .frame(minWidth: 900, minHeight: 600)
-        .sheet(isPresented: $showImportSheet) {
-            SDCardImportView(sdCardManager: sdCardManager)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-        }
         .sheet(isPresented: $showAbout) {
             AboutView()
                 .presentationDetents([.large])
@@ -3411,7 +2911,7 @@ struct MainView: View {
     /// statements in `body` that render `Color.clear` for those same tabs.
     private func hidesContentColumn(for tab: AppTab) -> Bool {
         switch tab {
-        case .record, .d2aImport: return true
+        case .record: return true
         case .recordings, .transcripts: return false
         }
     }
@@ -3461,181 +2961,6 @@ struct MainView: View {
         return nil
     }
 
-    var mainContentView: some View {
-        VStack(spacing: 20) {
-            // Header
-            Text("Audio Recording Manager")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .padding(.top, 10)
-
-            // SD Card Detection Banner
-            if sdCardManager.isSDCardInserted {
-                HStack(spacing: AppSpacing.md) {
-                    Image(systemName: "sdcard.fill")
-                        .font(.title2)
-                        .foregroundStyle(AppColors.success)
-
-                    VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                        Text("SD CARD DETECTED")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(AppColors.success)
-                        if let volumeName = sdCardManager.sdCardVolumeName {
-                            Text("Volume: \(volumeName)")
-                                .font(.system(size: 11, weight: .regular))
-                                .foregroundStyle(.secondary)
-                        }
-                        if let path = sdCardManager.sdCardPath {
-                            Text("Path: \(path)")
-                                .font(.system(size: 10, weight: .light))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: AppSpacing.xs) {
-                        Text("\(sdCardManager.audioFiles.count) audio files")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(AppColors.success)
-
-                        Button(action: {
-                            sdCardManager.ejectSDCard()
-                        }) {
-                            HStack(spacing: AppSpacing.xs) {
-                                Image(systemName: "eject")
-                                    .font(.system(size: 10))
-                                Text("Eject")
-                                    .font(.system(size: 11, weight: .medium))
-                            }
-                            .padding(.horizontal, AppSpacing.md)
-                            .padding(.vertical, AppSpacing.xs + 1)
-                            .background(AppColors.success)
-                            .foregroundStyle(.white)
-                            .cornerRadius(AppRadius.medium)
-                        }
-                        .buttonStyle(.plain)
-                        .onContinuousHover { phase in
-                            switch phase {
-                            case .active:
-                                DispatchQueue.main.async { NSCursor.pointingHand.set() }
-                            case .ended:
-                                DispatchQueue.main.async { NSCursor.arrow.set() }
-                            }
-                        }
-                    }
-                }
-                .padding(AppSpacing.lg)
-                .background {
-                    RoundedRectangle(cornerRadius: AppRadius.large)
-                        .fill(AppColors.success.opacity(0.1))
-                }
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppRadius.large)
-                        .stroke(AppColors.success, lineWidth: 2)
-                )
-            }
-
-            Divider()
-                .padding(.vertical, 10)
-
-            // Success Message
-            if showSuccessMessage {
-                Text(successMessage)
-                    .font(.title2)
-                    .foregroundStyle(.green)
-                    .padding()
-                    .background(Color.green.opacity(0.1))
-                    .cornerRadius(8)
-            }
-
-            // Main Action Buttons
-            VStack(spacing: AppSpacing.lg) {
-                Button(action: {
-                    launchVoiceRecorder()
-                }) {
-                    HStack(spacing: AppSpacing.md) {
-                        Image(systemName: "mic.fill")
-                            .font(.title)
-                            .foregroundStyle(.white)
-                        Text("Record with Voice Recorder")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(GlassButtonStyle())
-
-                Button(action: {
-                    importFromSDCard()
-                }) {
-                    HStack(spacing: AppSpacing.md) {
-                        Image(systemName: "sdcard.fill")
-                            .font(.title)
-                        Text("Import Audio from SD Card")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(GlassButtonStyle())
-            }
-            .padding(.vertical, AppSpacing.xl)
-
-            Divider()
-
-            // Network Controls
-            VStack(spacing: 15) {
-                Button(action: {
-                    uploadToTeams()
-                }) {
-                    HStack(spacing: AppSpacing.sm) {
-                        Image(systemName: "arrow.up.doc.fill")
-                            .foregroundStyle(.white)
-                        Text("Upload to Teams")
-                            .fontWeight(.medium)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 15)
-                }
-                .buttonStyle(.borderedProminent)
-                .onContinuousHover { phase in
-                    switch phase {
-                    case .active:
-                        DispatchQueue.main.async {
-                            NSCursor.pointingHand.set()
-                        }
-                    case .ended:
-                        DispatchQueue.main.async {
-                            NSCursor.arrow.set()
-                        }
-                    }
-                }
-
-            }
-
-            Spacer()
-
-            // NAV Logo - Bottom Center
-            if let resourcePath = Bundle.main.resourcePath {
-                let logoName =
-                    NSApp.effectiveAppearance.name == .darkAqua ? "nav-white.png" : "nav-grey.png"
-                if let nsImage = NSImage(
-                    contentsOfFile: (resourcePath as NSString).appendingPathComponent(logoName))
-                {
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 70, height: 21)
-                        .opacity(0.7)
-                        .padding(.bottom, 15)
-                }
-            }
-        }
-        .padding(.horizontal, 30)
-        .padding(.top, 30)
-        .padding(.bottom, 20)
-    }
 
     // MARK: - Actions
 
@@ -3645,16 +2970,6 @@ struct MainView: View {
         }
     }
 
-    func launchVoiceRecorder() {
-        // Recording view is now the default - this function kept for compatibility
-        // Could be used to reset/focus the recording view if needed
-    }
-
-    func importFromSDCard() {
-        // Launch DSS Player and show import sheet
-        sdCardManager.launchDSSPlayer()
-        showImportSheet = true
-    }
 
     func uploadToTeams() {
         let workspace = NSWorkspace.shared
@@ -3711,242 +3026,6 @@ struct MainView: View {
     }
 }
 
-// MARK: - SD Card Import View
-struct SDCardImportView: View {
-    @ObservedObject var sdCardManager: SDCardManager
-    @Environment(\.dismiss) private var dismiss
-    @State private var selectedFiles: Set<AudioFileInfo> = []
-    @State private var isImporting = false
-    @State private var importProgress = 0.0
-    @State private var importedCount = 0
-    @State private var importedFiles: [AudioFileInfo] = []
-    @State private var showDeletePrompt = false
-
-    var body: some View {
-        VStack(spacing: 20) {
-            // Header
-            HStack {
-                Text("Import Audio from SD Card")
-                    .font(.title)
-                    .fontWeight(.bold)
-                Spacer()
-                Button(action: { dismiss() }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding()
-
-            // SD Card Status
-            if sdCardManager.isSDCardInserted {
-                HStack {
-                    Image(systemName: "sdcard.fill")
-                        .foregroundStyle(.green)
-                        .font(.title2)
-
-                    VStack(alignment: .leading) {
-                        Text("SD Card: \(sdCardManager.sdCardVolumeName ?? "Unknown")")
-                            .font(.headline)
-                        Text("\(sdCardManager.audioFiles.count) audio files found")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer()
-
-                    if sdCardManager.isScanning {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                    } else {
-                        Button(action: {
-                            sdCardManager.ejectSDCard()
-                        }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "eject")
-                                Text("Eject")
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(.green)
-                        .onContinuousHover { phase in
-                            switch phase {
-                            case .active:
-                                DispatchQueue.main.async { NSCursor.pointingHand.set() }
-                            case .ended:
-                                DispatchQueue.main.async { NSCursor.arrow.set() }
-                            }
-                        }
-                    }
-                }
-                .padding()
-                .background(Color.green.opacity(0.1))
-                .cornerRadius(8)
-            } else {
-                HStack {
-                    Image(systemName: "sdcard")
-                        .foregroundStyle(.orange)
-                        .font(.title2)
-                    Text("No SD Card detected. Please insert an Olympus SD card.")
-                        .font(.headline)
-                }
-                .padding()
-                .background(Color.orange.opacity(0.1))
-                .cornerRadius(8)
-            }
-
-            if !sdCardManager.audioFiles.isEmpty {
-                // Selection Controls
-                HStack {
-                    Button(
-                        selectedFiles.count == sdCardManager.audioFiles.count
-                            ? "Deselect All" : "Select All"
-                    ) {
-                        if selectedFiles.count == sdCardManager.audioFiles.count {
-                            selectedFiles.removeAll()
-                        } else {
-                            selectedFiles = Set(sdCardManager.audioFiles)
-                        }
-                    }
-                    .buttonStyle(.bordered)
-
-                    Spacer()
-
-                    Text("\(selectedFiles.count) of \(sdCardManager.audioFiles.count) selected")
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal)
-
-                // File List
-                List(sdCardManager.audioFiles, id: \.self, selection: $selectedFiles) { file in
-                    FileRowView(file: file, isSelected: selectedFiles.contains(file))
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            if selectedFiles.contains(file) {
-                                selectedFiles.remove(file)
-                            } else {
-                                selectedFiles.insert(file)
-                            }
-                        }
-                }
-                .frame(maxHeight: 400)
-
-                // Import Progress
-                if isImporting {
-                    VStack {
-                        ProgressView(value: importProgress, total: Double(selectedFiles.count))
-                        Text("Importing \(importedCount) of \(selectedFiles.count) files...")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding()
-                }
-
-                // Import Button
-                Button(action: {
-                    importSelectedFiles()
-                }) {
-                    HStack {
-                        Image(systemName: "square.and.arrow.down.fill")
-                        Text(
-                            "Import \(selectedFiles.count) File\(selectedFiles.count == 1 ? "" : "s")"
-                        )
-                        .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(selectedFiles.isEmpty || isImporting)
-                .padding(.horizontal)
-            }
-
-            Spacer()
-        }
-        .frame(width: 700, height: 600)
-    }
-
-    func importSelectedFiles() {
-        isImporting = true
-        importedCount = 0
-        importProgress = 0
-
-        let filesToImport = Array(selectedFiles)
-        let fm = FileManager.default
-
-        for file in filesToImport {
-            do {
-                // Create a new recording in RecordingStore
-                let displayName = (file.name as NSString).deletingPathExtension
-                let handle = try RecordingStore.shared.create(displayName: displayName)
-
-                // Determine destination filename preserving original extension
-                let ext = (file.name as NSString).pathExtension
-                let destFilename = ext.isEmpty ? "audio.m4a" : "audio.\(ext)"
-                let destURL = handle.folder.appendingPathComponent(destFilename)
-
-                // Copy audio file into the recording folder
-                try fm.copyItem(atPath: file.path, toPath: destURL.path)
-
-                // Finalize sidecar
-                let attrs = try? fm.attributesOfItem(atPath: destURL.path)
-                let size = attrs?[.size] as? Int64
-                _ = try RecordingStore.shared.updateMeta(id: handle.id) { meta in
-                    meta.audio.filename = destFilename
-                    meta.audio.status = .done
-                    meta.audio.sizeBytes = size
-                }
-
-                print("✅ Imported: \(file.name) → \(handle.id.uuidString)/\(destFilename)")
-                importedCount += 1
-                importProgress = Double(importedCount)
-            } catch {
-                print("❌ Failed to import \(file.name): \(error)")
-            }
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            isImporting = false
-            if importedCount > 0 {
-                // Success! Show completion
-                print("🎉 Imported \(importedCount) files successfully")
-                dismiss()
-            }
-        }
-    }
-}
-
-// MARK: - File Row View
-struct FileRowView: View {
-    let file: AudioFileInfo
-    let isSelected: Bool
-
-    var body: some View {
-        HStack {
-            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(isSelected ? .blue : .gray)
-                .font(.title3)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(file.name)
-                    .font(.headline)
-                HStack {
-                    Text(file.formattedSize)
-                    Text("•")
-                    Text(file.formattedDate)
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-        }
-        .padding(.vertical, 4)
-    }
-}
 
 // MARK: - Entry Point
 VirginProjectApp.main()

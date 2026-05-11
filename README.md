@@ -16,7 +16,6 @@ Utviklet for NAV Arbeids- og velferdsdirektoratet.
 | 👥 Talerutskilling | Identifiser hvem som snakker | HuggingFace-token · pyannote |
 | 🧠 Analyse | Strukturert AI-oppsummering | Ollama med LLM-modell |
 | 🔒 Anonymisering | Fjern navn og personnummer | no-anonymizer |
-| 📼 DS2-støtte | Olympus DS2-filer (stub) | VMware + Olympus DSS Player |
 
 ---
 
@@ -145,31 +144,7 @@ Velg ønsket modell i Innstillinger → **LLM-modell**. Standard er `qwen3:8b`.
 
 ---
 
-### 6. DS2-filer (Olympus-opptakere)
-
-DS2 er et proprietært kryptert format brukt av Olympus/OM System-opptakere.
-Dekoding krever **Olympus DSS Player Pro**, som kun er tilgjengelig for Windows.
-
-**Løsning: VMware Fusion + Windows**
-
-1. Last ned **VMware Fusion** (gratis for personlig bruk) fra [vmware.com](https://www.vmware.com/products/fusion.html)
-2. Installer en Windows 10 eller 11 VM
-3. Installer **Olympus DSS Player Pro** i Windows-VM-en
-   - Lisens kjøpes fra Olympus/OM System
-   - Alternativt: bruk prøveversjon for konvertering
-4. Åpne DS2-filen i DSS Player og eksporter til WAV eller MP3
-5. Del den konverterte filen til macOS via VMwares delte mapper:
-   - VMware Fusion → Settings → Sharing → aktiver delt mappe
-   - Filer er tilgjengelige under `/Volumes/VMware Shared Folders/` på Mac
-
-Importer den konverterte WAV/MP3-filen i ARM som vanlig.
-
-> **Merk**: Direkte DS2-dekoding i ARM er under utvikling og avventer tilgang til
-> OM System Audio SDK ([audiodeveloper.omsystem.com](https://audiodeveloper.omsystem.com)).
-
----
-
-### 7. no-anonymizer (valgfritt)
+### 6. no-anonymizer (valgfritt)
 
 For automatisk anonymisering av navn og personnummer i transkripsjoner:
 
