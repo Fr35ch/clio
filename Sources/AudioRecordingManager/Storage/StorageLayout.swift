@@ -63,6 +63,15 @@ enum StorageLayout {
         dataRoot.appendingPathComponent("state", isDirectory: true)
     }
 
+    /// `<dataRoot>/analyses/` — per-analysis folders keyed by analysis UUID.
+    ///
+    /// Analyses are first-class entities independent of any single recording.
+    /// A single analysis references 1..N recordings via its manifest. See
+    /// `Analysis/AnalysisModels.swift`.
+    static var analysesRoot: URL {
+        dataRoot.appendingPathComponent("analyses", isDirectory: true)
+    }
+
     // MARK: - Per-recording paths
 
     /// `<recordingsRoot>/<uuid>/`
@@ -101,6 +110,32 @@ enum StorageLayout {
         recordingFolder(id: id).appendingPathComponent("meta.json")
     }
 
+    // MARK: - Per-analysis paths
+
+    /// `<analysesRoot>/<analysisId>/`
+    static func analysisFolder(id: UUID) -> URL {
+        analysesRoot.appendingPathComponent(id.uuidString, isDirectory: true)
+    }
+
+    /// `<analysesRoot>/<analysisId>/manifest.json` — the `Analysis` entity
+    /// (sources, prompt template, model, status, timestamps).
+    static func analysisManifestURL(id: UUID) -> URL {
+        analysisFolder(id: id).appendingPathComponent("manifest.json")
+    }
+
+    /// `<analysesRoot>/<analysisId>/result.json` — the LLM output
+    /// (`AnalysisResult`) once the run has completed successfully.
+    static func analysisResultURL(id: UUID) -> URL {
+        analysisFolder(id: id).appendingPathComponent("result.json")
+    }
+
+    /// `<analysesRoot>/<analysisId>/prompt.txt` — the literal prompt text
+    /// that was sent to the LLM. Stored verbatim for reproducibility and
+    /// for the result-view "view prompt" affordance.
+    static func analysisPromptURL(id: UUID) -> URL {
+        analysisFolder(id: id).appendingPathComponent("prompt.txt")
+    }
+
     // MARK: - Audit paths
 
     /// Audit log file for the current month, e.g. `audit-2026-04.jsonl`.
@@ -128,12 +163,12 @@ enum StorageLayout {
     // MARK: - Directory creation
 
     /// Idempotently creates all top-level directories (`dataRoot`, `recordingsRoot`,
-    /// `auditRoot`, `stateRoot`). Safe to call on every launch.
+    /// `auditRoot`, `stateRoot`, `analysesRoot`). Safe to call on every launch.
     ///
     /// Throws if creation fails for any reason other than "already exists".
     static func ensureDirectoriesExist() throws {
         let fm = FileManager.default
-        for url in [dataRoot, recordingsRoot, auditRoot, stateRoot] {
+        for url in [dataRoot, recordingsRoot, auditRoot, stateRoot, analysesRoot] {
             try fm.createDirectory(at: url, withIntermediateDirectories: true)
         }
     }

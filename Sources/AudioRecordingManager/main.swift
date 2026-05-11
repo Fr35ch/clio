@@ -893,6 +893,7 @@ struct NavPanel: View {
                 navItem(tab: .record, label: "Ta opp lyd", icon: "mic.fill")
                 navItem(tab: .recordings, label: "Lydopptak", icon: "waveform")
                 navItem(tab: .transcripts, label: "Transkripsjoner", icon: "doc.text.fill")
+                navItem(tab: .analyse, label: "Analyser", icon: "brain.head.profile")
             }
             .padding(.horizontal, 12)
             .padding(.top, 12)
@@ -1101,19 +1102,7 @@ struct RecordingPlayerNative: View {
     @State private var diarizationError: String? = nil
     @AppStorage("diarization.hfToken") private var hfToken = ""
 
-    // Analysis (step 3)
-    @State private var analysisTask: Task<Void, Never>?
-    @State private var isAnalyzing = false
-    @State private var analysisError: String? = nil
-    @State private var analysisResult: AnalysisResult? = nil
-    @State private var showAnalysisResult = false
-    @AppStorage("analysis.llmModel") private var llmModel = "qwen3:8b"
-
     @State private var showSettings = false
-
-    // Ollama status (checked off main thread)
-    @State private var ollamaIsRunning = false
-    @State private var ollamaIsInstalled = false
 
     private var isCurrentFile: Bool {
         audioPlayer.currentPlayingURL == recording.audioURL
@@ -1220,7 +1209,6 @@ struct RecordingPlayerNative: View {
                 Form {
                     transcriptionSection
                     diarizationSection
-                    analysisSection
 
                     Section("Fil informasjon") {
                         LabeledContent("Filnavn") {
@@ -1283,23 +1271,10 @@ struct RecordingPlayerNative: View {
         // in TranscriptEditorView (Transkripsjoner tab).
         .onAppear {
             restoreTranscriptionStateIfNeeded()
-            // Restore analysis result
-            if analysisResult == nil {
-                analysisResult = ProcessingStateCache.shared.analysisResult(for: recording.path)
-            }
-            // Check Ollama status off main thread
-            ollamaIsInstalled = OllamaManager.shared.isInstalled
-            if ollamaIsInstalled {
-                Task.detached {
-                    let running = OllamaManager.shared.isRunning()
-                    await MainActor.run { ollamaIsRunning = running }
-                }
-            }
         }
         .onDisappear {
             transcriptionTask?.cancel()
             diarizationTask?.cancel()
-            analysisTask?.cancel()
             TranscriptionService.shared.cancel()
         }
     }
@@ -1528,83 +1503,9 @@ struct RecordingPlayerNative: View {
                         } label: {
                             Label("Identifiser talere", systemImage: "person.2.fill")
                         }
-                        .disabled(isTranscribing || isAnalyzing)
+                        .disabled(isTranscribing)
                         Text("Bruker pyannote · \(defaultSpeakers) talere")
                             .font(.caption).foregroundStyle(.secondary)
-                    }
-                } else {
-                    Text("Transkriber lydfilen først")
-                        .foregroundStyle(.tertiary)
-                        .font(.caption)
-                }
-            }
-        }
-    }
-
-    // MARK: - Analysis section
-
-    @ViewBuilder
-    private var analysisSection: some View {
-        Section("Analyse") {
-            if isAnalyzing {
-                HStack(spacing: 10) {
-                    ProgressView().progressViewStyle(.circular).scaleEffect(0.75)
-                    Text("Analyserer med \(llmModel)...")
-                }
-                if transcriptionService.analysisProgress > 0 {
-                    ProgressView(value: transcriptionService.analysisProgress)
-                        .animation(.easeInOut(duration: 0.4), value: transcriptionService.analysisProgress)
-                }
-                Button("Avbryt", role: .destructive) {
-                    analysisTask?.cancel()
-                    TranscriptionService.shared.cancel()
-                    isAnalyzing = false
-                }
-            } else if analysisResult != nil {
-                // Completed
-                Label {
-                    Text("Analyse fullført")
-                } icon: {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                }
-                Button {
-                    showAnalysisResult = true
-                } label: {
-                    Label("Vis analyse", systemImage: "doc.text.magnifyingglass")
-                }
-                Button {
-                    startAnalysis()
-                } label: {
-                    Label("Analyser på nytt", systemImage: "arrow.counterclockwise")
-                }
-            } else if let error = analysisError {
-                Label {
-                    Text(error).foregroundStyle(.red)
-                } icon: {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
-                }
-                Button("Prøv igjen", action: startAnalysis)
-            } else {
-                if transcriptionResult != nil {
-                    Button {
-                        startAnalysis()
-                    } label: {
-                        Label("Analyser med \(llmModel)", systemImage: "brain.head.profile")
-                    }
-                    .disabled(isTranscribing || isDiarizing || !ollamaIsInstalled)
-                    HStack(spacing: 4) {
-                        Image(systemName: ollamaIsInstalled
-                              ? (ollamaIsRunning ? "circle.fill" : "circle.dotted")
-                              : "xmark.circle")
-                            .foregroundStyle(ollamaIsInstalled
-                                             ? (ollamaIsRunning ? Color.green : Color.orange)
-                                             : Color.red)
-                            .font(.caption2)
-                        Text(ollamaIsInstalled
-                             ? (ollamaIsRunning ? "Ollama kjører" : "Ollama starter automatisk ved klikk")
-                             : "Ollama er ikke installert — last ned fra ollama.com")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
                     }
                 } else {
                     Text("Transkriber lydfilen først")
@@ -1714,30 +1615,6 @@ struct RecordingPlayerNative: View {
                 await MainActor.run {
                     diarizationError = error.localizedDescription
                     isDiarizing = false
-                }
-            }
-        }
-    }
-
-    private func startAnalysis() {
-        guard let result = transcriptionResult else { return }
-        isAnalyzing = true
-        analysisError = nil
-        analysisTask = Task {
-            do {
-                let analysis = try await TranscriptionService.shared.analyze(
-                    audioFile: recording.audioURL,
-                    existingResult: result,
-                    llmModel: llmModel
-                )
-                await MainActor.run {
-                    analysisResult = analysis
-                    isAnalyzing = false
-                }
-            } catch {
-                await MainActor.run {
-                    analysisError = error.localizedDescription
-                    isAnalyzing = false
                 }
             }
         }
@@ -2769,6 +2646,7 @@ struct MainView: View {
     @State private var selectedTab: AppTab = .record
     @State private var selectedRecording: RecordingItem? = nil
     @State private var selectedTranscript: TranscriptItem? = nil
+    @State private var selectedAnalysisId: UUID? = nil
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var showLogViewer = false
     @State private var showAnonymizationDialog = false
@@ -2803,6 +2681,8 @@ struct MainView: View {
                         transcriptManager: transcriptManager,
                         selectedTranscript: $selectedTranscript
                     )
+                case .analyse:
+                    AnalysisListColumn(selectedAnalysisId: $selectedAnalysisId)
                 }
             }
             .navigationSplitViewColumnWidth(
@@ -2848,6 +2728,8 @@ struct MainView: View {
                         description: Text("Klikk på en fil til venstre for å vise innhold og kjøre anonymisering.")
                     )
                 }
+            case .analyse:
+                AnalysisDetailColumn(selectedAnalysisId: $selectedAnalysisId)
             }
         }
         .navigationSplitViewStyle(.balanced)
@@ -2855,6 +2737,7 @@ struct MainView: View {
         .onChange(of: selectedTab) { _, newTab in
             if newTab != .recordings { selectedRecording = nil }
             if newTab != .transcripts { selectedTranscript = nil }
+            if newTab != .analyse { selectedAnalysisId = nil }
             withAnimation {
                 columnVisibility = hidesContentColumn(for: newTab) ? .doubleColumn : .all
             }
@@ -2912,7 +2795,7 @@ struct MainView: View {
     private func hidesContentColumn(for tab: AppTab) -> Bool {
         switch tab {
         case .record: return true
-        case .recordings, .transcripts: return false
+        case .recordings, .transcripts, .analyse: return false
         }
     }
 

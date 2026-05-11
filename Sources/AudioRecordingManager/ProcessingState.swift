@@ -35,14 +35,15 @@ enum ProcessingStep {
 
 // MARK: - Cache
 
-/// Thread-safe, disk-backed store for processing state keyed by audio file path.
+/// Thread-safe, disk-backed store for per-step processing status (not result blobs).
+/// Analysis results are persisted by `AnalyseSectionView` via `StorageLayout.analysisURL(id:)`;
+/// this cache only tracks `notStarted/inProgress/completed/failed` per step.
 final class ProcessingStateCache {
     static let shared = ProcessingStateCache()
     private init() { loadFromDisk() }
 
     private let lock = NSLock()
     private var store: [String: RecordingProcessingState] = [:]
-    private var analysisStore: [String: AnalysisResult] = [:]
 
     // MARK: Processing state
 
@@ -77,40 +78,6 @@ final class ProcessingStateCache {
         saveToDisk()
     }
 
-    // MARK: Analysis result
-
-    func storeAnalysisResult(_ result: AnalysisResult, for path: String) {
-        lock.lock()
-        analysisStore[path] = result
-        lock.unlock()
-        saveAnalysisToDisk(result, for: path)
-    }
-
-    func analysisResult(for path: String) -> AnalysisResult? {
-        lock.lock()
-        if let cached = analysisStore[path] {
-            lock.unlock()
-            return cached
-        }
-        lock.unlock()
-        // Disk fallback
-        let url = analysisFileURL(for: path)
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        decoder.dateDecodingStrategy = .secondsSince1970
-        guard let data = try? Data(contentsOf: url),
-              let result = try? decoder.decode(AnalysisResult.self, from: data)
-        else { return nil }
-        lock.lock()
-        analysisStore[path] = result
-        lock.unlock()
-        return result
-    }
-
-    func hasAnalysis(for path: String) -> Bool {
-        analysisResult(for: path) != nil
-    }
-
     // MARK: Disk persistence
 
     private var stateFileURL: URL {
@@ -118,14 +85,6 @@ final class ProcessingStateCache {
         let dir = support.appendingPathComponent("AudioRecordingManager")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appendingPathComponent("processing-state.json")
-    }
-
-    private func analysisFileURL(for audioPath: String) -> URL {
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let dir = support.appendingPathComponent("AudioRecordingManager/analysis")
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let stem = URL(fileURLWithPath: audioPath).deletingPathExtension().lastPathComponent
-        return dir.appendingPathComponent("\(stem).json")
     }
 
     private func loadFromDisk() {
@@ -138,13 +97,5 @@ final class ProcessingStateCache {
     private func saveToDisk() {
         guard let data = try? JSONEncoder().encode(store) else { return }
         try? data.write(to: stateFileURL, options: .atomic)
-    }
-
-    private func saveAnalysisToDisk(_ result: AnalysisResult, for path: String) {
-        let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
-        encoder.dateEncodingStrategy = .secondsSince1970
-        guard let data = try? encoder.encode(result) else { return }
-        try? data.write(to: analysisFileURL(for: path), options: .atomic)
     }
 }

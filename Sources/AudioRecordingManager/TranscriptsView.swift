@@ -6,6 +6,7 @@ enum AppTab {
     case record
     case recordings
     case transcripts
+    case analyse
 }
 
 // MARK: - Transcripts List Column (content column for 3-column split)

@@ -989,7 +989,6 @@ final class TranscriptionService: ObservableObject, @unchecked Sendable {
                     }
                 }
             }
-            ProcessingStateCache.shared.storeAnalysisResult(result, for: audioFile.path)
             ProcessingStateCache.shared.setStep(.analysis, status: .completed, for: audioFile.path)
             await MainActor.run {
                 self.analysisProgress = 1.0

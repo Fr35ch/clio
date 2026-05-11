@@ -64,6 +64,17 @@
 		FA1B2C3D4E5F600010200F02 /* UploadNamingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1B2C3D4E5F600010200F01 /* UploadNamingService.swift */; };
 		FA1B2C3D4E5F60001020A002 /* UploadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1B2C3D4E5F60001020A001 /* UploadService.swift */; };
 		FA1B2C3D4E5F60001020B102 /* AuditLogViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1B2C3D4E5F60001020B101 /* AuditLogViewer.swift */; };
+		AB1B2C3D4E5F60001020A102 /* AnalysisModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B2C3D4E5F60001020A101 /* AnalysisModels.swift */; };
+		AB1B2C3D4E5F60001020A202 /* AnalysisStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B2C3D4E5F60001020A201 /* AnalysisStore.swift */; };
+		AB1B2C3D4E5F60001020A302 /* TranscriptHash.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B2C3D4E5F60001020A301 /* TranscriptHash.swift */; };
+		AB1B2C3D4E5F60001020A402 /* AnalysisListColumn.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B2C3D4E5F60001020A401 /* AnalysisListColumn.swift */; };
+		AB1B2C3D4E5F60001020A502 /* AnalysisDetailColumn.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B2C3D4E5F60001020A501 /* AnalysisDetailColumn.swift */; };
+		AB1B2C3D4E5F60001020A602 /* PromptTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B2C3D4E5F60001020A601 /* PromptTemplate.swift */; };
+		AB1B2C3D4E5F60001020A702 /* PromptTemplateLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B2C3D4E5F60001020A701 /* PromptTemplateLibrary.swift */; };
+		AB1B2C3D4E5F60001020A802 /* OllamaAnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B2C3D4E5F60001020A801 /* OllamaAnalysisService.swift */; };
+		AB1B2C3D4E5F60001020A902 /* AnalysisResultParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B2C3D4E5F60001020A901 /* AnalysisResultParser.swift */; };
+		AB1B2C3D4E5F60001020AA02 /* AnalysisComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B2C3D4E5F60001020AA01 /* AnalysisComposerView.swift */; };
+		AB1B2C3D4E5F60001020AB02 /* AnalysisResultDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B2C3D4E5F60001020AB01 /* AnalysisResultDetailView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -125,6 +136,17 @@
 		FA1B2C3D4E5F600010200F01 /* UploadNamingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadNamingService.swift; sourceTree = "<group>"; };
 		FA1B2C3D4E5F60001020A001 /* UploadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadService.swift; sourceTree = "<group>"; };
 		FA1B2C3D4E5F60001020B101 /* AuditLogViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditLogViewer.swift; sourceTree = "<group>"; };
+		AB1B2C3D4E5F60001020A101 /* AnalysisModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisModels.swift; sourceTree = "<group>"; };
+		AB1B2C3D4E5F60001020A201 /* AnalysisStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisStore.swift; sourceTree = "<group>"; };
+		AB1B2C3D4E5F60001020A301 /* TranscriptHash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptHash.swift; sourceTree = "<group>"; };
+		AB1B2C3D4E5F60001020A401 /* AnalysisListColumn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisListColumn.swift; sourceTree = "<group>"; };
+		AB1B2C3D4E5F60001020A501 /* AnalysisDetailColumn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisDetailColumn.swift; sourceTree = "<group>"; };
+		AB1B2C3D4E5F60001020A601 /* PromptTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplate.swift; sourceTree = "<group>"; };
+		AB1B2C3D4E5F60001020A701 /* PromptTemplateLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplateLibrary.swift; sourceTree = "<group>"; };
+		AB1B2C3D4E5F60001020A801 /* OllamaAnalysisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaAnalysisService.swift; sourceTree = "<group>"; };
+		AB1B2C3D4E5F60001020A901 /* AnalysisResultParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisResultParser.swift; sourceTree = "<group>"; };
+		AB1B2C3D4E5F60001020AA01 /* AnalysisComposerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisComposerView.swift; sourceTree = "<group>"; };
+		AB1B2C3D4E5F60001020AB01 /* AnalysisResultDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisResultDetailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -192,6 +214,24 @@
 			path = Playback;
 			sourceTree = "<group>";
 		};
+		AB1B2C3D4E5F60001020A000 /* Analysis */ = {
+			isa = PBXGroup;
+			children = (
+				AB1B2C3D4E5F60001020A101 /* AnalysisModels.swift */,
+				AB1B2C3D4E5F60001020A201 /* AnalysisStore.swift */,
+				AB1B2C3D4E5F60001020A301 /* TranscriptHash.swift */,
+				AB1B2C3D4E5F60001020A401 /* AnalysisListColumn.swift */,
+				AB1B2C3D4E5F60001020A501 /* AnalysisDetailColumn.swift */,
+				AB1B2C3D4E5F60001020A601 /* PromptTemplate.swift */,
+				AB1B2C3D4E5F60001020A701 /* PromptTemplateLibrary.swift */,
+				AB1B2C3D4E5F60001020A801 /* OllamaAnalysisService.swift */,
+				AB1B2C3D4E5F60001020A901 /* AnalysisResultParser.swift */,
+				AB1B2C3D4E5F60001020AA01 /* AnalysisComposerView.swift */,
+				AB1B2C3D4E5F60001020AB01 /* AnalysisResultDetailView.swift */,
+			);
+			path = Analysis;
+			sourceTree = "<group>";
+		};
 		DF8884E58B3616241EF874EB /* AudioRecordingManager */ = {
 			isa = PBXGroup;
 			children = (
@@ -199,6 +239,7 @@
 				BA1B2C3D4E5F60001020BA00 /* Storage */,
 				CA1B2C3D4E5F60001020DA00 /* Design */,
 				DA1B2C3D4E5F60001020EA00 /* Playback */,
+				AB1B2C3D4E5F60001020A000 /* Analysis */,
 				DA1B2C3D4E5F60001020EB01 /* TranscriptEditorState.swift */,
 				DA1B2C3D4E5F60001020EC01 /* TranscriptEditorView.swift */,
 				DA1B2C3D4E5F60001020ED01 /* AnonymizationSectionView.swift */,
@@ -375,6 +416,17 @@
 				292A2B2C2D2E2F30090AFF09 /* TranscriptionResultView.swift in Sources */,
 				4B4C4D4E4F5051420B0C010B /* TranscriptionSettingsView.swift in Sources */,
 				D1AD0DFEEF0241A88D89CA16 /* OllamaManager.swift in Sources */,
+				AB1B2C3D4E5F60001020A102 /* AnalysisModels.swift in Sources */,
+				AB1B2C3D4E5F60001020A202 /* AnalysisStore.swift in Sources */,
+				AB1B2C3D4E5F60001020A302 /* TranscriptHash.swift in Sources */,
+				AB1B2C3D4E5F60001020A402 /* AnalysisListColumn.swift in Sources */,
+				AB1B2C3D4E5F60001020A502 /* AnalysisDetailColumn.swift in Sources */,
+				AB1B2C3D4E5F60001020A602 /* PromptTemplate.swift in Sources */,
+				AB1B2C3D4E5F60001020A702 /* PromptTemplateLibrary.swift in Sources */,
+				AB1B2C3D4E5F60001020A802 /* OllamaAnalysisService.swift in Sources */,
+				AB1B2C3D4E5F60001020A902 /* AnalysisResultParser.swift in Sources */,
+				AB1B2C3D4E5F60001020AA02 /* AnalysisComposerView.swift in Sources */,
+				AB1B2C3D4E5F60001020AB02 /* AnalysisResultDetailView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
