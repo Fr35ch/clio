@@ -37,6 +37,7 @@ struct TranscriptRowView: View {
     let transcript: TranscriptItem
     let hasAnonymization: Bool
     @State private var isHovering = false
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         Label {
@@ -58,6 +59,21 @@ struct TranscriptRowView: View {
         )
         .onHover { hovering in
             isHovering = hovering
+        }
+        .contextMenu {
+            Button(role: .destructive) {
+                showDeleteConfirm = true
+            } label: {
+                Label("Slett transkripsjon", systemImage: "trash")
+            }
+        }
+        .alert("Slett transkripsjon?", isPresented: $showDeleteConfirm) {
+            Button("Slett", role: .destructive) {
+                TranscriptManager.shared.deleteTranscript(transcript)
+            }
+            Button("Avbryt", role: .cancel) {}
+        } message: {
+            Text("Transkripsjonsfilene fjernes. Lydopptaket beholdes — du kan transkribere på nytt senere. En eventuell avidentifisert versjon slettes også fordi den er knyttet til denne transkripsjonen.")
         }
     }
 }

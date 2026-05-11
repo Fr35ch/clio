@@ -115,4 +115,58 @@ class TranscriptManager: ObservableObject {
         transcripts = items.sorted { $0.date > $1.date }
         print("📋 Loaded \(transcripts.count) transcripts from RecordingStore")
     }
+
+    // MARK: - Delete
+
+    /// Removes the transcript artifacts for a recording without touching
+    /// the recording itself. The audio file stays on disk, the recording
+    /// metadata stays — only:
+    ///
+    ///   - `transcript.txt` in the recording folder
+    ///   - `transcript_anonymized.txt` in the recording folder (the
+    ///     de-identified variant is meaningless once the source is gone)
+    ///   - the cached `TranscriptionResult` JSON under
+    ///     `~/Library/.../transcripts/<uuid>.json` (preserves
+    ///     diarisation labels and word timestamps; stale after delete)
+    ///
+    /// …are removed, and the sidecar's `transcript` + `anonymization`
+    /// blocks are reset so the recording reads as "not yet transcribed".
+    /// The Transcripts list reloads via `RecordingStore.didChangeNotification`.
+    func deleteTranscript(_ item: TranscriptItem) {
+        let id = item.recordingId ?? item.id
+        let fm = FileManager.default
+
+        // 1. transcript.txt and transcript_anonymized.txt live inside
+        //    the recording's UUID folder.
+        let textURL = StorageLayout.transcriptURL(id: id)
+        let anonURL = StorageLayout.anonymizedTranscriptURL(id: id)
+        for url in [textURL, anonURL] where fm.fileExists(atPath: url.path) {
+            do {
+                try fm.removeItem(at: url)
+            } catch {
+                print("⚠️ Could not remove \(url.lastPathComponent): \(error)")
+            }
+        }
+
+        // 2. Cached TranscriptionResult JSON in Application Support.
+        let support = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let jsonURL = support.appendingPathComponent("AudioRecordingManager/transcripts/\(id.uuidString).json")
+        if fm.fileExists(atPath: jsonURL.path) {
+            try? fm.removeItem(at: jsonURL)
+        }
+
+        // 3. Reset the sidecar so the recording reads as "not transcribed".
+        //    Anonymisation block resets too because it referenced a now-
+        //    deleted source.
+        do {
+            _ = try RecordingStore.shared.updateMeta(id: id) { meta in
+                meta.transcript = TranscriptMeta()
+                meta.anonymization = AnonymizationMeta()
+            }
+        } catch {
+            print("⚠️ Could not reset sidecar after transcript delete: \(error)")
+        }
+
+        print("🗑️ Deleted transcript artifacts for \(item.filename)")
+    }
 }

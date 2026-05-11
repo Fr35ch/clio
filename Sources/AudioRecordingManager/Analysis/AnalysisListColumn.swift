@@ -16,6 +16,7 @@ struct AnalysisListColumn: View {
     @Binding var selectedAnalysisId: UUID?
     @ObservedObject private var store = AnalysisStore.shared
     @State private var analyses: [Analysis] = []
+    @State private var pendingDelete: Analysis? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -33,6 +34,13 @@ struct AnalysisListColumn: View {
                     ForEach(analyses) { analysis in
                         AnalysisListRow(analysis: analysis)
                             .tag(analysis.id)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    pendingDelete = analysis
+                                } label: {
+                                    Label("Slett analyse", systemImage: "trash")
+                                }
+                            }
                     }
                 }
                 .listStyle(.sidebar)
@@ -40,6 +48,32 @@ struct AnalysisListColumn: View {
         }
         .onAppear { reload() }
         .onChange(of: store.changeToken) { _, _ in reload() }
+        .alert(
+            "Slett analyse?",
+            isPresented: Binding(
+                get: { pendingDelete != nil },
+                set: { if !$0 { pendingDelete = nil } }
+            ),
+            presenting: pendingDelete
+        ) { analysis in
+            Button("Slett", role: .destructive) {
+                performDelete(analysis)
+            }
+            Button("Avbryt", role: .cancel) {}
+        } message: { analysis in
+            Text("«\(analysis.title)» blir slettet permanent. Kildetranskripsjonene berøres ikke.")
+        }
+    }
+
+    private func performDelete(_ analysis: Analysis) {
+        do {
+            try AnalysisStore.shared.delete(id: analysis.id)
+            if selectedAnalysisId == analysis.id {
+                selectedAnalysisId = nil
+            }
+        } catch {
+            print("⚠️ Could not delete analyse \(analysis.id.uuidString): \(error)")
+        }
     }
 
     /// Always-visible header at the top of the column. Clicking it nulls
