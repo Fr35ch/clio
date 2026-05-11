@@ -2692,46 +2692,56 @@ struct MainView: View {
                 max: contentColumnMax(for: selectedTab)
             )
         } detail: {
-            // Column 3: tab-dependent detail
-            switch selectedTab {
-            case .record:
-                RecordingView(recorder: audioRecorder, isShowing: .constant(true))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            case .recordings:
-                if let recording = selectedRecording {
-                    RecordingPlayerNative(
-                        recording: recording,
-                        audioPlayer: audioPlayer,
-                        onNavigateToTranscript: { recordingId in
-                            // Find the matching transcript and switch to editor
-                            selectedTranscript = transcriptManager.transcripts.first {
-                                $0.recordingId == recordingId
+            // Column 3: tab-dependent detail. For the recordings tab,
+            // we collapse the column entirely (width 0) when nothing is
+            // selected so Bibliotek can fill the whole content area.
+            // `.navigationSplitViewColumnWidth` accepts 0 to truly
+            // hide the column — `NavigationSplitViewVisibility` enum
+            // has no value that hides only column 3 in a 3-column
+            // layout, so this is the only mechanism that works.
+            Group {
+                switch selectedTab {
+                case .record:
+                    RecordingView(recorder: audioRecorder, isShowing: .constant(true))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                case .recordings:
+                    if let recording = selectedRecording {
+                        RecordingPlayerNative(
+                            recording: recording,
+                            audioPlayer: audioPlayer,
+                            onNavigateToTranscript: { recordingId in
+                                // Find the matching transcript and switch to editor
+                                selectedTranscript = transcriptManager.transcripts.first {
+                                    $0.recordingId == recordingId
+                                }
+                                selectedTab = .transcripts
                             }
-                            selectedTab = .transcripts
-                        }
-                    )
-                    .id(recording.path)
-                } else {
-                    ContentUnavailableView(
-                        "Velg et opptak",
-                        systemImage: "waveform",
-                        description: Text("Klikk på et lydopptak til venstre for å spille av.")
-                    )
+                        )
+                        .id(recording.path)
+                    } else {
+                        // Zero-size placeholder so the column collapses.
+                        Color.clear.frame(width: 0, height: 0)
+                    }
+                case .transcripts:
+                    if let transcript = selectedTranscript {
+                        transcriptDetailOrEditor(for: transcript)
+                            .id(transcript.id)
+                    } else {
+                        ContentUnavailableView(
+                            "Velg en transkripsjon",
+                            systemImage: "doc.text.magnifyingglass",
+                            description: Text("Klikk på en fil til venstre for å vise innhold og kjøre anonymisering.")
+                        )
+                    }
+                case .analyse:
+                    AnalysisDetailColumn(selectedAnalysisId: $selectedAnalysisId)
                 }
-            case .transcripts:
-                if let transcript = selectedTranscript {
-                    transcriptDetailOrEditor(for: transcript)
-                        .id(transcript.id)
-                } else {
-                    ContentUnavailableView(
-                        "Velg en transkripsjon",
-                        systemImage: "doc.text.magnifyingglass",
-                        description: Text("Klikk på en fil til venstre for å vise innhold og kjøre anonymisering.")
-                    )
-                }
-            case .analyse:
-                AnalysisDetailColumn(selectedAnalysisId: $selectedAnalysisId)
             }
+            .navigationSplitViewColumnWidth(
+                min: detailColumnMin(),
+                ideal: detailColumnIdeal(),
+                max: detailColumnMax()
+            )
         }
         .navigationSplitViewStyle(.balanced)
         .toolbar(removing: .sidebarToggle)
@@ -2739,11 +2749,8 @@ struct MainView: View {
             if newTab != .recordings { selectedRecording = nil }
             if newTab != .transcripts { selectedTranscript = nil }
             if newTab != .analyse { selectedAnalysisId = nil }
-            withAnimation { columnVisibility = computeColumnVisibility() }
-        }
-        .onChange(of: selectedRecording) { _, _ in
-            if selectedTab == .recordings {
-                withAnimation { columnVisibility = computeColumnVisibility() }
+            withAnimation {
+                columnVisibility = hidesContentColumn(for: newTab) ? .doubleColumn : .all
             }
         }
         .frame(minWidth: 900, minHeight: 600)
@@ -2803,22 +2810,13 @@ struct MainView: View {
         }
     }
 
-    /// Recordings tab hides column 3 (detail) until something is
-    /// selected — BibliotekView then expands to use the full content
-    /// area. Other tabs keep their existing behaviour (column 3 always
-    /// visible with an empty-state placeholder).
-    private func computeColumnVisibility() -> NavigationSplitViewVisibility {
-        if hidesContentColumn(for: selectedTab) { return .doubleColumn }
-        if selectedTab == .recordings && selectedRecording == nil {
-            return .doubleColumn
-        }
-        return .all
-    }
-
     // Bibliotek's status-pipeline table needs much more horizontal space
     // than the old card-style RecordingsListColumn did. Per-tab widths
     // so the lighter tabs (transkripsjoner, analyser) keep their compact
-    // list columns.
+    // list columns. When a recording is selected, the content column
+    // shrinks back to compact and the detail column expands (see
+    // `detailColumnWidths` and the `.navigationSplitViewColumnWidth`
+    // applied to the detail Group below).
 
     private func contentColumnMin(for tab: AppTab) -> CGFloat {
         if hidesContentColumn(for: tab) { return 0 }
@@ -2850,6 +2848,25 @@ struct MainView: View {
         default:
             return 360
         }
+    }
+
+    // Detail-column widths. Returns 0 for the .recordings tab when
+    // nothing is selected (collapses the column visually) and a
+    // sensible 320–800pt when something is selected so the
+    // RecordingPlayerNative has room.
+    private func detailColumnMin() -> CGFloat {
+        if selectedTab == .recordings && selectedRecording == nil { return 0 }
+        return 320
+    }
+
+    private func detailColumnIdeal() -> CGFloat {
+        if selectedTab == .recordings && selectedRecording == nil { return 0 }
+        return 480
+    }
+
+    private func detailColumnMax() -> CGFloat {
+        if selectedTab == .recordings && selectedRecording == nil { return 0 }
+        return 800
     }
 
     /// Renders the transcript editor when there is a TranscriptionResult for

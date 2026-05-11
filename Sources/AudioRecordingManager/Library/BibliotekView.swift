@@ -45,8 +45,22 @@ struct BibliotekView: View {
             filterChipsRow
             expiryBanner
             Divider()
-            tableArea
+            if filteredBundles.isEmpty {
+                emptyState
+                    .frame(maxHeight: .infinity)
+            } else {
+                tableHeader
+                Divider()
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(filteredBundles) { bundle in
+                            rowView(bundle)
+                            Divider().padding(.leading, AppSpacing.lg)
+                        }
+                    }
+                }
                 .frame(maxHeight: .infinity)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onAppear { reload() }
@@ -232,18 +246,6 @@ struct BibliotekView: View {
 
     // MARK: - Table
 
-    private var tableArea: some View {
-        Group {
-            if filteredBundles.isEmpty {
-                emptyState
-            } else {
-                tableHeader
-                Divider()
-                tableRows
-            }
-        }
-    }
-
     private var tableHeader: some View {
         HStack(spacing: 0) {
             Text("").frame(width: 32, alignment: .leading)
@@ -278,17 +280,6 @@ struct BibliotekView: View {
                     .foregroundStyle(.secondary)
                     .tracking(0.5)
                     .frame(maxWidth: .infinity, alignment: alignment)
-            }
-        }
-    }
-
-    private var tableRows: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                ForEach(filteredBundles) { bundle in
-                    rowView(bundle)
-                    Divider().padding(.leading, AppSpacing.lg)
-                }
             }
         }
     }
