@@ -78,7 +78,6 @@ struct AnalysisComposerView: View {
                 researchContextSection
                 transcriptPickerSection
                 templatePickerSection
-                modelSection
                 runButton
                 runStateBanner
                 Spacer(minLength: AppSpacing.xxl)
@@ -211,20 +210,6 @@ struct AnalysisComposerView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-            }
-        }
-    }
-
-    private var modelSection: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            sectionLabel("Modell")
-            HStack(spacing: AppSpacing.sm) {
-                TextField("Modell", text: $llmModel)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 220)
-                Text("Standard: qwen3:8b. Andre Ollama-modeller (llama3.2, qwen3:14b, …) kan brukes hvis de er installert lokalt.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
         }
     }

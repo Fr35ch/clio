@@ -1,12 +1,14 @@
 // AnalysisListColumn.swift
 // AudioRecordingManager
 //
-// Column 2 of the Analyser tab — the list of past analyses, newest first.
-// Selecting a row drives the column-3 detail view via `selectedAnalysisId`.
+// Column 2 of the Analyser tab — the list of past analyses, newest first,
+// plus a persistent "Ny analyse" header that deselects the current
+// analysis and surfaces the composer in column 3.
 //
-// Phase B1 status: placeholder shell. Reads from `AnalysisStore.shared` so
-// the list updates as analyses are created, but lacks the row chrome,
-// search, and toolbar affordances that B3 will add.
+// Without the header button there's no way back to the composer from a
+// completed analysis except switching tabs and back. The button is the
+// primary navigation affordance for "I'm done reading this result, I
+// want to start another."
 
 import SwiftUI
 
@@ -16,13 +18,16 @@ struct AnalysisListColumn: View {
     @State private var analyses: [Analysis] = []
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            newAnalysisHeader
+
             if analyses.isEmpty {
                 ContentUnavailableView(
                     "Ingen analyser ennå",
                     systemImage: "brain.head.profile",
-                    description: Text("Velg en eller flere transkripsjoner i komponer-visningen for å starte en analyse.")
+                    description: Text("Bruk komponer-visningen til høyre for å starte en analyse.")
                 )
+                .frame(maxHeight: .infinity)
             } else {
                 List(selection: $selectedAnalysisId) {
                     ForEach(analyses) { analysis in
@@ -35,6 +40,46 @@ struct AnalysisListColumn: View {
         }
         .onAppear { reload() }
         .onChange(of: store.changeToken) { _, _ in reload() }
+    }
+
+    /// Always-visible header at the top of the column. Clicking it nulls
+    /// `selectedAnalysisId`, which flips column 3 from the result detail
+    /// back to the composer. Highlighted when the composer is the active
+    /// surface so the researcher sees "they are here".
+    private var newAnalysisHeader: some View {
+        let isComposerActive = selectedAnalysisId == nil
+        return Button {
+            selectedAnalysisId = nil
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.body)
+                Text("Ny analyse")
+                    .font(.system(size: 13, weight: .medium))
+                Spacer()
+                if isComposerActive {
+                    Image(systemName: "checkmark")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, AppSpacing.md)
+            .padding(.vertical, AppSpacing.sm + 2)
+            .background {
+                if isComposerActive {
+                    RoundedRectangle(cornerRadius: AppRadius.small)
+                        .fill(AppColors.accent.opacity(0.15))
+                } else {
+                    Color.clear
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(isComposerActive ? .primary : AppColors.accent)
+        .padding(.horizontal, AppSpacing.sm)
+        .padding(.top, AppSpacing.sm)
+        .padding(.bottom, AppSpacing.xs)
     }
 
     private func reload() {

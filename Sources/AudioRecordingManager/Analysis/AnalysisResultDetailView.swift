@@ -308,6 +308,14 @@ struct AnalysisResultDetailView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
+            Button {
+                selectedAnalysisId = nil
+            } label: {
+                Label("Ny analyse", systemImage: "plus.circle")
+            }
+            .help("Tilbake til komponer-visningen for å starte en ny analyse")
+        }
+        ToolbarItem(placement: .primaryAction) {
             Menu {
                 if analysis.status == .completed {
                     Button { copyMarkdown() } label: { Label("Kopier som markdown", systemImage: "doc.on.doc") }
