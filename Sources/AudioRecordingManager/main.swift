@@ -860,20 +860,54 @@ struct AudioWaveformIcon: View {
 struct NavPanel: View {
     @Binding var selectedTab: AppTab
     @Binding var showAbout: Bool
+    /// `true` when the sidebar should render as a narrow icons-only
+    /// strip. Driven by the active tab in `MainView`: tabs that have
+    /// their own internal list+detail collapse the sidebar so the
+    /// content area gets the most room; tabs without an internal layout
+    /// (e.g. `.record`) keep the sidebar fully labelled.
+    let isCompact: Bool
+
     @State private var isDarkMode: Bool = NSApp.effectiveAppearance.name == .darkAqua
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Logo area at the top - toolbar will handle traffic light spacing
+            logoBlock
+            Divider().padding(.horizontal, isCompact ? 6 : 12)
+
+            VStack(spacing: 4) {
+                navItem(tab: .record, label: "Ta opp lyd", icon: "mic.fill")
+                navItem(tab: .recordings, label: "Bibliotek", icon: "books.vertical.fill")
+                navItem(tab: .transcripts, label: "Transkripsjoner", icon: "doc.text.fill")
+                navItem(tab: .analyse, label: "Analyser", icon: "brain.head.profile")
+            }
+            .padding(.horizontal, isCompact ? 6 : 12)
+            .padding(.top, 12)
+
+            Spacer()
+
+            Divider().padding(.horizontal, isCompact ? 6 : 12)
+            footerBlock
+        }
+        .background(Color(nsColor: .controlBackgroundColor))
+    }
+
+    // MARK: - Logo
+
+    @ViewBuilder
+    private var logoBlock: some View {
+        if isCompact {
+            AudioWaveformIcon()
+                .frame(width: 32, height: 32)
+                .padding(.top, 12)
+                .padding(.bottom, 16)
+                .frame(maxWidth: .infinity)
+        } else {
             VStack(spacing: 8) {
-                // Audio waveform icon from SVG
                 AudioWaveformIcon()
                     .frame(width: 44, height: 44)
-
                 Text("ARM")
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .foregroundStyle(.primary)
-
                 Text("Audio Recording Manager")
                     .font(.system(size: 8, weight: .regular))
                     .foregroundStyle(.secondary)
@@ -885,24 +919,36 @@ struct NavPanel: View {
             .padding(.top, 12)
             .padding(.bottom, 20)
             .padding(.horizontal, 16)
+        }
+    }
 
-            Divider()
-                .padding(.horizontal, 12)
+    // MARK: - Footer (theme toggle + about)
 
+    @ViewBuilder
+    private var footerBlock: some View {
+        if isCompact {
             VStack(spacing: 4) {
-                navItem(tab: .record, label: "Ta opp lyd", icon: "mic.fill")
-                navItem(tab: .recordings, label: "Bibliotek", icon: "books.vertical.fill")
-                navItem(tab: .transcripts, label: "Transkripsjoner", icon: "doc.text.fill")
-                navItem(tab: .analyse, label: "Analyser", icon: "brain.head.profile")
+                Button(action: toggleAppearance) {
+                    Image(systemName: isDarkMode ? "sun.max" : "moon")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 36, height: 32)
+                }
+                .buttonStyle(.plain)
+                .help(isDarkMode ? "Light mode" : "Dark mode")
+
+                Button(action: { showAbout = true }) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 36, height: 32)
+                }
+                .buttonStyle(.plain)
+                .help("About")
             }
-            .padding(.horizontal, 12)
-            .padding(.top, 12)
-
-            Spacer()
-
-            Divider()
-                .padding(.horizontal, 12)
-
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+        } else {
             VStack(spacing: 0) {
                 Button(action: toggleAppearance) {
                     HStack(spacing: 10) {
@@ -943,7 +989,6 @@ struct NavPanel: View {
                 .padding(.top, 8)
                 .padding(.bottom, 12)
         }
-        .background(Color(nsColor: .controlBackgroundColor))
     }
 
     private func toggleAppearance() {
@@ -956,24 +1001,38 @@ struct NavPanel: View {
     @ViewBuilder
     private func navItem(tab: AppTab, label: String, icon: String) -> some View {
         Button(action: { selectedTab = tab }) {
-            HStack(spacing: 10) {
+            if isCompact {
                 Image(systemName: icon)
-                    .font(.system(size: 13, weight: selectedTab == tab ? .semibold : .regular))
-                    .frame(width: 16)
-                Text(label)
-                    .font(.system(size: 13, weight: selectedTab == tab ? .medium : .regular))
-                    .lineLimit(1)
-                Spacer()
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 5)
-            .background {
-                if selectedTab == tab {
-                    RoundedRectangle(cornerRadius: 5)
-                        .fill(Color.accentColor.opacity(0.15))
+                    .font(.system(size: 16, weight: selectedTab == tab ? .semibold : .regular))
+                    .frame(width: 36, height: 32)
+                    .background {
+                        if selectedTab == tab {
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.accentColor.opacity(0.15))
+                        }
+                    }
+                    .foregroundStyle(selectedTab == tab ? .primary : .secondary)
+                    .help(label)
+            } else {
+                HStack(spacing: 10) {
+                    Image(systemName: icon)
+                        .font(.system(size: 13, weight: selectedTab == tab ? .semibold : .regular))
+                        .frame(width: 16)
+                    Text(label)
+                        .font(.system(size: 13, weight: selectedTab == tab ? .medium : .regular))
+                        .lineLimit(1)
+                    Spacer()
                 }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .background {
+                    if selectedTab == tab {
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(Color.accentColor.opacity(0.15))
+                    }
+                }
+                .foregroundStyle(selectedTab == tab ? .primary : .secondary)
             }
-            .foregroundStyle(selectedTab == tab ? .primary : .secondary)
         }
         .buttonStyle(.plain)
     }
@@ -2661,9 +2720,14 @@ struct MainView: View {
         // NavigationSplitView columns. No nesting, no sidebar toggle
         // conflicts, correct rounded-corner chrome on all tabs.
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            // Column 1: sidebar
-            NavPanel(selectedTab: $selectedTab, showAbout: $showAbout)
-                .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 260)
+            // Column 1: sidebar — compact for tabs that host their own
+            // list+detail, full-labelled for tabs that don't.
+            NavPanel(
+                selectedTab: $selectedTab,
+                showAbout: $showAbout,
+                isCompact: sidebarIsCompact(for: selectedTab)
+            )
+            .navigationSplitViewColumnWidth(sidebarFixedWidth(for: selectedTab))
         } content: {
             // Column 2: tab-dependent list
             Group {
@@ -2675,7 +2739,7 @@ struct MainView: View {
                         recordingsManager: recordingsManager,
                         audioPlayer: audioPlayer,
                         selectedRecording: $selectedRecording,
-                        isCompact: selectedRecording != nil
+                        isCompact: true
                     )
                 case .transcripts:
                     TranscriptsListColumn(
@@ -2752,6 +2816,15 @@ struct MainView: View {
             withAnimation {
                 columnVisibility = hidesContentColumn(for: newTab) ? .doubleColumn : .all
             }
+            // Pre-populate the detail column so the user sees content
+            // immediately instead of an empty pane.
+            autoSelectFirstIfNeeded()
+        }
+        .onChange(of: recordingsManager.recordings) { _, _ in
+            if selectedTab == .recordings { autoSelectFirstIfNeeded() }
+        }
+        .onChange(of: transcriptManager.transcripts) { _, _ in
+            if selectedTab == .transcripts { autoSelectFirstIfNeeded() }
         }
         .frame(minWidth: 900, minHeight: 600)
         .sheet(isPresented: $showAbout) {
@@ -2810,6 +2883,23 @@ struct MainView: View {
         }
     }
 
+    /// Sidebar collapses to a narrow icons-only strip when the active
+    /// tab hosts its own list+detail (recordings, transcripts, analyse).
+    /// Stays fully labelled for `.record` which has no internal layout.
+    private func sidebarIsCompact(for tab: AppTab) -> Bool {
+        switch tab {
+        case .record: return false
+        case .recordings, .transcripts, .analyse: return true
+        }
+    }
+
+    /// Fixed sidebar width per tab — narrow icon strip when compact,
+    /// labelled width otherwise. `min == ideal == max` makes the column
+    /// non-resizable and predictable.
+    private func sidebarFixedWidth(for tab: AppTab) -> CGFloat {
+        sidebarIsCompact(for: tab) ? 56 : 220
+    }
+
     // Bibliotek's status-pipeline table needs much more horizontal space
     // than the old card-style RecordingsListColumn did. Per-tab widths
     // so the lighter tabs (transkripsjoner, analyser) keep their compact
@@ -2818,55 +2908,63 @@ struct MainView: View {
     // `detailColumnWidths` and the `.navigationSplitViewColumnWidth`
     // applied to the detail Group below).
 
+    // Fixed content-column widths per tab. List tabs render a compact
+    // list (name + date + minimal status) since the detail column on
+    // the right always shows the selected item's full content.
     private func contentColumnMin(for tab: AppTab) -> CGFloat {
         if hidesContentColumn(for: tab) { return 0 }
-        switch tab {
-        case .recordings:
-            // Compact when column 3 is visible (recording selected);
-            // wide when column 3 is hidden so the full table fits.
-            return selectedRecording == nil ? 880 : 320
-        default:
-            return 240
-        }
+        return 280
     }
 
     private func contentColumnIdeal(for tab: AppTab) -> CGFloat {
         if hidesContentColumn(for: tab) { return 0 }
-        switch tab {
-        case .recordings:
-            return selectedRecording == nil ? 1100 : 360
-        default:
-            return 280
-        }
+        return 340
     }
 
     private func contentColumnMax(for tab: AppTab) -> CGFloat {
         if hidesContentColumn(for: tab) { return 0 }
-        switch tab {
-        case .recordings:
-            return selectedRecording == nil ? 1600 : 480
-        default:
-            return 360
-        }
+        return 440
     }
 
-    // Detail-column widths. Returns 0 for the .recordings tab when
-    // nothing is selected (collapses the column visually) and a
-    // sensible 320–800pt when something is selected so the
-    // RecordingPlayerNative has room.
+    // Detail column fills the remaining width. List tabs always show
+    // their selected item's detail; on entry to a list tab we
+    // auto-select the first item so the column is never empty.
     private func detailColumnMin() -> CGFloat {
-        if selectedTab == .recordings && selectedRecording == nil { return 0 }
-        return 320
-    }
-
-    private func detailColumnIdeal() -> CGFloat {
-        if selectedTab == .recordings && selectedRecording == nil { return 0 }
+        if hidesContentColumn(for: selectedTab) { return 480 }
         return 480
     }
 
-    private func detailColumnMax() -> CGFloat {
-        if selectedTab == .recordings && selectedRecording == nil { return 0 }
+    private func detailColumnIdeal() -> CGFloat {
+        if hidesContentColumn(for: selectedTab) { return 800 }
         return 800
+    }
+
+    private func detailColumnMax() -> CGFloat {
+        .infinity
+    }
+
+    // Auto-select the first item when entering a list tab so the
+    // detail column is immediately populated. Driven from
+    // `.onChange(of: selectedTab)` and from data refresh in the
+    // managers.
+    fileprivate func autoSelectFirstIfNeeded() {
+        switch selectedTab {
+        case .record:
+            break
+        case .recordings:
+            if selectedRecording == nil, let first = recordingsManager.recordings.first {
+                selectedRecording = first
+            }
+        case .transcripts:
+            if selectedTranscript == nil, let first = transcriptManager.transcripts.first {
+                selectedTranscript = first
+            }
+        case .analyse:
+            if selectedAnalysisId == nil,
+               let first = AnalysisStore.shared.loadAll().first {
+                selectedAnalysisId = first.id
+            }
+        }
     }
 
     /// Renders the transcript editor when there is a TranscriptionResult for
