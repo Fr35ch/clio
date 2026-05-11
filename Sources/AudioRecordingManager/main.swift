@@ -2687,182 +2687,36 @@ struct SidebarMenuItem: View {
 }
 
 
-// MARK: - Main View
 struct MainView: View {
     @StateObject private var audioRecorder = AudioRecorder.shared
     @StateObject private var recordingsManager = RecordingsManager.shared
     @StateObject private var audioPlayer = AudioPlayer.shared
-    @StateObject private var folderManager: FolderManager = {
-        return FolderManager(basePath: StorageLayout.recordingsRoot.path)
-    }()
-    @State private var showSuccessMessage = false
-    @State private var successMessage = ""
-    @State private var showAbout = false
-    @State private var showSidebar: Bool = true
-    @State private var showNewFolderDialog = false
-    @State private var newFolderName = ""
     @StateObject private var transcriptManager = TranscriptManager.shared
+
     @State private var selectedTab: AppTab = .record
     @State private var selectedRecording: RecordingItem? = nil
     @State private var selectedTranscript: TranscriptItem? = nil
     @State private var selectedAnalysisId: UUID? = nil
-    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @State private var showAbout = false
     @State private var showLogViewer = false
-    @State private var showAnonymizationDialog = false
 
     var body: some View {
-        // Single 3-column NavigationSplitView (Mail.app pattern):
-        //   Column 1 (sidebar): NavPanel — always visible
-        //   Column 2 (content): tab-dependent list (recordings / transcripts / empty)
-        //   Column 3 (detail):  tab-dependent detail (player / transcript / RecordingView)
-        //
-        // Selection works natively because columns 2 and 3 are real
-        // NavigationSplitView columns. No nesting, no sidebar toggle
-        // conflicts, correct rounded-corner chrome on all tabs.
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            // Column 1: sidebar — compact for tabs that host their own
-            // list+detail, full-labelled for tabs that don't.
+        HStack(spacing: 0) {
             NavPanel(
                 selectedTab: $selectedTab,
                 showAbout: $showAbout,
-                isCompact: sidebarIsCompact(for: selectedTab)
+                isCompact: sidebarIsCompact
             )
-            .navigationSplitViewColumnWidth(sidebarFixedWidth(for: selectedTab))
-        } content: {
-            // Column 2: tab-dependent list
-            Group {
-                switch selectedTab {
-                case .record:
-                    Color.clear
-                case .recordings:
-                    BibliotekView(
-                        recordingsManager: recordingsManager,
-                        audioPlayer: audioPlayer,
-                        selectedRecording: $selectedRecording,
-                        isCompact: true
-                    )
-                case .transcripts:
-                    TranscriptsListColumn(
-                        transcriptManager: transcriptManager,
-                        selectedTranscript: $selectedTranscript
-                    )
-                case .analyse:
-                    AnalysisListColumn(selectedAnalysisId: $selectedAnalysisId)
-                }
-            }
-            .navigationSplitViewColumnWidth(
-                min: contentColumnMin(for: selectedTab),
-                ideal: contentColumnIdeal(for: selectedTab),
-                max: contentColumnMax(for: selectedTab)
-            )
-        } detail: {
-            // Column 3: tab-dependent detail. For the recordings tab,
-            // we collapse the column entirely (width 0) when nothing is
-            // selected so Bibliotek can fill the whole content area.
-            // `.navigationSplitViewColumnWidth` accepts 0 to truly
-            // hide the column — `NavigationSplitViewVisibility` enum
-            // has no value that hides only column 3 in a 3-column
-            // layout, so this is the only mechanism that works.
-            Group {
-                switch selectedTab {
-                case .record:
-                    RecordingView(recorder: audioRecorder, isShowing: .constant(true))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                case .recordings:
-                    if let recording = selectedRecording {
-                        RecordingPlayerNative(
-                            recording: recording,
-                            audioPlayer: audioPlayer,
-                            onNavigateToTranscript: { recordingId in
-                                // Find the matching transcript and switch to editor
-                                selectedTranscript = transcriptManager.transcripts.first {
-                                    $0.recordingId == recordingId
-                                }
-                                selectedTab = .transcripts
-                            }
-                        )
-                        .id(recording.path)
-                    } else {
-                        // Zero-size placeholder so the column collapses.
-                        Color.clear.frame(width: 0, height: 0)
-                    }
-                case .transcripts:
-                    if let transcript = selectedTranscript {
-                        transcriptDetailOrEditor(for: transcript)
-                            .id(transcript.id)
-                    } else {
-                        ContentUnavailableView(
-                            "Velg en transkripsjon",
-                            systemImage: "doc.text.magnifyingglass",
-                            description: Text("Klikk på en fil til venstre for å vise innhold og kjøre anonymisering.")
-                        )
-                    }
-                case .analyse:
-                    AnalysisDetailColumn(selectedAnalysisId: $selectedAnalysisId)
-                }
-            }
-            .navigationSplitViewColumnWidth(
-                min: detailColumnMin(),
-                ideal: detailColumnIdeal(),
-                max: detailColumnMax()
-            )
+            .frame(width: sidebarIsCompact ? 64 : 220)
+
+            Divider()
+
+            tabContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .navigationSplitViewStyle(.balanced)
-        .toolbar(removing: .sidebarToggle)
-        .onChange(of: selectedTab) { _, newTab in
-            if newTab != .recordings { selectedRecording = nil }
-            if newTab != .transcripts { selectedTranscript = nil }
-            if newTab != .analyse { selectedAnalysisId = nil }
-            withAnimation {
-                columnVisibility = hidesContentColumn(for: newTab) ? .doubleColumn : .all
-            }
-            // Pre-populate the detail column so the user sees content
-            // immediately instead of an empty pane.
-            autoSelectFirstIfNeeded()
-        }
-        .onChange(of: recordingsManager.recordings) { _, _ in
-            if selectedTab == .recordings { autoSelectFirstIfNeeded() }
-        }
-        .onChange(of: transcriptManager.transcripts) { _, _ in
-            if selectedTab == .transcripts { autoSelectFirstIfNeeded() }
-        }
-        .frame(minWidth: 900, minHeight: 600)
+        .frame(minWidth: 1100, minHeight: 700)
         .sheet(isPresented: $showAbout) {
-            AboutView()
-                .presentationDetents([.large])
-        }
-        .sheet(isPresented: $showNewFolderDialog) {
-            NewFolderDialog(
-                folderName: $newFolderName,
-                onCreate: {
-                    if !newFolderName.isEmpty {
-                        folderManager.createFolder(name: newFolderName)
-                        newFolderName = ""
-                        showNewFolderDialog = false
-                    }
-                },
-                onCancel: {
-                    newFolderName = ""
-                    showNewFolderDialog = false
-                }
-            )
-            .presentationDetents([.height(250)])
-        }
-        .sheet(isPresented: $showAnonymizationDialog) {
-            AnonymizationReminderDialog(
-                onContinue: {
-                    showAnonymizationDialog = false
-                    uploadToTeams()
-                },
-                onCancel: {
-                    showAnonymizationDialog = false
-                }
-            )
-            .presentationDetents([.height(400)])
-        }
-        .onAppear {
-            recordingsManager.loadRecordings()
-            folderManager.loadFolderStructure()
+            AboutView().presentationDetents([.large])
         }
         .sheet(isPresented: $showLogViewer) {
             PasswordGateView(isPresented: $showLogViewer)
@@ -2870,114 +2724,160 @@ struct MainView: View {
         .onReceive(NotificationCenter.default.publisher(for: .init("ARMShowLogViewer"))) { _ in
             showLogViewer = true
         }
+        .onChange(of: selectedTab) { _, _ in autoSelectFirst() }
+        .onChange(of: recordingsManager.recordings) { _, _ in
+            if selectedTab == .recordings { autoSelectFirst() }
+        }
+        .onChange(of: transcriptManager.transcripts) { _, _ in
+            if selectedTab == .transcripts { autoSelectFirst() }
+        }
+        .onAppear { recordingsManager.loadRecordings() }
     }
 
-    /// Shows the transcript editor if a TranscriptionResult JSON exists for
-    /// Tabs that don't use a list column (the content column collapses to width 0
-    /// and the detail column fills the space). Keep this in sync with the switch
-    /// statements in `body` that render `Color.clear` for those same tabs.
-    private func hidesContentColumn(for tab: AppTab) -> Bool {
-        switch tab {
-        case .record: return true
-        case .recordings, .transcripts, .analyse: return false
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case .record:
+            RecordingView(recorder: audioRecorder, isShowing: .constant(true))
+        case .recordings:
+            BibliotekScreen(
+                recordingsManager: recordingsManager,
+                audioPlayer: audioPlayer,
+                transcriptManager: transcriptManager,
+                selectedRecording: $selectedRecording,
+                selectedTranscript: $selectedTranscript,
+                selectedTab: $selectedTab
+            )
+        case .transcripts:
+            TranscriptsScreen(
+                transcriptManager: transcriptManager,
+                recordingsManager: recordingsManager,
+                selectedTranscript: $selectedTranscript,
+                selectedRecording: $selectedRecording,
+                selectedTab: $selectedTab
+            )
+        case .analyse:
+            AnalyseScreen(selectedAnalysisId: $selectedAnalysisId)
         }
     }
 
-    /// Sidebar collapses to a narrow icons-only strip when the active
-    /// tab hosts its own list+detail (recordings, transcripts, analyse).
-    /// Stays fully labelled for `.record` which has no internal layout.
-    private func sidebarIsCompact(for tab: AppTab) -> Bool {
-        switch tab {
-        case .record: return false
-        case .recordings, .transcripts, .analyse: return true
-        }
+    private var sidebarIsCompact: Bool {
+        selectedTab != .record
     }
 
-    /// Fixed sidebar width per tab — narrow icon strip when compact,
-    /// labelled width otherwise. `min == ideal == max` makes the column
-    /// non-resizable and predictable.
-    private func sidebarFixedWidth(for tab: AppTab) -> CGFloat {
-        sidebarIsCompact(for: tab) ? 56 : 220
-    }
-
-    // Bibliotek's status-pipeline table needs much more horizontal space
-    // than the old card-style RecordingsListColumn did. Per-tab widths
-    // so the lighter tabs (transkripsjoner, analyser) keep their compact
-    // list columns. When a recording is selected, the content column
-    // shrinks back to compact and the detail column expands (see
-    // `detailColumnWidths` and the `.navigationSplitViewColumnWidth`
-    // applied to the detail Group below).
-
-    // Fixed content-column widths per tab. List tabs render a compact
-    // list (name + date + minimal status) since the detail column on
-    // the right always shows the selected item's full content.
-    private func contentColumnMin(for tab: AppTab) -> CGFloat {
-        if hidesContentColumn(for: tab) { return 0 }
-        return 280
-    }
-
-    private func contentColumnIdeal(for tab: AppTab) -> CGFloat {
-        if hidesContentColumn(for: tab) { return 0 }
-        return 340
-    }
-
-    private func contentColumnMax(for tab: AppTab) -> CGFloat {
-        if hidesContentColumn(for: tab) { return 0 }
-        return 440
-    }
-
-    // Detail column fills the remaining width. List tabs always show
-    // their selected item's detail; on entry to a list tab we
-    // auto-select the first item so the column is never empty.
-    private func detailColumnMin() -> CGFloat {
-        if hidesContentColumn(for: selectedTab) { return 480 }
-        return 480
-    }
-
-    private func detailColumnIdeal() -> CGFloat {
-        if hidesContentColumn(for: selectedTab) { return 800 }
-        return 800
-    }
-
-    private func detailColumnMax() -> CGFloat {
-        .infinity
-    }
-
-    // Auto-select the first item when entering a list tab so the
-    // detail column is immediately populated. Driven from
-    // `.onChange(of: selectedTab)` and from data refresh in the
-    // managers.
-    fileprivate func autoSelectFirstIfNeeded() {
+    private func autoSelectFirst() {
         switch selectedTab {
         case .record:
             break
         case .recordings:
-            if selectedRecording == nil, let first = recordingsManager.recordings.first {
-                selectedRecording = first
+            if selectedRecording == nil {
+                selectedRecording = recordingsManager.recordings.first
             }
         case .transcripts:
-            if selectedTranscript == nil, let first = transcriptManager.transcripts.first {
-                selectedTranscript = first
+            if selectedTranscript == nil {
+                selectedTranscript = transcriptManager.transcripts.first
             }
         case .analyse:
-            if selectedAnalysisId == nil,
-               let first = AnalysisStore.shared.loadAll().first {
-                selectedAnalysisId = first.id
+            if selectedAnalysisId == nil {
+                selectedAnalysisId = AnalysisStore.shared.loadAll().first?.id
             }
         }
     }
+}
 
-    /// Renders the transcript editor when there is a TranscriptionResult for
-    /// this recording, otherwise falls back to the plain TranscriptDetailPanel.
+private let listColumnWidth: CGFloat = 320
+
+struct BibliotekScreen: View {
+    @ObservedObject var recordingsManager: RecordingsManager
+    @ObservedObject var audioPlayer: AudioPlayer
+    @ObservedObject var transcriptManager: TranscriptManager
+    @Binding var selectedRecording: RecordingItem?
+    @Binding var selectedTranscript: TranscriptItem?
+    @Binding var selectedTab: AppTab
+
+    var body: some View {
+        HStack(spacing: 0) {
+            BibliotekView(
+                recordingsManager: recordingsManager,
+                audioPlayer: audioPlayer,
+                selectedRecording: $selectedRecording,
+                isCompact: true
+            )
+            .frame(width: listColumnWidth)
+
+            Divider()
+
+            detail
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
     @ViewBuilder
-    private func transcriptDetailOrEditor(for transcript: TranscriptItem) -> some View {
+    private var detail: some View {
+        if let recording = selectedRecording {
+            RecordingPlayerNative(
+                recording: recording,
+                audioPlayer: audioPlayer,
+                onNavigateToTranscript: { id in
+                    selectedTranscript = transcriptManager.transcripts.first { $0.recordingId == id }
+                    selectedTab = .transcripts
+                }
+            )
+            .id(recording.path)
+        } else {
+            ContentUnavailableView(
+                "Ingen opptak ennå",
+                systemImage: "waveform",
+                description: Text("Bruk «Ta opp lyd» for å starte ditt første opptak.")
+            )
+        }
+    }
+}
+
+struct TranscriptsScreen: View {
+    @ObservedObject var transcriptManager: TranscriptManager
+    @ObservedObject var recordingsManager: RecordingsManager
+    @Binding var selectedTranscript: TranscriptItem?
+    @Binding var selectedRecording: RecordingItem?
+    @Binding var selectedTab: AppTab
+
+    var body: some View {
+        HStack(spacing: 0) {
+            TranscriptsListColumn(
+                transcriptManager: transcriptManager,
+                selectedTranscript: $selectedTranscript
+            )
+            .frame(width: listColumnWidth)
+
+            Divider()
+
+            detail
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        if let transcript = selectedTranscript {
+            transcriptDetail(for: transcript)
+                .id(transcript.id)
+        } else {
+            ContentUnavailableView(
+                "Ingen transkripsjon valgt",
+                systemImage: "doc.text.magnifyingglass",
+                description: Text("Velg en transkripsjon i lista til venstre.")
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func transcriptDetail(for transcript: TranscriptItem) -> some View {
         let matching = matchingRecording(for: transcript)
         if let recId = transcript.recordingId,
            let result = loadTranscriptionResult(recordingId: recId) {
-            let audioURL = StorageLayout.audioURL(id: recId)
             TranscriptEditorView(
                 recordingId: recId,
-                audioURL: audioURL,
+                audioURL: StorageLayout.audioURL(id: recId),
                 transcriptionResult: result,
                 onShowLinkedRecording: {
                     selectedRecording = matching
@@ -3006,77 +2906,25 @@ struct MainView: View {
     }
 
     private func matchingRecording(for transcript: TranscriptItem) -> RecordingItem? {
-        if let id = transcript.recordingId {
-            return recordingsManager.recordings.first { $0.id == id }
-        }
-        return nil
+        guard let id = transcript.recordingId else { return nil }
+        return recordingsManager.recordings.first { $0.id == id }
     }
+}
 
+struct AnalyseScreen: View {
+    @Binding var selectedAnalysisId: UUID?
 
-    // MARK: - Actions
+    var body: some View {
+        HStack(spacing: 0) {
+            AnalysisListColumn(selectedAnalysisId: $selectedAnalysisId)
+                .frame(width: listColumnWidth)
 
-    func openURL(_ urlString: String) {
-        if let url = URL(string: urlString) {
-            NSWorkspace.shared.open(url)
-        }
-    }
+            Divider()
 
-
-    func uploadToTeams() {
-        let workspace = NSWorkspace.shared
-
-        // Launch Microsoft Teams
-        if let teamsURL = workspace.urlForApplication(withBundleIdentifier: "com.microsoft.teams2")
-            ?? workspace.urlForApplication(withBundleIdentifier: "com.microsoft.teams")
-        {
-            let configuration = NSWorkspace.OpenConfiguration()
-            workspace.openApplication(at: teamsURL, configuration: configuration) { app, error in
-                if let error = error {
-                    print("Failed to launch Teams: \(error)")
-                }
-            }
-        } else {
-            print("Microsoft Teams not found")
-        }
-
-        // Open Finder to recordings folder
-        let folderURL = StorageLayout.recordingsRoot
-        workspace.selectFile(nil, inFileViewerRootedAtPath: folderURL.path)
-
-        // Also open OneDrive folder in a separate window
-        let homeDir = FileManager.default.homeDirectoryForCurrentUser
-        let oneDrivePaths = [
-            homeDir.appendingPathComponent("OneDrive").path,
-            homeDir.appendingPathComponent("Library/CloudStorage/OneDrive-Personal").path,
-            homeDir.appendingPathComponent("OneDrive - Personal").path,
-        ]
-
-        for path in oneDrivePaths {
-            if FileManager.default.fileExists(atPath: path) {
-                // Open OneDrive in new Finder window
-                workspace.open(URL(fileURLWithPath: path))
-                break
-            }
-        }
-
-        // Show message
-        showSuccess(
-            message:
-                "Network enabled. Teams launched. Upload your files, then click 'Disable Network' when done."
-        )
-    }
-
-    func showSuccess(message: String) {
-        successMessage = message
-        showSuccessMessage = true
-
-        // Hide message after 5 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-            showSuccessMessage = false
+            AnalysisDetailColumn(selectedAnalysisId: $selectedAnalysisId)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }
 
-
-// MARK: - Entry Point
 VirginProjectApp.main()
