@@ -66,21 +66,6 @@ struct TranscriptEditorView: View {
 
     @State private var anonymizationExpanded: Bool = false
 
-    /// Pending play action waiting to fire after the single-click debounce
-    /// window. `nil` when no click is pending. A `count: 2` (double-click)
-    /// gesture cancels this before it fires so the row enters edit mode
-    /// instead of briefly playing first.
-    @State private var pendingPlayTask: Task<Void, Never>? = nil
-
-    /// Single-click → play debounce duration. SwiftUI on macOS does not
-    /// auto-debounce `count: 1` against `count: 2`, so a naïve double-tap
-    /// fires play *then* edit. 280 ms is just under the macOS default
-    /// double-click interval; users with the system slider set faster
-    /// will still get reliable double-click behaviour, users with it
-    /// slower will feel a slight delay on single-click but get correct
-    /// disambiguation.
-    private static let singleClickDebounce: UInt64 = 280_000_000
-
     var body: some View {
         VStack(spacing: 0) {
             editorToolbar
@@ -120,7 +105,6 @@ struct TranscriptEditorView: View {
                 showUnsavedAlert = true
             }
             playback.pause()
-            pendingPlayTask?.cancel()
         }
     }
 
@@ -217,7 +201,7 @@ struct TranscriptEditorView: View {
                 .frame(width: 40, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture(count: 2) { enterEditMode(for: segment) }
-                .onTapGesture(count: 1) { schedulePlay(from: segment.start, to: segment.end) }
+                .onTapGesture(count: 1) { playback.playSegment(from: segment.start, to: segment.end) }
 
             // Transcript text with karaoke highlight. Words have their own
             // single/double-tap handlers; this wrapper covers whitespace
@@ -227,7 +211,7 @@ struct TranscriptEditorView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture(count: 2) { enterEditMode(for: segment) }
-                .onTapGesture(count: 1) { schedulePlay(from: segment.start, to: segment.end) }
+                .onTapGesture(count: 1) { playback.playSegment(from: segment.start, to: segment.end) }
 
             // Edit button — Buttons absorb taps so the row gestures do
             // not also fire when "Rediger" is clicked.
@@ -254,37 +238,19 @@ struct TranscriptEditorView: View {
         // not consumed above.
         .contentShape(Rectangle())
         .onTapGesture(count: 2) { enterEditMode(for: segment) }
-        .onTapGesture(count: 1) { schedulePlay(from: segment.start, to: segment.end) }
+        .onTapGesture(count: 1) { playback.playSegment(from: segment.start, to: segment.end) }
         .id(segment.id)
     }
 
     /// Shared transition into edit mode — used by the Rediger button, the
     /// row double-click, the timestamp double-click, the word double-click,
-    /// and the wordFlow-area double-click. Cancels any pending single-click
-    /// play so the row doesn't briefly start audio before flipping to
-    /// edit mode.
+    /// and the wordFlow-area double-click. The pause here also clears the
+    /// brief audio that count:1 fires immediately before count:2 lands on
+    /// a double-click; net effect is a short blip then silence + edit mode.
     private func enterEditMode(for segment: TranscriptionSegment) {
-        pendingPlayTask?.cancel()
-        pendingPlayTask = nil
         editingSegmentId = segment.id
         editText = segment.text
         playback.pause()
-    }
-
-    /// Single-click play handler — schedules the actual `playSegment` call
-    /// after the debounce window. If a `count: 2` gesture fires within the
-    /// window, `enterEditMode(for:)` cancels this task before it runs.
-    /// All four tap sites (timestamp, wordFlow area, row padding, word
-    /// span) route through this helper so the disambiguation logic stays
-    /// in one place.
-    private func schedulePlay(from start: Double, to end: Double) {
-        pendingPlayTask?.cancel()
-        let task = Task { [weak playback] in
-            try? await Task.sleep(nanoseconds: Self.singleClickDebounce)
-            guard !Task.isCancelled else { return }
-            await MainActor.run { playback?.playSegment(from: start, to: end) }
-        }
-        pendingPlayTask = task
     }
 
     // MARK: - Word flow (karaoke)
@@ -314,7 +280,7 @@ struct TranscriptEditorView: View {
                             enterEditMode(for: segment)
                         }
                         .onTapGesture(count: 1) {
-                            schedulePlay(from: word.start, to: segment.end)
+                            playback.playSegment(from: word.start, to: segment.end)
                         }
                 }
             }
