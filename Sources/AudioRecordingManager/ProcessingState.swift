@@ -36,7 +36,7 @@ enum ProcessingStep {
 // MARK: - Cache
 
 /// Thread-safe, disk-backed store for per-step processing status (not result blobs).
-/// Analysis results are persisted by `AnalyseSectionView` via `StorageLayout.analysisURL(id:)`;
+/// Analysis results are persisted by `AnalysisStore` under `<dataRoot>/analyses/<id>/`;
 /// this cache only tracks `notStarted/inProgress/completed/failed` per step.
 final class ProcessingStateCache {
     static let shared = ProcessingStateCache()

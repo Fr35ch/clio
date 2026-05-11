@@ -64,12 +64,6 @@ struct TranscriptEditorView: View {
         ))
     }
 
-    private enum EditorTab {
-        case transkripsjon
-        case analyse
-    }
-
-    @State private var selectedEditorTab: EditorTab = .transkripsjon
     @State private var anonymizationExpanded: Bool = false
 
     var body: some View {
@@ -77,39 +71,16 @@ struct TranscriptEditorView: View {
             editorToolbar
             Divider()
 
-            // Tab bar
-            HStack(spacing: 0) {
-                tabButton(label: "Transkripsjon", tab: .transkripsjon)
-                tabButton(label: "Analyse", tab: .analyse)
-                Spacer()
-            }
-            .padding(.horizontal, AppSpacing.lg)
-            .padding(.vertical, AppSpacing.xs)
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Collapsible anonymization panel
+                    anonymizationPanel
+                        .padding(.horizontal, AppSpacing.lg)
+                        .padding(.vertical, AppSpacing.sm)
 
-            Divider()
+                    Divider()
 
-            // Tab content
-            switch selectedEditorTab {
-            case .transkripsjon:
-                ScrollView {
-                    VStack(spacing: 0) {
-                        // Collapsible anonymization panel
-                        anonymizationPanel
-                            .padding(.horizontal, AppSpacing.lg)
-                            .padding(.vertical, AppSpacing.sm)
-
-                        Divider()
-
-                        segmentContent
-                    }
-                }
-            case .analyse:
-                ScrollView {
-                    AnalyseSectionView(
-                        recordingId: recordingId,
-                        isDirty: editor.isDirty
-                    )
-                    .padding(AppSpacing.lg)
+                    segmentContent
                 }
             }
 
@@ -381,27 +352,6 @@ struct TranscriptEditorView: View {
         }
         .padding(.horizontal, AppSpacing.lg)
         .padding(.vertical, AppSpacing.md)
-    }
-
-    // MARK: - Tab button
-
-    private func tabButton(label: String, tab: EditorTab) -> some View {
-        Button {
-            selectedEditorTab = tab
-        } label: {
-            Text(label)
-                .font(.system(size: 13, weight: selectedEditorTab == tab ? .semibold : .regular))
-                .foregroundStyle(selectedEditorTab == tab ? .primary : .secondary)
-                .padding(.horizontal, AppSpacing.md)
-                .padding(.vertical, AppSpacing.sm)
-        }
-        .buttonStyle(.plain)
-        .background(
-            selectedEditorTab == tab
-                ? AppColors.accent.opacity(0.08)
-                : Color.clear,
-            in: RoundedRectangle(cornerRadius: AppRadius.small)
-        )
     }
 
     // MARK: - Collapsible anonymization panel

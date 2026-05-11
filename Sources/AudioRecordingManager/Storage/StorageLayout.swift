@@ -100,7 +100,10 @@ enum StorageLayout {
 
     /// `<recordingsRoot>/<uuid>/analysis.json`
     ///
-    /// LLM analysis result produced by `AnalyseSectionView` via Ollama.
+    /// Legacy per-recording analysis blob from before the top-level Analyser
+    /// tab existed. New analyses are first-class entities under
+    /// `analysesRoot` (see `analysisFolder(id:)`). This URL is retained for
+    /// reading any leftover legacy files from earlier builds.
     static func analysisURL(id: UUID) -> URL {
         recordingFolder(id: id).appendingPathComponent("analysis.json")
     }
