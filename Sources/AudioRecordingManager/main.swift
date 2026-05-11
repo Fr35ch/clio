@@ -2674,7 +2674,8 @@ struct MainView: View {
                     BibliotekView(
                         recordingsManager: recordingsManager,
                         audioPlayer: audioPlayer,
-                        selectedRecording: $selectedRecording
+                        selectedRecording: $selectedRecording,
+                        isCompact: selectedRecording != nil
                     )
                 case .transcripts:
                     TranscriptsListColumn(
@@ -2738,8 +2739,11 @@ struct MainView: View {
             if newTab != .recordings { selectedRecording = nil }
             if newTab != .transcripts { selectedTranscript = nil }
             if newTab != .analyse { selectedAnalysisId = nil }
-            withAnimation {
-                columnVisibility = hidesContentColumn(for: newTab) ? .doubleColumn : .all
+            withAnimation { columnVisibility = computeColumnVisibility() }
+        }
+        .onChange(of: selectedRecording) { _, _ in
+            if selectedTab == .recordings {
+                withAnimation { columnVisibility = computeColumnVisibility() }
             }
         }
         .frame(minWidth: 900, minHeight: 600)
@@ -2799,6 +2803,18 @@ struct MainView: View {
         }
     }
 
+    /// Recordings tab hides column 3 (detail) until something is
+    /// selected — BibliotekView then expands to use the full content
+    /// area. Other tabs keep their existing behaviour (column 3 always
+    /// visible with an empty-state placeholder).
+    private func computeColumnVisibility() -> NavigationSplitViewVisibility {
+        if hidesContentColumn(for: selectedTab) { return .doubleColumn }
+        if selectedTab == .recordings && selectedRecording == nil {
+            return .doubleColumn
+        }
+        return .all
+    }
+
     // Bibliotek's status-pipeline table needs much more horizontal space
     // than the old card-style RecordingsListColumn did. Per-tab widths
     // so the lighter tabs (transkripsjoner, analyser) keep their compact
@@ -2807,24 +2823,32 @@ struct MainView: View {
     private func contentColumnMin(for tab: AppTab) -> CGFloat {
         if hidesContentColumn(for: tab) { return 0 }
         switch tab {
-        case .recordings: return 720
-        default:          return 240
+        case .recordings:
+            // Compact when column 3 is visible (recording selected);
+            // wide when column 3 is hidden so the full table fits.
+            return selectedRecording == nil ? 880 : 320
+        default:
+            return 240
         }
     }
 
     private func contentColumnIdeal(for tab: AppTab) -> CGFloat {
         if hidesContentColumn(for: tab) { return 0 }
         switch tab {
-        case .recordings: return 900
-        default:          return 280
+        case .recordings:
+            return selectedRecording == nil ? 1100 : 360
+        default:
+            return 280
         }
     }
 
     private func contentColumnMax(for tab: AppTab) -> CGFloat {
         if hidesContentColumn(for: tab) { return 0 }
         switch tab {
-        case .recordings: return 1400
-        default:          return 360
+        case .recordings:
+            return selectedRecording == nil ? 1600 : 480
+        default:
+            return 360
         }
     }
 

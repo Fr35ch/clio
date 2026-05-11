@@ -227,9 +227,12 @@
 - [ ] Sidenavigasjonen (NavPanel) viser også «Bibliotek»
 - [ ] Sammendragslinje under tittelen viser totaler på tvers av biblioteket: `N OPPTAK · M TRANSKRIBERT · K ANALYSERT`
 - [ ] Listevisningen er en tabell med følgende kolonner i denne rekkefølgen: avspillingsknapp, NAVN, VARIGH., DATO, TRANSKR., AVIDENT., ANALYSE, TEAMS, SLETTES
-- [ ] Klikk på en rad åpner den eksisterende opptaksvisningen i kolonne 3 (uendret oppførsel)
+- [ ] **Kolonne 3 (detalj) er skjult når ingen opptak er valgt.** Når intet er valgt, fyller Bibliotek hele innholdsområdet (kolonne 2 utvides). NavigationSplitView-visibility er `.doubleColumn`
+- [ ] **Når et opptak velges**, vises kolonne 3 med eksisterende `RecordingPlayerNative`, og Bibliotek-tabellen komprimeres til kompaktmodus
+- [ ] **Kompaktmodus** viser kun: avspillingsknapp, NAVN, DATO, og SLETTES. VARIGH., TRANSKR., AVIDENT., ANALYSE og TEAMS skjules — kolonneplassen er ikke tilgjengelig når kolonne 3 deler bredden
 - [ ] Avspillingsknappen til venstre starter avspilling uten å åpne kolonne 3
 - [ ] Tomstandsvisning når biblioteket er tomt («Ingen opptak ennå»)
+- [ ] Alle chip-etiketter er strengt énlinjet (`.lineLimit(1)` + `.fixedSize(horizontal: true)`) — ingen tekst skal pakkes til to linjer
 
 ---
 

@@ -145,7 +145,7 @@ extension RecordingStatusBundle {
         case .failed:
             return StatusChip(label: "Feilet", tone: .danger)
         case .pending, .missing:
-            return StatusChip(label: "Ikke transkribert", tone: .neutral)
+            return StatusChip(label: "Ikke transkr.", tone: .neutral)
         }
     }
 

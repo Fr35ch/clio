@@ -28,6 +28,10 @@ struct BibliotekView: View {
     @ObservedObject var audioPlayer: AudioPlayer
     @ObservedObject var analysisStore = AnalysisStore.shared
     @Binding var selectedRecording: RecordingItem?
+    /// `true` when column 3 is visible (a recording is selected); the
+    /// table compresses to play + name + date + a single urgency chip.
+    /// `false` when column 3 is hidden; the full status pipeline shows.
+    let isCompact: Bool
 
     @State private var searchText: String = ""
     @State private var activeFilter: BibliotekFilter = .alle
@@ -42,8 +46,9 @@ struct BibliotekView: View {
             expiryBanner
             Divider()
             tableArea
+                .frame(maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onAppear { reload() }
         .onChange(of: recordingsManager.recordings) { _, _ in reload() }
         .onChange(of: analysisStore.changeToken) { _, _ in reload() }
@@ -243,13 +248,17 @@ struct BibliotekView: View {
         HStack(spacing: 0) {
             Text("").frame(width: 32, alignment: .leading)
             columnHeader("NAVN", width: nil, alignment: .leading)
-            columnHeader("VARIGH.", width: 70, alignment: .leading)
+            if !isCompact {
+                columnHeader("VARIGH.", width: 70, alignment: .leading)
+            }
             columnHeader("DATO", width: 130, alignment: .leading)
-            columnHeader("TRANSKR.", width: 110, alignment: .leading)
-            columnHeader("AVIDENT.", width: 110, alignment: .leading)
-            columnHeader("ANALYSE", width: 100, alignment: .leading)
-            columnHeader("TEAMS", width: 80, alignment: .leading)
-            columnHeader("SLETTES", width: 80, alignment: .leading)
+            if !isCompact {
+                columnHeader("TRANSKR.", width: 120, alignment: .leading)
+                columnHeader("AVIDENT.", width: 110, alignment: .leading)
+                columnHeader("ANALYSE", width: 100, alignment: .leading)
+                columnHeader("TEAMS", width: 70, alignment: .leading)
+            }
+            columnHeader("SLETTES", width: 70, alignment: .leading)
         }
         .padding(.horizontal, AppSpacing.lg)
         .padding(.vertical, AppSpacing.sm)
@@ -306,21 +315,27 @@ struct BibliotekView: View {
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text(formatDuration(bundle.durationSeconds))
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(.secondary)
-                .frame(width: 70, alignment: .leading)
+            if !isCompact {
+                Text(formatDuration(bundle.durationSeconds))
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .frame(width: 70, alignment: .leading)
+            }
 
             Text(formatDate(bundle.createdAt))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
                 .frame(width: 130, alignment: .leading)
 
-            chipView(bundle.transcript).frame(width: 110, alignment: .leading)
-            chipView(bundle.avident).frame(width: 110, alignment: .leading)
-            chipView(bundle.analyse).frame(width: 100, alignment: .leading)
-            chipView(bundle.teams).frame(width: 80, alignment: .leading)
-            chipView(bundle.slettes).frame(width: 80, alignment: .leading)
+            if !isCompact {
+                chipView(bundle.transcript).frame(width: 120, alignment: .leading)
+                chipView(bundle.avident).frame(width: 110, alignment: .leading)
+                chipView(bundle.analyse).frame(width: 100, alignment: .leading)
+                chipView(bundle.teams).frame(width: 70, alignment: .leading)
+            }
+            chipView(bundle.slettes).frame(width: 70, alignment: .leading)
         }
         .padding(.horizontal, AppSpacing.lg)
         .padding(.vertical, 6)
@@ -356,6 +371,8 @@ struct BibliotekView: View {
                 .frame(width: 6, height: 6)
             Text(chip.label)
                 .font(.system(size: 11))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         }
         .padding(.horizontal, AppSpacing.sm)
         .padding(.vertical, 3)
