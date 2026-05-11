@@ -193,21 +193,21 @@ struct TranscriptEditorView: View {
         let isCurrent = segment.start <= currentTime && currentTime < segment.end
 
         return HStack(alignment: .center, spacing: 12) {
-            // Timestamp — clickable, plays the whole segment
+            // Timestamp + speaker gutter (visual anchor; the row-level tap
+            // handles whole-segment playback — no separate gesture here).
             Text(formatTimestamp(segment.start))
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .foregroundStyle(isCurrent ? AppColors.accent : .secondary)
                 .frame(width: 40, alignment: .leading)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    playback.playSegment(from: segment.start, to: segment.end)
-                }
 
-            // Transcript text with karaoke highlight
+            // Transcript text with karaoke highlight. Individual words have
+            // their own tap handler (play-from-word); the outer row tap
+            // below handles clicks on whitespace and padding.
             wordFlowView(segment: segment, currentTime: currentTime)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Edit button — clear, visible, vertically centered
+            // Edit button — Buttons absorb taps so the row gesture does
+            // not also fire when "Rediger" is clicked.
             Button {
                 editingSegmentId = segment.id
                 editText = segment.text
@@ -227,6 +227,13 @@ struct TranscriptEditorView: View {
                 : Color.clear,
             in: RoundedRectangle(cornerRadius: AppRadius.small)
         )
+        // Whole-row hit target — clicking anywhere on the row (timestamp,
+        // whitespace, padding) plays the segment from start. Word-level
+        // and button taps take precedence via SwiftUI's gesture priority.
+        .contentShape(Rectangle())
+        .onTapGesture {
+            playback.playSegment(from: segment.start, to: segment.end)
+        }
         .id(segment.id)
     }
 

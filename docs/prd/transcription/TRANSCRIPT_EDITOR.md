@@ -40,7 +40,7 @@ This is also a **prerequisite for the upload workflow** agreed 2026-04-17: resea
 
 - Loading an existing transcript from the canonical JSON file
 - Audio playback synchronized with a visual highlight of the currently-spoken word
-- Click-to-play-segment: clicking a word or segment plays **only that segment** (from the word's timestamp if a word was clicked; from the segment start if the segment gutter was clicked), then auto-pauses at the segment boundary
+- Click-to-play-segment: clicking anywhere on a segment row plays **only that segment** (from the segment start, or from the word's timestamp if a specific word was clicked), then auto-pauses at the segment boundary. The entire row is hit-testable, not just the timestamp gutter
 - Segment-level text editing (the whole segment's text is an editable field)
 - Persisting edits to the canonical JSON
 - Regenerating the `.txt` export from the edited JSON
@@ -211,10 +211,11 @@ Lives at `Sources/AudioRecordingManager/TranscriptEditorView.swift` (same file a
 Two visual modes:
 
 **Display mode** (default):
-- Timestamp + speaker badge on the left (copy pattern from `SegmentRow` in `TranscriptionResultView.swift:24`). The timestamp area itself is clickable and plays the whole segment from `segment.start` to `segment.end`.
-- Words rendered as individual tappable spans. Each word's tap handler calls `playbackController.playSegment(from: word.start, to: segment.end)` — that is, playback jumps to the clicked word and plays until the end of the containing segment, then auto-pauses.
+- Timestamp + speaker badge on the left (copy pattern from `SegmentRow` in `TranscriptionResultView.swift:24`).
+- **The entire row is tappable**: tapping anywhere on the row (timestamp area, whitespace between words, padding around the content) plays the whole segment from `segment.start` to `segment.end`, then auto-pauses at the boundary. Implement via `.contentShape(Rectangle()).onTapGesture { ... }` on the outer row container so the hit-test covers the full padded bounding box, not just the visible text.
+- Words rendered as individual tappable spans. Each word's tap handler calls `playbackController.playSegment(from: word.start, to: segment.end)` — that is, tapping a specific word jumps playback to that word and plays until the end of the containing segment. SwiftUI's gesture-priority rules mean the word-level tap takes precedence over the outer row tap when a word is hit, so the two handlers compose naturally.
 - The word whose `[start, end)` bracket contains `currentTime` gets a highlight (suggested: subtle background using `AppColors.accent.opacity(0.15)` — **use design tokens, never hardcode**).
-- A "Rediger" button or double-click gesture enters edit mode. (Double-click must not be confused with word-tap — scope the word tap to single-click only; `onTapGesture(count: 1)`.)
+- A "Rediger" button (rendered as a Button so its own tap absorption prevents the row tap from firing) or double-click gesture enters edit mode. (Double-click must not be confused with word-tap — scope the word tap to single-click only; `onTapGesture(count: 1)`.)
 
 **Edit mode**:
 - The word-span layout is replaced by a `TextEditor` containing the segment's text

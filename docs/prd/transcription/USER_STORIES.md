@@ -189,7 +189,8 @@
 - [ ] Transkripsjonen vises segment-for-segment med tidsstempler og talerbadge (gjenbruker visuell stil fra US-T3)
 - [ ] Standard avspillingskontroller: spill av, pause, søk i tidslinjen, avspillingshastighet (0.5×–2×)
 - [ ] Ordet som spilles av akkurat nå framheves visuelt (karaoke-stil)
-- [ ] Klikk på et ord eller segment spiller av **bare det segmentet** (fra det klikkede tidsstempelet til segmentslutt) og pauser automatisk ved segmentgrensen
+- [ ] Klikk hvor som helst på en transkripsjonslinje (hele segmentraden, inkludert mellomrom, tidsstempel og talerbadge) spiller av lyden for det segmentet — fra segmentstart til segmentslutt — og pauser automatisk ved segmentgrensen
+- [ ] Klikk på et enkelt ord innenfor segmentet spiller av lyden fra det ordets tidsstempel til segmentslutt, og pauser automatisk ved segmentgrensen
 - [ ] Etter auto-pause kan forskeren trykke «Spill av» for å fortsette kontinuerlig avspilling fra samme punkt
 - [ ] Aktivt segment rulles automatisk inn i synsfeltet under avspilling
 - [ ] Segmenttekst kan redigeres inline (dobbeltklikk eller «Rediger»-knapp)
