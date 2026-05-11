@@ -212,6 +212,137 @@
 
 ---
 
+## US-R13: Bibliotek som kanonisk listevisning over alle opptak
+
+**Added:** 2026-05-11
+**Implementation guide:** TBD (see screenshot in commit history / chat thread)
+**Replaces:** the card-row `RecordingsListColumn` in column 2 of the recordings tab
+
+**As a** brukerinnsiktsarbeider,
+**ønsker jeg** at listevisningen over opptakene mine ser ut som et bibliotek med tydelig prosessflyt og status,
+**slik at** jeg på et øyeblikk kan se hvilke opptak som er transkribert, avidentifisert, analysert og klare for opplasting — uten å åpne hvert enkelt.
+
+### Acceptance Criteria
+- [ ] Overskriften viser «Bibliotek» (ikke «Lydopptak»)
+- [ ] Sidenavigasjonen (NavPanel) viser også «Bibliotek»
+- [ ] Sammendragslinje under tittelen viser totaler på tvers av biblioteket: `N OPPTAK · M TRANSKRIBERT · K ANALYSERT`
+- [ ] Listevisningen er en tabell med følgende kolonner i denne rekkefølgen: avspillingsknapp, NAVN, VARIGH., DATO, TRANSKR., AVIDENT., ANALYSE, TEAMS, SLETTES
+- [ ] Klikk på en rad åpner den eksisterende opptaksvisningen i kolonne 3 (uendret oppførsel)
+- [ ] Avspillingsknappen til venstre starter avspilling uten å åpne kolonne 3
+- [ ] Tomstandsvisning når biblioteket er tomt («Ingen opptak ennå»)
+
+---
+
+## US-R14: Filtrer biblioteket etter status
+
+**Added:** 2026-05-11
+
+**As a** brukerinnsiktsarbeider,
+**ønsker jeg** å kunne filtrere biblioteket på prosess-status,
+**slik at** jeg raskt finner opptakene som krever handling fra meg.
+
+### Acceptance Criteria
+- [ ] Filter-chiprad rett over tabellen, med følgende valg:
+  - **Alle** — viser alt
+  - **Ikke transkribert** — `transcript.status != .done`
+  - **Venter avid.** — `transcript.status == .done && anonymization.status == .none`
+  - **Klar for Teams** — `[TBD: kombinasjon av transcript .done + avident .done + neutralCode satt + currentProject satt. Definisjonen kan endres uten å påvirke andre komponenter — det er kun denne ene predikat-funksjonen som må oppdateres.]`
+  - **Utløper snart** — `daysUntilExpiry <= 5`
+- [ ] **Ikke inkludert i v1:** «Sendt til Teams»-filter. Vi kan ikke spore opplasting pålitelig — opplasting skjer i dag manuelt via Finder/Teams-appen utenfor ARM, så ingen lokal tilstand kan brukes som sannhet (2026-05-11)
+- [ ] Hver chip viser antall i parentes — telleren reflekterer **hele biblioteket**, ikke den filtrerte listen, så forskeren ser «Klar for Teams (1)» selv mens filteret står på «Alle»
+- [ ] Kun ett filter er aktivt om gangen (single-select)
+- [ ] Aktivt filter vises visuelt — fylt bakgrunn i Aksel-fargeskala (grønn for fullført, gul for varsel, oransje for handling, blå/grå for nøytral)
+- [ ] Standard filter ved oppstart: **Alle**
+
+---
+
+## US-R15: Søk i biblioteket
+
+**Added:** 2026-05-11
+
+**As a** brukerinnsiktsarbeider,
+**ønsker jeg** å kunne søke i biblioteket på navn,
+**slik at** jeg finner et spesifikt opptak raskt når jeg har mange.
+
+### Acceptance Criteria
+- [ ] Søkefelt øverst til høyre i header med plassholder «Søk i alle opptak …»
+- [ ] Søket matcher mot `meta.displayName` (vist filnavn) — substring, case-insensitive
+- [ ] Søket reduserer den synlige tabellen i sanntid mens man skriver
+- [ ] Søket kombineres med aktivt filter (først filter, så søk på filterresultatet)
+- [ ] Filter-chip-tellerne er **uavhengige av søket** — de viser alltid antall i hele biblioteket. Dette gjør at man kan begynne å skrive et søk og fortsatt se hvor mange totalt som er «Klar for Teams»
+- [ ] Søkefeltet kan tømmes med en X-knapp eller Escape-tasten
+
+### Out of scope (v1)
+- Søk i transkripsjonsinnhold (kan vurderes senere; krever full-tekst-indeks)
+- Søk i taler-/diarisering-labels
+
+---
+
+## US-R16: Sorter biblioteket
+
+**Added:** 2026-05-11
+
+**As a** brukerinnsiktsarbeider,
+**ønsker jeg** å kunne sortere biblioteket etter ulike kriterier,
+**slik at** jeg ser de mest relevante opptakene øverst.
+
+### Acceptance Criteria
+- [ ] «Sorter ↓»-knapp øverst til høyre åpner en meny
+- [ ] Sorteringsvalg: **Nyeste først** (default), **Eldste først**, **Navn A–Å**, **Navn Å–A**, **Slettes snart først**
+- [ ] Aktivt valg markeres med et hak i menyen
+- [ ] Sorteringen overlever ikke på tvers av appstarter (mvp — kan persisteres senere hvis ønskelig)
+
+---
+
+## US-R17: Status-kolonner i tabellen
+
+**Added:** 2026-05-11
+
+**As a** brukerinnsiktsarbeider,
+**ønsker jeg** at hver rad i biblioteket viser fremdrift for hvert trinn i prosessen,
+**slik at** jeg ser hva som er gjort og hva som gjenstår uten å klikke meg inn på opptaket.
+
+### Acceptance Criteria
+- Hver rad viser en status-chip per kolonne, basert på underliggende data:
+
+| Kolonne | Verdier og kilde |
+|---------|------------------|
+| **TRANSKR.** | `Ferdig` (grønn) — `transcript.status == .done` · `Venter` (gul) — `.processing` · `Ikke transkribert` / `—` (nøytral) — annet |
+| **AVIDENT.** | `Avid. ✓` (grønn) — `anonymization.status == .done` · `Påbegynt` (oransje) — `.draft` · `Ikke avid.` (nøytral) — `.none` · `Feilet` (rød) — `.failed` |
+| **ANALYSE** | `Ferdig` (grønn) — ≥1 analyse refererer dette opptaket og er `.completed` · `Venter` (gul) — ≥1 analyse er `.running` · `—` (nøytral) — ingen analyser |
+| **TEAMS** | `Klar` (grønn/blå) — alle forutsetninger oppfylt (samme predikat som «Klar for Teams»-filteret, se US-R14) · `låst` (nøytral) — minst én forutsetning mangler. **Ingen «Teams ✓»-tilstand** — vi sporer ikke faktisk opplasting pålitelig (manuell opplasting via Finder/Teams skjer utenfor ARM). Kolonnen viser kun *readiness*, ikke faktisk opplastet-status |
+| **SLETTES** | `<N> d` — antall dager til auto-sletting (30 dager fra `createdAt`). Rød fargekoding når N ≤ 3, gul når N ≤ 7, ellers nøytral. Vis aldri `låst` for opplastede filer fordi vi ikke kan stole på upload-status (se TEAMS over) — hver fil teller ned uavhengig |
+
+- [ ] Chips er kompakte, monospace-talltekst for tider/teller for ujevn-bredde-stabilitet
+- [ ] Status-derivering ligger i én delt verditype (`RecordingStatusBundle`) bygget på toppen av `RecordingMeta` + `AnalysisStore` — én plass å endre definisjonene
+- [ ] Tabellen oppdateres reaktivt når underliggende data endrer seg (`RecordingStore.didChangeNotification` + `AnalysisStore.changeToken`)
+
+---
+
+## US-R18: Varsel om opptak som snart slettes
+
+**Added:** 2026-05-11
+
+**As a** brukerinnsiktsarbeider,
+**ønsker jeg** et tydelig varsel når opptak nærmer seg sletting uten å være avidentifisert eller lastet opp,
+**slik at** jeg ikke mister data ved en feiltagelse.
+
+### Acceptance Criteria
+- [ ] Gul varslingsbanner vises **kun** når ≥1 opptak oppfyller alle disse vilkårene:
+  - `daysUntilExpiry <= 3`
+  - `anonymization.status != .done`
+- [ ] Banneret tar **ikke** hensyn til upload-status — vi kan ikke spore om filen er lastet opp eller ikke (se US-R14 om Teams-tilstand)
+- [ ] Bannerteksten viser antallet: «N opptak slettes om under 3 dager — og transkripsjonene er ikke avidentifisert ennå. Fullfør avid. og last opp til Teams før fristen.»
+- [ ] «Vis dem →»-handlingsknapp i banneret aktiverer **Utløper snart**-filteret
+- [ ] Banneret forsvinner automatisk når ingen opptak lenger oppfyller vilkårene
+- [ ] Banneret er ikke avvisbart manuelt — det forsvinner kun ved at situasjonen løses
+
+### Out of scope
+- Push-varsler / system-notifikasjoner (kun in-app banner i mvp)
+- Manuell utsettelse av sletting per opptak (gjøres ved å laste opp eller markere som behandlet)
+
+---
+
 ## Priority Order
 
 | Priority | Story | Status |
@@ -228,3 +359,9 @@
 | 10 | US-R10 | Not started |
 | 11 | US-R12 | Not started |
 | 12 | US-R11 | Not started (blocked on US-T6) |
+| 13 | US-R13 | In progress (Bibliotek redesign 2026-05-11) |
+| 14 | US-R14 | In progress |
+| 15 | US-R15 | In progress |
+| 16 | US-R16 | In progress |
+| 17 | US-R17 | In progress |
+| 18 | US-R18 | In progress |
