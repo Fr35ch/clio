@@ -35,19 +35,33 @@ struct AppState: Codable, Equatable {
     /// Current project configuration (Teams channels, neutral codes, compliance).
     /// `nil` when no project is configured — upload is blocked.
     var currentProject: ProjectConfig?
+    /// Global allowlist of strings that must NOT be redacted by the
+    /// de-identification (avidentifisering) pipeline, even when the
+    /// upstream NER model flags them. Case-insensitive, exact-match
+    /// against the redacted span. Applied across every recording —
+    /// e.g. "NAV", "Folketrygdloven", organisation names that are
+    /// study-relevant context rather than personal data.
+    ///
+    /// Note: persisted with key `avidentExceptions` (Norwegian
+    /// terminology — what we do is *de-identification*, not legally
+    /// anonymisation, since the audio remains on disk and could in
+    /// principle be re-linked).
+    var avidentExceptions: [String]
 
     init(
         schemaVersion: Int = AppState.currentSchemaVersion,
         migrationCompletedAt: Date? = nil,
         migrationRecordingCount: Int? = nil,
         legacyMetadataCleanedAt: Date? = nil,
-        currentProject: ProjectConfig? = nil
+        currentProject: ProjectConfig? = nil,
+        avidentExceptions: [String] = []
     ) {
         self.schemaVersion = schemaVersion
         self.migrationCompletedAt = migrationCompletedAt
         self.migrationRecordingCount = migrationRecordingCount
         self.legacyMetadataCleanedAt = legacyMetadataCleanedAt
         self.currentProject = currentProject
+        self.avidentExceptions = avidentExceptions
     }
 
     // MARK: - Forward-compat Codable
@@ -58,6 +72,7 @@ struct AppState: Codable, Equatable {
         case migrationRecordingCount
         case legacyMetadataCleanedAt
         case currentProject
+        case avidentExceptions
     }
 
     init(from decoder: Decoder) throws {
@@ -67,6 +82,7 @@ struct AppState: Codable, Equatable {
         migrationRecordingCount = try c.decodeIfPresent(Int.self, forKey: .migrationRecordingCount)
         legacyMetadataCleanedAt = try c.decodeIfPresent(Date.self, forKey: .legacyMetadataCleanedAt)
         currentProject = try c.decodeIfPresent(ProjectConfig.self, forKey: .currentProject)
+        avidentExceptions = try c.decodeIfPresent([String].self, forKey: .avidentExceptions) ?? []
     }
 }
 

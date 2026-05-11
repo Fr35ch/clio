@@ -1,11 +1,26 @@
 // AnonymizationSectionView.swift
 // AudioRecordingManager
 //
-// Anonymization state machine + UI for the transcript editor.
-// Moved from RecordingDetailView per RECORDING_DETAIL_VIEW.md.
+// De-identification (avidentifisering) state machine + UI for the
+// transcript editor. Runs the upstream `no-anonymizer` BERT NER on the
+// saved transcript, post-processes the redaction set against the user's
+// global exception list (see `AppState.avidentExceptions`), persists the
+// resulting text to disk, and surfaces both the original and the
+// de-identified versions side-by-side via a tab switch.
 //
-// Runs against the saved (on-disk) transcript text, never in-memory
-// working copy. isDirty gates the button.
+// Terminology note: file/class names retain `Anonymization` for back-
+// compat with audit logs and existing call sites; all user-visible
+// strings use "avidentifisering" because that is what we actually do —
+// we remove direct identifiers but keep the audio on disk, so the data
+// remains personal data under GDPR. True anonymisation would be
+// irreversible.
+//
+// State machine: idle → running → completed | failed → idle (on re-run)
+// Persistence: `transcript_avidentifisert.txt` (legacy filename kept as
+// `transcript_anonymized.txt` for back-compat — see `StorageLayout`).
+//
+// Implements US-T12 (run from editor), US-A3 (compare original vs
+// de-identified — was previously unimplemented).
 
 import SwiftUI
 
@@ -16,13 +31,20 @@ private enum AnonymizationState: Equatable {
     case failed(String)
 }
 
+private enum CompareTab: String, CaseIterable {
+    case original
+    case avidentifisert
+}
+
 struct AnonymizationSectionView: View {
     let recordingId: UUID
     let isDirty: Bool
 
     @State private var state: AnonymizationState = .idle
     @State private var task: Task<Void, Never>?
-    @State private var showModal = false
+    @State private var showConsentModal = false
+    @State private var showExceptionsSheet = false
+    @State private var compareTab: CompareTab = .avidentifisert
 
     private let whatIsRemoved = [
         "Navn på personer",
@@ -33,10 +55,7 @@ struct AnonymizationSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            Text("Anonymisering")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
+            headerRow
 
             VStack(alignment: .leading, spacing: AppSpacing.md) {
                 switch state {
@@ -58,20 +77,47 @@ struct AnonymizationSectionView: View {
                     .stroke(Color.gray.opacity(0.15), lineWidth: 1)
             )
         }
-        .sheet(isPresented: $showModal) {
-            AnonymizationModal(isPresented: $showModal, onConfirm: runAnonymization)
+        .sheet(isPresented: $showConsentModal) {
+            AnonymizationModal(isPresented: $showConsentModal, onConfirm: runAnonymization)
+        }
+        .sheet(isPresented: $showExceptionsSheet) {
+            AvidentExceptionsView(isPresented: $showExceptionsSheet)
         }
         .onAppear { loadExistingState() }
+    }
+
+    // MARK: - Header row (section label + manage-exceptions affordance)
+
+    private var headerRow: some View {
+        HStack(alignment: .center, spacing: AppSpacing.sm) {
+            Text("Avidentifisering")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+            Spacer()
+            Button {
+                showExceptionsSheet = true
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "list.bullet.rectangle")
+                    Text("Administrer unntak")
+                }
+                .font(.system(size: 11, weight: .medium))
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Rediger globale unntak som ikke skal fjernes ved avidentifisering")
+        }
     }
 
     // MARK: - States
 
     private var idleView: some View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
-            Button { showModal = true } label: {
+            Button { showConsentModal = true } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "shield.lefthalf.filled")
-                    Text("Anonymiser transkripsjon")
+                    Text("Avidentifiser transkripsjon")
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
@@ -79,7 +125,7 @@ struct AnonymizationSectionView: View {
             .buttonStyle(.borderedProminent)
             .tint(AppColors.destructive)
             .disabled(isDirty)
-            .help(isDirty ? "Lagre endringer før anonymisering" : "")
+            .help(isDirty ? "Lagre endringer før avidentifisering" : "")
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Hva som fjernes:")
@@ -97,6 +143,11 @@ struct AnonymizationSectionView: View {
                     }
                 }
             }
+
+            Text("Avidentifisering fjerner direkte identifikatorer. Dataene forblir personopplysninger så lenge lydopptaket er bevart — dette er ikke fullstendig anonymisering.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -105,7 +156,7 @@ struct AnonymizationSectionView: View {
             HStack(spacing: 10) {
                 ProgressView()
                     .controlSize(.small)
-                Text("Anonymiserer...")
+                Text("Avidentifiserer …")
                     .font(.system(size: 14, weight: .medium))
             }
             .frame(maxWidth: .infinity)
@@ -134,9 +185,10 @@ struct AnonymizationSectionView: View {
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.shield.fill")
                     .foregroundStyle(AppColors.success)
-                Text("Anonymisert \(date.formatted(date: .abbreviated, time: .shortened))")
+                Text("Avidentifisert \(date.formatted(date: .abbreviated, time: .shortened))")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(AppColors.success)
+                Spacer()
             }
 
             if !stats.isEmpty {
@@ -145,7 +197,10 @@ struct AnonymizationSectionView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Button { showModal = true } label: {
+            compareTabBar
+            compareTabContent
+
+            Button { showConsentModal = true } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.counterclockwise")
                     Text("Kjør på nytt")
@@ -154,6 +209,8 @@ struct AnonymizationSectionView: View {
                 .padding(.vertical, 8)
             }
             .buttonStyle(.bordered)
+            .disabled(isDirty)
+            .help(isDirty ? "Lagre endringer før ny avidentifisering" : "")
         }
     }
 
@@ -162,7 +219,7 @@ struct AnonymizationSectionView: View {
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(AppColors.destructive)
-                Text("Feil ved anonymisering")
+                Text("Feil ved avidentifisering")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(AppColors.destructive)
             }
@@ -172,7 +229,7 @@ struct AnonymizationSectionView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Button { showModal = true } label: {
+            Button { showConsentModal = true } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.counterclockwise")
                     Text("Prøv igjen")
@@ -181,6 +238,71 @@ struct AnonymizationSectionView: View {
                 .padding(.vertical, 8)
             }
             .buttonStyle(.bordered)
+        }
+    }
+
+    // MARK: - Compare view (US-A3)
+
+    private var compareTabBar: some View {
+        HStack(spacing: 0) {
+            tabButton(.original, label: "Original")
+            tabButton(.avidentifisert, label: "Avidentifisert")
+            Spacer()
+        }
+    }
+
+    private func tabButton(_ tab: CompareTab, label: String) -> some View {
+        Button {
+            compareTab = tab
+        } label: {
+            Text(label)
+                .font(.system(size: 12, weight: compareTab == tab ? .semibold : .regular))
+                .foregroundStyle(compareTab == tab ? .primary : .secondary)
+                .padding(.horizontal, AppSpacing.md)
+                .padding(.vertical, AppSpacing.sm - 2)
+                .background(
+                    compareTab == tab
+                        ? AppColors.accent.opacity(0.10)
+                        : Color.clear,
+                    in: RoundedRectangle(cornerRadius: AppRadius.small)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func currentTabPayload() -> (text: String, emptyHint: String) {
+        switch compareTab {
+        case .original:
+            return (loadOriginalText() ?? "", "Fant ingen original transkripsjon.")
+        case .avidentifisert:
+            return (loadAnonymizedText() ?? "", "Fant ingen avidentifisert versjon på disk.")
+        }
+    }
+
+    @ViewBuilder
+    private var compareTabContent: some View {
+        let payload = currentTabPayload()
+        if payload.text.isEmpty {
+            Text(payload.emptyHint)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .padding(.vertical, AppSpacing.sm)
+        } else {
+            ScrollView {
+                Text(payload.text)
+                    .font(.system(size: 12))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(AppSpacing.sm)
+            }
+            .frame(minHeight: 200, maxHeight: 380)
+            .background(Color(nsColor: .textBackgroundColor).opacity(0.5))
+            .cornerRadius(AppRadius.small)
+            .overlay(
+                RoundedRectangle(cornerRadius: AppRadius.small)
+                    .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+            )
         }
     }
 
@@ -196,21 +318,37 @@ struct AnonymizationSectionView: View {
         } catch {}
     }
 
+    private func loadOriginalText() -> String? {
+        try? String(contentsOf: StorageLayout.transcriptURL(id: recordingId), encoding: .utf8)
+    }
+
+    private func loadAnonymizedText() -> String? {
+        try? String(contentsOf: StorageLayout.anonymizedTranscriptURL(id: recordingId), encoding: .utf8)
+    }
+
     private func runAnonymization() {
         let txtURL = StorageLayout.transcriptURL(id: recordingId)
         guard let text = try? String(contentsOf: txtURL, encoding: .utf8),
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            state = .failed("Ingen transkripsjon funnet å anonymisere")
+            state = .failed("Ingen transkripsjon funnet å avidentifisere")
             return
         }
+
+        // Load global exceptions at run-time so freshly-edited list
+        // applies without needing to recreate this view.
+        let exceptions = AppStateStore.load().avidentExceptions
 
         state = .running
         task = Task { @MainActor in
             do {
-                let result = try await AnonymizationService.shared.anonymize(transcript: text)
+                let raw = try await AnonymizationService.shared.anonymize(transcript: text)
                 guard !Task.isCancelled else { return }
 
-                // 1. Write anonymized text
+                // Apply user's global exception list (post-processing —
+                // upstream no-anonymizer doesn't take exceptions natively).
+                let result = raw.applying(exceptions: exceptions, to: text)
+
+                // 1. Write de-identified text
                 let anonURL = StorageLayout.anonymizedTranscriptURL(id: recordingId)
                 try result.anonymizedText.write(to: anonURL, atomically: true, encoding: .utf8)
 
@@ -222,13 +360,15 @@ struct AnonymizationSectionView: View {
                     meta.anonymization.stats = result.stats
                 }
 
-                // 3. Audit
+                // 3. Audit (keep legacy event name for log back-compat)
                 AuditLogger.shared.log(.transcriptAnonymized, payload: [
                     "recordingId": .string(recordingId.uuidString),
                     "stats": .string(statsSummary(result.stats)),
+                    "exceptionCount": .int(exceptions.count),
                 ])
 
                 state = .completed(date: Date(), stats: result.stats)
+                compareTab = .avidentifisert
             } catch let error as AnonymizationError {
                 guard !Task.isCancelled else { return }
                 state = .failed(error.errorDescription ?? "Ukjent feil")
