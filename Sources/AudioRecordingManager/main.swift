@@ -891,7 +891,7 @@ struct NavPanel: View {
 
             VStack(spacing: 4) {
                 navItem(tab: .record, label: "Ta opp lyd", icon: "mic.fill")
-                navItem(tab: .recordings, label: "Lydopptak", icon: "waveform")
+                navItem(tab: .recordings, label: "Bibliotek", icon: "books.vertical.fill")
                 navItem(tab: .transcripts, label: "Transkripsjoner", icon: "doc.text.fill")
                 navItem(tab: .analyse, label: "Analyser", icon: "brain.head.profile")
             }
@@ -2671,7 +2671,7 @@ struct MainView: View {
                 case .record:
                     Color.clear
                 case .recordings:
-                    RecordingsListColumn(
+                    BibliotekView(
                         recordingsManager: recordingsManager,
                         audioPlayer: audioPlayer,
                         selectedRecording: $selectedRecording
@@ -2686,9 +2686,9 @@ struct MainView: View {
                 }
             }
             .navigationSplitViewColumnWidth(
-                min: hidesContentColumn(for: selectedTab) ? 0 : 240,
-                ideal: hidesContentColumn(for: selectedTab) ? 0 : 280,
-                max: hidesContentColumn(for: selectedTab) ? 0 : 360
+                min: contentColumnMin(for: selectedTab),
+                ideal: contentColumnIdeal(for: selectedTab),
+                max: contentColumnMax(for: selectedTab)
             )
         } detail: {
             // Column 3: tab-dependent detail
@@ -2796,6 +2796,35 @@ struct MainView: View {
         switch tab {
         case .record: return true
         case .recordings, .transcripts, .analyse: return false
+        }
+    }
+
+    // Bibliotek's status-pipeline table needs much more horizontal space
+    // than the old card-style RecordingsListColumn did. Per-tab widths
+    // so the lighter tabs (transkripsjoner, analyser) keep their compact
+    // list columns.
+
+    private func contentColumnMin(for tab: AppTab) -> CGFloat {
+        if hidesContentColumn(for: tab) { return 0 }
+        switch tab {
+        case .recordings: return 720
+        default:          return 240
+        }
+    }
+
+    private func contentColumnIdeal(for tab: AppTab) -> CGFloat {
+        if hidesContentColumn(for: tab) { return 0 }
+        switch tab {
+        case .recordings: return 900
+        default:          return 280
+        }
+    }
+
+    private func contentColumnMax(for tab: AppTab) -> CGFloat {
+        if hidesContentColumn(for: tab) { return 0 }
+        switch tab {
+        case .recordings: return 1400
+        default:          return 360
         }
     }
 

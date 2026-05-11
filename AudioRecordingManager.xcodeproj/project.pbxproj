@@ -17,6 +17,8 @@
 		2EBA562109053A8CE0AEB214 /* TranscriptsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A921016BFF96E7C034AA10B7 /* TranscriptsView.swift */; };
 		3FE4C5D44DF594B313A2EDE6 /* AnonymizationModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EDE4216E900AF93831AB195 /* AnonymizationModal.swift */; };
 		AC1B2C3D4E5F60001020C102 /* AvidentExceptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1B2C3D4E5F60001020C101 /* AvidentExceptionsView.swift */; };
+		AD1B2C3D4E5F60001020D102 /* RecordingStatusBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD1B2C3D4E5F60001020D101 /* RecordingStatusBundle.swift */; };
+		AD1B2C3D4E5F60001020D202 /* BibliotekView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD1B2C3D4E5F60001020D201 /* BibliotekView.swift */; };
 		4B4C4D4E4F5051420B0C010B /* TranscriptionSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C5D5E5F60616243050C020C /* TranscriptionSettingsView.swift */; };
 		4FF5785E464C096FD42B86DE /* RecordingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AAE839F60F73AA729930DD9 /* RecordingDetailView.swift */; };
 		61F163805ECD6809207CB4E4 /* SVGImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D2E3719CBA56E7F84C22372 /* SVGImageView.swift */; };
@@ -89,6 +91,8 @@
 		5C5D5E5F60616243050C020C /* TranscriptionSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionSettingsView.swift; sourceTree = "<group>"; };
 		5EDE4216E900AF93831AB195 /* AnonymizationModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnonymizationModal.swift; sourceTree = "<group>"; };
 		AC1B2C3D4E5F60001020C101 /* AvidentExceptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvidentExceptionsView.swift; sourceTree = "<group>"; };
+		AD1B2C3D4E5F60001020D101 /* RecordingStatusBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingStatusBundle.swift; sourceTree = "<group>"; };
+		AD1B2C3D4E5F60001020D201 /* BibliotekView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BibliotekView.swift; sourceTree = "<group>"; };
 		614E979CCD97F0B83DCB8973 /* AudioRecordingManagerLib.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecordingManagerLib.swift; sourceTree = "<group>"; };
 		63113FFD22C5431AB374BBEF /* AnalysisResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisResult.swift; sourceTree = "<group>"; };
 		65D0A8F892A14D8A95D0F699 /* StartupCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartupCoordinator.swift; sourceTree = "<group>"; };
@@ -232,6 +236,15 @@
 			path = Analysis;
 			sourceTree = "<group>";
 		};
+		AD1B2C3D4E5F60001020D000 /* Library */ = {
+			isa = PBXGroup;
+			children = (
+				AD1B2C3D4E5F60001020D101 /* RecordingStatusBundle.swift */,
+				AD1B2C3D4E5F60001020D201 /* BibliotekView.swift */,
+			);
+			path = Library;
+			sourceTree = "<group>";
+		};
 		DF8884E58B3616241EF874EB /* AudioRecordingManager */ = {
 			isa = PBXGroup;
 			children = (
@@ -240,6 +253,7 @@
 				CA1B2C3D4E5F60001020DA00 /* Design */,
 				DA1B2C3D4E5F60001020EA00 /* Playback */,
 				AB1B2C3D4E5F60001020A000 /* Analysis */,
+				AD1B2C3D4E5F60001020D000 /* Library */,
 				DA1B2C3D4E5F60001020EB01 /* TranscriptEditorState.swift */,
 				DA1B2C3D4E5F60001020EC01 /* TranscriptEditorView.swift */,
 				DA1B2C3D4E5F60001020ED01 /* AvidentifiseringSheet.swift */,
@@ -369,6 +383,8 @@
 				23EEE30B03584443B69B355A /* SplashView.swift in Sources */,
 				3FE4C5D44DF594B313A2EDE6 /* AnonymizationModal.swift in Sources */,
 				AC1B2C3D4E5F60001020C102 /* AvidentExceptionsView.swift in Sources */,
+				AD1B2C3D4E5F60001020D102 /* RecordingStatusBundle.swift in Sources */,
+				AD1B2C3D4E5F60001020D202 /* BibliotekView.swift in Sources */,
 				76C0870C4F2C9649C96E1705 /* AnonymizationService.swift in Sources */,
 				AA1B2C3D4E5F60001020AA02 /* AudioLevelVisualization.swift in Sources */,
 				BA1B2C3D4E5F60001020BA02 /* StorageLayout.swift in Sources */,
