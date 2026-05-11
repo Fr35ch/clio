@@ -40,7 +40,8 @@ This is also a **prerequisite for the upload workflow** agreed 2026-04-17: resea
 
 - Loading an existing transcript from the canonical JSON file
 - Audio playback synchronized with a visual highlight of the currently-spoken word
-- Click-to-play-segment: clicking anywhere on a segment row plays **only that segment** (from the segment start, or from the word's timestamp if a specific word was clicked), then auto-pauses at the segment boundary. The entire row is hit-testable, not just the timestamp gutter
+- Click-to-play-segment: single-clicking anywhere on a segment row plays **only that segment** (from the segment start, or from the word's timestamp if a specific word was clicked), then auto-pauses at the segment boundary. The entire row is hit-testable, not just the timestamp gutter
+- Double-click anywhere on the row (including on a word) enters edit mode for that segment — same behaviour as pressing the row's «Rediger» button
 - Segment-level text editing (the whole segment's text is an editable field)
 - Persisting edits to the canonical JSON
 - Regenerating the `.txt` export from the edited JSON
@@ -212,10 +213,11 @@ Two visual modes:
 
 **Display mode** (default):
 - Timestamp + speaker badge on the left (copy pattern from `SegmentRow` in `TranscriptionResultView.swift:24`).
-- **The entire row is tappable**: tapping anywhere on the row (timestamp area, whitespace between words, padding around the content) plays the whole segment from `segment.start` to `segment.end`, then auto-pauses at the boundary. Implement via `.contentShape(Rectangle()).onTapGesture { ... }` on the outer row container so the hit-test covers the full padded bounding box, not just the visible text.
-- Words rendered as individual tappable spans. Each word's tap handler calls `playbackController.playSegment(from: word.start, to: segment.end)` — that is, tapping a specific word jumps playback to that word and plays until the end of the containing segment. SwiftUI's gesture-priority rules mean the word-level tap takes precedence over the outer row tap when a word is hit, so the two handlers compose naturally.
+- **The entire row is tappable**: tapping anywhere on the row (timestamp area, whitespace between words, padding around the content) plays the whole segment from `segment.start` to `segment.end`, then auto-pauses at the boundary.
+  - **macOS implementation note:** putting `.onTapGesture` directly on the outer row container does not reliably capture clicks in whitespace between words, because the word flow uses a custom `Layout` (`WrappingHStack`) that only hit-tests its subviews — gaps fall through to the parent only intermittently on macOS. The reliable pattern is a transparent hit-test layer behind the content: `.background { Color.clear.contentShape(Rectangle()).onTapGesture(count: 2) { … }.onTapGesture(count: 1) { … } }`. The clear layer matches the row's padded bounds, captures every click that does not hit a tappable child (word span or Rediger button), and renders behind the visible background so it is not visually distracting.
+- Words rendered as individual tappable spans. Each word carries both a `count: 1` tap (plays from `word.start` to `segment.end` via `playbackController.playSegment(from:to:)`) and a `count: 2` tap that enters edit mode for the containing segment. SwiftUI's gesture-priority rules mean the word-level tap takes precedence over the row-level background tap when a word is hit.
 - The word whose `[start, end)` bracket contains `currentTime` gets a highlight (suggested: subtle background using `AppColors.accent.opacity(0.15)` — **use design tokens, never hardcode**).
-- A "Rediger" button (rendered as a Button so its own tap absorption prevents the row tap from firing) or double-click gesture enters edit mode. (Double-click must not be confused with word-tap — scope the word tap to single-click only; `onTapGesture(count: 1)`.)
+- Entering edit mode is triggered by the "Rediger" button, a double-click anywhere on the row, or a double-click on a word — all three call the same internal helper so the behaviour stays consistent. (Single-click on a word still plays from that word; the gesture system disambiguates by waiting briefly after a single click to see if a second click arrives.)
 
 **Edit mode**:
 - The word-span layout is replaced by a `TextEditor` containing the segment's text

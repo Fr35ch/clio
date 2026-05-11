@@ -193,25 +193,23 @@ struct TranscriptEditorView: View {
         let isCurrent = segment.start <= currentTime && currentTime < segment.end
 
         return HStack(alignment: .center, spacing: 12) {
-            // Timestamp + speaker gutter (visual anchor; the row-level tap
-            // handles whole-segment playback — no separate gesture here).
+            // Timestamp gutter — no per-element gesture; the row-level
+            // background layer below handles the click.
             Text(formatTimestamp(segment.start))
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .foregroundStyle(isCurrent ? AppColors.accent : .secondary)
                 .frame(width: 40, alignment: .leading)
 
-            // Transcript text with karaoke highlight. Individual words have
-            // their own tap handler (play-from-word); the outer row tap
-            // below handles clicks on whitespace and padding.
+            // Transcript text with karaoke highlight. Words have their own
+            // single/double-tap handlers (see `wordFlowView`); whitespace
+            // between words falls through to the background layer below.
             wordFlowView(segment: segment, currentTime: currentTime)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Edit button — Buttons absorb taps so the row gesture does
+            // Edit button — Buttons absorb taps so the row gestures do
             // not also fire when "Rediger" is clicked.
             Button {
-                editingSegmentId = segment.id
-                editText = segment.text
-                playback.pause()
+                enterEditMode(for: segment)
             } label: {
                 Text("Rediger")
                     .font(.system(size: 11, weight: .medium))
@@ -227,14 +225,32 @@ struct TranscriptEditorView: View {
                 : Color.clear,
             in: RoundedRectangle(cornerRadius: AppRadius.small)
         )
-        // Whole-row hit target — clicking anywhere on the row (timestamp,
-        // whitespace, padding) plays the segment from start. Word-level
-        // and button taps take precedence via SwiftUI's gesture priority.
-        .contentShape(Rectangle())
-        .onTapGesture {
-            playback.playSegment(from: segment.start, to: segment.end)
+        // Transparent hit-test layer placed behind the content. Captures
+        // every click that doesn't hit a tappable child (word span or
+        // Rediger button). WrappingHStack is a custom Layout that only
+        // hit-tests its subviews, so whitespace between words wouldn't
+        // reach an outer `.onTapGesture` on the row itself — placing the
+        // handler on a `.background { Color.clear ... }` layer is the
+        // reliable macOS pattern.
+        .background {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture(count: 2) {
+                    enterEditMode(for: segment)
+                }
+                .onTapGesture(count: 1) {
+                    playback.playSegment(from: segment.start, to: segment.end)
+                }
         }
         .id(segment.id)
+    }
+
+    /// Shared transition into edit mode — used by the Rediger button, the
+    /// row double-click, and the word double-click.
+    private func enterEditMode(for segment: TranscriptionSegment) {
+        editingSegmentId = segment.id
+        editText = segment.text
+        playback.pause()
     }
 
     // MARK: - Word flow (karaoke)
@@ -260,7 +276,10 @@ struct TranscriptEditorView: View {
                                 : Color.clear,
                             in: RoundedRectangle(cornerRadius: 3)
                         )
-                        .onTapGesture {
+                        .onTapGesture(count: 2) {
+                            enterEditMode(for: segment)
+                        }
+                        .onTapGesture(count: 1) {
                             playback.playSegment(from: word.start, to: segment.end)
                         }
                 }

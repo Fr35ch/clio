@@ -191,6 +191,7 @@
 - [ ] Ordet som spilles av akkurat nå framheves visuelt (karaoke-stil)
 - [ ] Klikk hvor som helst på en transkripsjonslinje (hele segmentraden, inkludert mellomrom, tidsstempel og talerbadge) spiller av lyden for det segmentet — fra segmentstart til segmentslutt — og pauser automatisk ved segmentgrensen
 - [ ] Klikk på et enkelt ord innenfor segmentet spiller av lyden fra det ordets tidsstempel til segmentslutt, og pauser automatisk ved segmentgrensen
+- [ ] Dobbeltklikk hvor som helst på en transkripsjonslinje (også på et enkelt ord) går inn i redigeringsmodus for det segmentet, samme effekt som å trykke «Rediger»-knappen
 - [ ] Etter auto-pause kan forskeren trykke «Spill av» for å fortsette kontinuerlig avspilling fra samme punkt
 - [ ] Aktivt segment rulles automatisk inn i synsfeltet under avspilling
 - [ ] Segmenttekst kan redigeres inline (dobbeltklikk eller «Rediger»-knapp)
