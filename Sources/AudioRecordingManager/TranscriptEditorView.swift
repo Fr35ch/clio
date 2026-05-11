@@ -6,8 +6,9 @@
 //
 // Architecture: see docs/prd/transcription/TRANSCRIPT_EDITOR.md
 
-import SwiftUI
+import AppKit
 import AVFoundation
+import SwiftUI
 
 // MARK: - Speaker colors (shared with TranscriptionResultView)
 
@@ -200,6 +201,7 @@ struct TranscriptEditorView: View {
                 .foregroundStyle(isCurrent ? AppColors.accent : .secondary)
                 .frame(width: 40, alignment: .leading)
                 .contentShape(Rectangle())
+                .pointingHandCursor()
                 .onTapGesture(count: 2) { enterEditMode(for: segment) }
                 .onTapGesture(count: 1) { playback.playSegment(from: segment.start, to: segment.end) }
 
@@ -210,6 +212,7 @@ struct TranscriptEditorView: View {
             wordFlowView(segment: segment, currentTime: currentTime)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
+                .pointingHandCursor()
                 .onTapGesture(count: 2) { enterEditMode(for: segment) }
                 .onTapGesture(count: 1) { playback.playSegment(from: segment.start, to: segment.end) }
 
@@ -237,6 +240,7 @@ struct TranscriptEditorView: View {
         // their own gestures take precedence; this fires only for clicks
         // not consumed above.
         .contentShape(Rectangle())
+        .pointingHandCursor()
         .onTapGesture(count: 2) { enterEditMode(for: segment) }
         .onTapGesture(count: 1) { playback.playSegment(from: segment.start, to: segment.end) }
         .id(segment.id)
@@ -258,10 +262,17 @@ struct TranscriptEditorView: View {
     @ViewBuilder
     private func wordFlowView(segment: TranscriptionSegment, currentTime: Double) -> some View {
         if segment.words.isEmpty {
+            // Transcripts loaded from `transcript.txt` (legacy or
+            // post-edit re-load) don't carry word-level timestamps —
+            // we render the whole segment as a single hit target.
+            // `.textSelection(.enabled)` is dropped here on purpose: it
+            // absorbs clicks on macOS, which would block the row from
+            // ever firing playSegment. Selection is still available via
+            // the toolbar's copy affordance.
             Text(segment.text.trimmingCharacters(in: .whitespaces))
                 .font(.system(size: 13))
-                .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
+                .contentShape(Rectangle())
         } else {
             WrappingHStack(alignment: .leading, spacing: 2) {
                 ForEach(Array(segment.words.enumerated()), id: \.offset) { _, word in
@@ -276,6 +287,14 @@ struct TranscriptEditorView: View {
                                 : Color.clear,
                             in: RoundedRectangle(cornerRadius: 3)
                         )
+                        // `Text` on macOS is not reliably hit-testable
+                        // for `onTapGesture` without an explicit content
+                        // shape — without this, clicks on words simply
+                        // don't fire. The Rectangle covers the padded
+                        // bounds so even the gap around the glyphs
+                        // counts.
+                        .contentShape(Rectangle())
+                        .pointingHandCursor()
                         .onTapGesture(count: 2) {
                             enterEditMode(for: segment)
                         }
@@ -423,6 +442,27 @@ struct TranscriptEditorView: View {
     private var currentSegmentId: Int? {
         let time = playback.currentTime
         return editor.result.segments.last(where: { $0.start <= time && time < $0.end })?.id
+    }
+}
+
+// MARK: - View helpers
+
+private extension View {
+    /// Show the pointing-hand cursor while the mouse hovers this view.
+    /// macOS SwiftUI does not flip the cursor automatically for tappable
+    /// views — without this, researchers can't tell a segment row is
+    /// clickable. Applied to every tap target in the segment row
+    /// (timestamp, wordFlow wrapper, outer row, individual words).
+    @ViewBuilder
+    func pointingHandCursor() -> some View {
+        self.onContinuousHover { phase in
+            switch phase {
+            case .active:
+                NSCursor.pointingHand.set()
+            case .ended:
+                NSCursor.arrow.set()
+            }
+        }
     }
 }
 
