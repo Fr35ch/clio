@@ -65,7 +65,7 @@ struct TranscriptEditorView: View {
         ))
     }
 
-    @State private var anonymizationExpanded: Bool = false
+    @State private var showAvidentSheet: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -73,20 +73,18 @@ struct TranscriptEditorView: View {
             Divider()
 
             ScrollView {
-                VStack(spacing: 0) {
-                    // Collapsible anonymization panel
-                    anonymizationPanel
-                        .padding(.horizontal, AppSpacing.lg)
-                        .padding(.vertical, AppSpacing.sm)
-
-                    Divider()
-
-                    segmentContent
-                }
+                segmentContent
             }
 
             Divider()
             audioControls
+        }
+        .sheet(isPresented: $showAvidentSheet) {
+            AvidentifiseringSheet(
+                recordingId: recordingId,
+                isDirty: editor.isDirty,
+                isPresented: $showAvidentSheet
+            )
         }
         .alert("Ulagrede endringer", isPresented: $showUnsavedAlert) {
             Button("Lagre og lukk") {
@@ -126,6 +124,19 @@ struct TranscriptEditorView: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
             }
+
+            Button {
+                showAvidentSheet = true
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "shield.lefthalf.filled")
+                    Text("Avidentifiser")
+                }
+                .font(.system(size: 11, weight: .medium))
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Åpne avidentifisering for denne transkripsjonen")
 
             Spacer()
 
@@ -397,44 +408,6 @@ struct TranscriptEditorView: View {
         }
         .padding(.horizontal, AppSpacing.lg)
         .padding(.vertical, AppSpacing.md)
-    }
-
-    // MARK: - Collapsible anonymization panel
-
-    private var anonymizationPanel: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Toggle header — always visible
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    anonymizationExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: AppSpacing.sm) {
-                    Image(systemName: anonymizationExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 14)
-
-                    Text("Anonymisering")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .textCase(.uppercase)
-
-                    Spacer()
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            if anonymizationExpanded {
-                AnonymizationSectionView(
-                    recordingId: recordingId,
-                    isDirty: editor.isDirty
-                )
-                .padding(.top, AppSpacing.sm)
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-        }
     }
 
     // MARK: - Helpers
