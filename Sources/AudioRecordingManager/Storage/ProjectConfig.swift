@@ -4,7 +4,7 @@
 // Per-project configuration: Teams destination channels, neutral code
 // format, and compliance confirmation state.
 //
-// Stored inside `AppState.currentProject` (persisted to `state/app.json`).
+// Stored inside `AppState.projects` (persisted to `state/app.json`).
 // The researcher sets this once when starting a project; it persists
 // across sessions until they switch projects.
 //
@@ -34,7 +34,10 @@ struct TeamsChannelRef: Codable, Equatable {
 
 // MARK: - Project config
 
-struct ProjectConfig: Codable, Equatable {
+struct ProjectConfig: Codable, Equatable, Identifiable {
+    /// Stable identity used by recordings to reference their project.
+    var id: UUID
+
     /// Human-readable project name (e.g. "Brukerinnsikt Bærekraft 2026")
     var projectName: String
 
@@ -60,6 +63,7 @@ struct ProjectConfig: Codable, Equatable {
     var nextNeutralCodeNumber: Int
 
     init(
+        id: UUID = UUID(),
         projectName: String = "",
         studyChannel: TeamsChannelRef? = nil,
         consentChannel: TeamsChannelRef? = nil,
@@ -68,6 +72,7 @@ struct ProjectConfig: Codable, Equatable {
         complianceConfirmedAt: Date? = nil,
         nextNeutralCodeNumber: Int = 1
     ) {
+        self.id = id
         self.projectName = projectName
         self.studyChannel = studyChannel
         self.consentChannel = consentChannel

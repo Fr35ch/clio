@@ -382,7 +382,7 @@ struct BibliotekView: View {
     // MARK: - Reload
 
     private func reload() {
-        projectConfigured = AppStateStore.load().currentProject != nil
+        projectConfigured = !AppStateStore.load().projects.filter { $0.isConfigured }.isEmpty
         let metas = RecordingStore.shared.loadAll()
         let allAnalyses = AnalysisStore.shared.loadAll()
 

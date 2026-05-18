@@ -32,9 +32,12 @@ struct AppState: Codable, Equatable {
     /// the first-pass-only version still get their legacy metadata migrated
     /// on next launch without needing a manual reset.
     var legacyMetadataCleanedAt: Date?
-    /// Current project configuration (Teams channels, neutral codes, compliance).
-    /// `nil` when no project is configured — upload is blocked.
-    var currentProject: ProjectConfig?
+    /// All configured projects. Replaces the former single `currentProject` slot.
+    /// Empty list means no projects configured — upload is blocked.
+    var projects: [ProjectConfig]
+    /// The project currently selected in the sidebar / active context.
+    /// Used as default assignment for new recordings. Not enforced.
+    var activeProjectId: UUID?
     /// Global allowlist of strings that must NOT be redacted by the
     /// de-identification (avidentifisering) pipeline, even when the
     /// upstream NER model flags them. Case-insensitive, exact-match
@@ -61,7 +64,8 @@ struct AppState: Codable, Equatable {
         migrationCompletedAt: Date? = nil,
         migrationRecordingCount: Int? = nil,
         legacyMetadataCleanedAt: Date? = nil,
-        currentProject: ProjectConfig? = nil,
+        projects: [ProjectConfig] = [],
+        activeProjectId: UUID? = nil,
         avidentExceptions: [String] = [],
         hasSeededDefaultExceptions: Bool = false
     ) {
@@ -69,7 +73,8 @@ struct AppState: Codable, Equatable {
         self.migrationCompletedAt = migrationCompletedAt
         self.migrationRecordingCount = migrationRecordingCount
         self.legacyMetadataCleanedAt = legacyMetadataCleanedAt
-        self.currentProject = currentProject
+        self.projects = projects
+        self.activeProjectId = activeProjectId
         self.avidentExceptions = avidentExceptions
         self.hasSeededDefaultExceptions = hasSeededDefaultExceptions
     }
@@ -81,6 +86,9 @@ struct AppState: Codable, Equatable {
         case migrationCompletedAt
         case migrationRecordingCount
         case legacyMetadataCleanedAt
+        case projects
+        case activeProjectId
+        // Legacy key — read-only, migrated into `projects` on decode.
         case currentProject
         case avidentExceptions
         case hasSeededDefaultExceptions
@@ -92,10 +100,35 @@ struct AppState: Codable, Equatable {
         migrationCompletedAt = try c.decodeIfPresent(Date.self, forKey: .migrationCompletedAt)
         migrationRecordingCount = try c.decodeIfPresent(Int.self, forKey: .migrationRecordingCount)
         legacyMetadataCleanedAt = try c.decodeIfPresent(Date.self, forKey: .legacyMetadataCleanedAt)
-        currentProject = try c.decodeIfPresent(ProjectConfig.self, forKey: .currentProject)
         avidentExceptions = try c.decodeIfPresent([String].self, forKey: .avidentExceptions) ?? []
         hasSeededDefaultExceptions = try c.decodeIfPresent(
             Bool.self, forKey: .hasSeededDefaultExceptions) ?? false
+
+        // Multi-project migration: if `projects` is present use it directly;
+        // otherwise promote the legacy `currentProject` singleton if present.
+        if let existing = try c.decodeIfPresent([ProjectConfig].self, forKey: .projects) {
+            projects = existing
+            activeProjectId = try c.decodeIfPresent(UUID.self, forKey: .activeProjectId)
+        } else if let legacy = try c.decodeIfPresent(ProjectConfig.self, forKey: .currentProject) {
+            projects = [legacy]
+            activeProjectId = legacy.id
+        } else {
+            projects = []
+            activeProjectId = nil
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(schemaVersion, forKey: .schemaVersion)
+        try c.encodeIfPresent(migrationCompletedAt, forKey: .migrationCompletedAt)
+        try c.encodeIfPresent(migrationRecordingCount, forKey: .migrationRecordingCount)
+        try c.encodeIfPresent(legacyMetadataCleanedAt, forKey: .legacyMetadataCleanedAt)
+        try c.encode(projects, forKey: .projects)
+        try c.encodeIfPresent(activeProjectId, forKey: .activeProjectId)
+        try c.encode(avidentExceptions, forKey: .avidentExceptions)
+        try c.encode(hasSeededDefaultExceptions, forKey: .hasSeededDefaultExceptions)
+        // Legacy `currentProject` key is NOT written — new format only.
     }
 }
 

@@ -143,10 +143,18 @@ struct UploadMeta: Codable, Equatable {
 struct UploadState: Codable, Equatable {
     var audio: UploadMeta
     var transcript: UploadMeta
+    /// The anonymized transcript is the primary Phase 1 upload artifact.
+    /// Only present/relevant when `anonymization.status == .done`.
+    var anonymizedTranscript: UploadMeta
 
-    init(audio: UploadMeta = UploadMeta(), transcript: UploadMeta = UploadMeta()) {
+    init(
+        audio: UploadMeta = UploadMeta(),
+        transcript: UploadMeta = UploadMeta(),
+        anonymizedTranscript: UploadMeta = UploadMeta()
+    ) {
         self.audio = audio
         self.transcript = transcript
+        self.anonymizedTranscript = anonymizedTranscript
     }
 }
 
@@ -182,6 +190,9 @@ struct RecordingMeta: Codable, Equatable, Identifiable {
     /// Set by the researcher before upload. Used to generate the Teams
     /// filename. Upload is blocked if this is nil or empty.
     var neutralCode: String?
+    /// The project this recording belongs to. Nil means unassigned.
+    /// Upload is blocked when nil — researcher must assign a project first.
+    var projectId: UUID?
 
     // MARK: - Factory
 
@@ -230,6 +241,7 @@ struct RecordingMeta: Codable, Equatable, Identifiable {
         case upload
         case lastWarningDate
         case neutralCode
+        case projectId
     }
 
     init(from decoder: Decoder) throws {
@@ -247,6 +259,7 @@ struct RecordingMeta: Codable, Equatable, Identifiable {
         upload = try c.decodeIfPresent(UploadState.self, forKey: .upload) ?? UploadState()
         lastWarningDate = try c.decodeIfPresent(Date.self, forKey: .lastWarningDate)
         neutralCode = try c.decodeIfPresent(String.self, forKey: .neutralCode)
+        projectId = try c.decodeIfPresent(UUID.self, forKey: .projectId)
     }
 
     init(
@@ -259,7 +272,9 @@ struct RecordingMeta: Codable, Equatable, Identifiable {
         transcript: TranscriptMeta,
         anonymization: AnonymizationMeta,
         upload: UploadState,
-        lastWarningDate: Date? = nil
+        lastWarningDate: Date? = nil,
+        neutralCode: String? = nil,
+        projectId: UUID? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.id = id
@@ -271,5 +286,7 @@ struct RecordingMeta: Codable, Equatable, Identifiable {
         self.anonymization = anonymization
         self.upload = upload
         self.lastWarningDate = lastWarningDate
+        self.neutralCode = neutralCode
+        self.projectId = projectId
     }
 }

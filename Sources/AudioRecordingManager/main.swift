@@ -1294,6 +1294,8 @@ struct RecordingPlayerNative: View {
                         }
                         LabeledContent("Størrelse") { Text(recording.formattedSize) }
                     }
+
+                    teamsUploadSection
                 }
                 .formStyle(.grouped)
             }
@@ -1339,6 +1341,36 @@ struct RecordingPlayerNative: View {
     }
 
     // MARK: - Transcription state restoration
+
+    private func loadMeta() -> RecordingMeta? {
+        try? RecordingStore.shared.load(id: recording.id)
+    }
+
+    @ViewBuilder private var teamsUploadSection: some View {
+        if let meta = loadMeta() {
+            Section {
+                TeamsUploadSection(
+                    recording: meta,
+                    projects: AppStateStore.load().projects.filter { $0.isConfigured },
+                    onMetaChanged: { updated in
+                        try? RecordingStore.shared.updateMeta(id: updated.id) { m in
+                            m.neutralCode = updated.neutralCode
+                            m.projectId = updated.projectId
+                        }
+                    },
+                    onProjectUpdated: { updatedProject in
+                        try? AppStateStore.update { state in
+                            if let idx = state.projects.firstIndex(where: { $0.id == updatedProject.id }) {
+                                state.projects[idx] = updatedProject
+                            }
+                        }
+                    }
+                )
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+            }
+        }
+    }
 
     /// Restores a cached TranscriptionResult for this file (in-memory cache first,
     /// then JSON on disk, then transcript.txt in the recording's UUID folder).

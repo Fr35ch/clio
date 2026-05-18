@@ -242,6 +242,30 @@ class AuditLogger {
         ])
     }
 
+    func logUploadQueued(recordingId: UUID, projectId: UUID, remoteName: String) {
+        log(.uploadQueued, payload: [
+            "recordingId": .string(recordingId.uuidString),
+            "projectId": .string(projectId.uuidString),
+            "remoteName": .string(remoteName)
+        ])
+    }
+
+    func logUploadCompleted(recordingId: UUID, projectId: UUID, remoteName: String) {
+        log(.uploadCompleted, payload: [
+            "recordingId": .string(recordingId.uuidString),
+            "projectId": .string(projectId.uuidString),
+            "remoteName": .string(remoteName)
+        ])
+    }
+
+    func logUploadFailed(recordingId: UUID, projectId: UUID, reason: String) {
+        log(.uploadFailed, payload: [
+            "recordingId": .string(recordingId.uuidString),
+            "projectId": .string(projectId.uuidString),
+            "reason": .string(reason)
+        ])
+    }
+
     // MARK: - Private
 
     private func ensureLogLocation() -> URL? {
