@@ -156,6 +156,15 @@ struct UploadState: Codable, Equatable {
         self.transcript = transcript
         self.anonymizedTranscript = anonymizedTranscript
     }
+
+    // Custom decoder so that existing meta.json files that predate
+    // `anonymizedTranscript` (schema v1) decode without throwing.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        audio = try c.decode(UploadMeta.self, forKey: .audio)
+        transcript = try c.decode(UploadMeta.self, forKey: .transcript)
+        anonymizedTranscript = try c.decodeIfPresent(UploadMeta.self, forKey: .anonymizedTranscript) ?? UploadMeta()
+    }
 }
 
 // MARK: - RecordingMeta
