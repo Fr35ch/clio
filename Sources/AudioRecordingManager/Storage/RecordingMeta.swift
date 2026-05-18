@@ -98,17 +98,25 @@ struct AnonymizationMeta: Codable, Equatable {
     /// run. Preserved from legacy `.metadata.json` migration and populated
     /// by future in-app anonymization runs.
     var stats: [String: Int]?
+    /// Set when the researcher explicitly signs off that the transcript is
+    /// fully de-identified. This is independent of `status` (which tracks
+    /// whether the ARM anonymization tool has run). A researcher may have
+    /// anonymized manually outside ARM; sign-off is always required before
+    /// upload, regardless of whether the ARM tool was used.
+    var researcherConfirmedAt: Date?
 
     init(
         status: AnonymizationStatus = .none,
         completedAt: Date? = nil,
         filename: String? = nil,
-        stats: [String: Int]? = nil
+        stats: [String: Int]? = nil,
+        researcherConfirmedAt: Date? = nil
     ) {
         self.status = status
         self.completedAt = completedAt
         self.filename = filename
         self.stats = stats
+        self.researcherConfirmedAt = researcherConfirmedAt
     }
 }
 

@@ -20,6 +20,8 @@ struct TeamsUploadSection: View {
 
     @StateObject private var uploadService = TeamsUploadService.shared
     @State private var showComingSoonAlert = false
+    @State private var showSignOffAlert = false
+    @State private var signOffConfirmed = false
     @State private var showConfirmationSheet = false
     @State private var showComplianceSheet = false
     @State private var pendingProject: ProjectConfig?
@@ -35,6 +37,12 @@ struct TeamsUploadSection: View {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text("Opplasting til Teams er under utvikling og vil være tilgjengelig i en kommende versjon.")
+            }
+            .alert("Bekreft avidentifisering", isPresented: $showSignOffAlert) {
+                Button("Bekreft", role: .none) { confirmSignOff() }
+                Button("Avbryt", role: .cancel) {}
+            } message: {
+                Text("Jeg bekrefter at transkripsjonen er avidentifisert og ikke inneholder personidentifiserbare opplysninger.")
             }
             .sheet(isPresented: $showConfirmationSheet) {
                 confirmationSheet
@@ -66,15 +74,8 @@ struct TeamsUploadSection: View {
                 actionLabel: nil,
                 action: nil
             )
-        } else if case .blockedNotAnonymized = r {
-            blockedView(
-                icon: "lock.shield",
-                iconColor: AppColors.warning,
-                title: "Avidentifisering mangler",
-                message: "Transkripsjonen må avidentifiseres før den kan lastes opp til Teams.",
-                actionLabel: nil,
-                action: nil
-            )
+        } else if case .blockedNotConfirmed(let armToolRan) = r {
+            signOffView(armToolRan: armToolRan)
         } else if case .blockedNoNeutralCode = r {
             neutralCodeInputView
         } else if case .blockedNoProjectAssigned(let available) = r {
@@ -244,6 +245,42 @@ struct TeamsUploadSection: View {
             .buttonStyle(PillButtonStyle(variant: .primary))
             .frame(maxWidth: .infinity)
         }
+    }
+
+    private func signOffView(armToolRan: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "signature")
+                    .foregroundStyle(AppColors.accent)
+                    .font(.system(size: 14))
+                Text("Bekreft avidentifisering")
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            if armToolRan {
+                Text("ARM-verktøyet er brukt. Bekreft at transkripsjonen er ferdig avidentifisert for å låse opp opplasting.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Transkripsjonen må være avidentifisert — enten med ARM-verktøyet eller manuelt — før opplasting til Teams.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+            Button("Bekreft avidentifisering…") {
+                showSignOffAlert = true
+            }
+            .buttonStyle(PillButtonStyle(variant: .secondary))
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func confirmSignOff() {
+        var updated = recording
+        updated.anonymization.researcherConfirmedAt = Date()
+        AuditLogger.shared.logAnonymizationConfirmedByResearcher(
+            recordingId: recording.id,
+            armToolUsed: recording.anonymization.status == .done
+        )
+        onMetaChanged(updated)
     }
 
     private var uploadingView: some View {

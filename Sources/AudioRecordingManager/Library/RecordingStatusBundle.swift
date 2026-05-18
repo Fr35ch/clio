@@ -85,7 +85,7 @@ extension RecordingStatusBundle {
         // Predicates
         let isTranscribed = meta.transcript.status == .done
         let venterAvident = (meta.transcript.status == .done)
-            && (meta.anonymization.status == .none)
+            && (meta.anonymization.researcherConfirmedAt == nil)
         let klarForTeams = predicateKlarForTeams(
             meta: meta,
             projectConfigured: projectConfigured
@@ -98,7 +98,7 @@ extension RecordingStatusBundle {
             createdAt: meta.createdAt,
             durationSeconds: meta.durationSeconds,
             transcript: transcriptChip(meta.transcript.status),
-            avident: avidentChip(meta.anonymization.status),
+            avident: avidentChip(meta.anonymization),
             analyse: analyseChip(analyses),
             teams: teamsChip(klarForTeams: klarForTeams),
             slettes: slettesChip(daysRemaining: days),
@@ -120,7 +120,7 @@ extension RecordingStatusBundle {
         projectConfigured: Bool
     ) -> Bool {
         guard meta.transcript.status == .done else { return false }
-        guard meta.anonymization.status == .done else { return false }
+        guard meta.anonymization.researcherConfirmedAt != nil else { return false }
         guard let code = meta.neutralCode, !code.isEmpty else { return false }
         guard projectConfigured else { return false }
         return true
@@ -149,10 +149,14 @@ extension RecordingStatusBundle {
         }
     }
 
-    private static func avidentChip(_ status: AnonymizationStatus) -> StatusChip {
-        switch status {
-        case .done:
+    private static func avidentChip(_ meta: AnonymizationMeta) -> StatusChip {
+        if meta.researcherConfirmedAt != nil {
             return StatusChip(label: "Avid. ✓", tone: .success)
+        }
+        switch meta.status {
+        case .done:
+            // ARM tool ran but researcher hasn't signed off yet
+            return StatusChip(label: "Avid. (ubekr.)", tone: .warning)
         case .draft:
             return StatusChip(label: "Påbegynt", tone: .warning)
         case .failed:

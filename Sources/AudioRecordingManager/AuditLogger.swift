@@ -103,6 +103,7 @@ enum AuditEventType: String {
     case transcriptExported
     case anonymizationStarted
     case anonymizationDiscarded
+    case anonymizationConfirmedByResearcher
     case complianceCheckConfirmed
     case uploadQueued
     case uploadCompleted
@@ -239,6 +240,16 @@ class AuditLogger {
     func logComplianceCheckConfirmed(projectId: String) {
         log(.complianceCheckConfirmed, payload: [
             "projectId": .string(projectId)
+        ])
+    }
+
+    /// Records that a researcher explicitly signed off that a transcript is
+    /// fully de-identified. `armToolUsed` indicates whether the ARM built-in
+    /// anonymization tool was also run (informational only — not a gate).
+    func logAnonymizationConfirmedByResearcher(recordingId: UUID, armToolUsed: Bool) {
+        log(.anonymizationConfirmedByResearcher, payload: [
+            "recordingId": .string(recordingId.uuidString),
+            "armToolUsed": .bool(armToolUsed)
         ])
     }
 

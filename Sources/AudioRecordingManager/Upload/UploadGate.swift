@@ -6,7 +6,8 @@
 //
 // Precondition chain (in order of priority):
 //   1. Transcript exists and is done
-//   2. Anonymization is done (avidentifisert)
+//   2. Researcher has signed off that the transcript is de-identified
+//      (researcherConfirmedAt != nil — independent of ARM tool status)
 //   3. Neutral code is set on the recording
 //   4. Recording is assigned to a project (projectId set)
 //   5. That project has a Teams study channel configured
@@ -23,8 +24,10 @@ enum UploadReadiness {
     /// Transcript has not been produced yet.
     case blockedNoTranscript
 
-    /// Transcript exists but has not been de-identified (avidentifisert).
-    case blockedNotAnonymized
+    /// Transcript exists but the researcher has not yet signed off that it
+    /// is de-identified. `armToolRan` is true if the ARM anonymization tool
+    /// completed — used by the UI to tailor its message (informational only).
+    case blockedNotConfirmed(armToolRan: Bool)
 
     /// Neutral participant code has not been set on this recording.
     case blockedNoNeutralCode
@@ -85,9 +88,10 @@ struct UploadGate {
             return .blockedNoTranscript
         }
 
-        // 5. Must be anonymized
-        guard recording.anonymization.status == .done else {
-            return .blockedNotAnonymized
+        // 5. Researcher must have explicitly signed off on de-identification
+        guard recording.anonymization.researcherConfirmedAt != nil else {
+            let armToolRan = recording.anonymization.status == .done
+            return .blockedNotConfirmed(armToolRan: armToolRan)
         }
 
         // 6. Neutral code required
