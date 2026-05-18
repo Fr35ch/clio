@@ -5,7 +5,7 @@
 // Renders all precondition-blocked states, the "Last opp" action, uploading
 // progress, success, and failure states.
 //
-// Hidden entirely when no transcript exists (transcript.status != .done).
+// Always visible; shows an informative blocked state when no transcript exists.
 
 import SwiftUI
 
@@ -29,29 +29,26 @@ struct TeamsUploadSection: View {
     }
 
     var body: some View {
-        // Only show when a transcript exists
-        if recording.transcript.status == .done {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Opplasting til Teams")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Opplasting til Teams")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
 
-                sectionBody
-                    .padding(16)
-                    .background(Color.gray.opacity(0.04))
-                    .cornerRadius(AppRadius.large)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: AppRadius.large)
-                            .stroke(Color.gray.opacity(0.15), lineWidth: 1)
-                    )
-            }
-            .sheet(isPresented: $showConfirmationSheet) {
-                confirmationSheet
-            }
-            .sheet(isPresented: $showComplianceSheet) {
-                complianceSheet
-            }
+            sectionBody
+                .padding(16)
+                .background(Color.gray.opacity(0.04))
+                .cornerRadius(AppRadius.large)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppRadius.large)
+                        .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+                )
+        }
+        .sheet(isPresented: $showConfirmationSheet) {
+            confirmationSheet
+        }
+        .sheet(isPresented: $showComplianceSheet) {
+            complianceSheet
         }
     }
 
@@ -61,7 +58,14 @@ struct TeamsUploadSection: View {
     private var sectionBody: some View {
         switch readiness {
         case .blockedNoTranscript:
-            EmptyView() // section is hidden above
+            blockedView(
+                icon: "waveform.and.mic",
+                iconColor: .secondary,
+                title: "Ingen transkripsjon",
+                message: "Transkriber opptaket for å aktivere opplasting til Teams.",
+                actionLabel: nil,
+                action: nil
+            )
 
         case .blockedNotAnonymized:
             blockedView(

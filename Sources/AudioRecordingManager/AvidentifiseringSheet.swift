@@ -426,34 +426,11 @@ struct AvidentifiseringSheet: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
 
-            Button {
-                exportToWord()
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "square.and.arrow.up")
-                    Text("Eksporter til Word")
-                }
-                .font(.system(size: 12))
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .disabled(!isCompleted)
-            .help(isCompleted
-                  ? "Lagre en RTF-fil for Word/OneDrive/Teams"
-                  : "Kjør avidentifisering først")
-
             Spacer()
 
             primaryAction
         }
         .padding(AppSpacing.lg)
-    }
-
-    /// Convenience predicate so the export button can flip its enabled
-    /// state without a wordy `if case let` inline in the view.
-    private var isCompleted: Bool {
-        if case .completed = state { return true }
-        return false
     }
 
     @ViewBuilder
@@ -599,50 +576,6 @@ struct AvidentifiseringSheet: View {
     }
 
     // MARK: - Export to Word (RTF)
-
-    /// Builds an RTF document from the on-disk anonymized text + the
-    /// completion stats and presents NSSavePanel. On confirm emits a
-    /// `transcriptExported` audit event with the basename only (no
-    /// full path — privacy).
-    private func exportToWord() {
-        guard case let .completed(date, stats) = state else { return }
-        guard let body = try? String(
-            contentsOf: StorageLayout.anonymizedTranscriptURL(id: recordingId),
-            encoding: .utf8
-        ), !body.isEmpty else { return }
-
-        let meta = try? RecordingStore.shared.load(id: recordingId)
-        let displayName = meta?.displayName ?? recordingId.uuidString
-
-        let statsLine = statsSummary(stats)
-        let document = RTFExporter.Document(
-            title: displayName,
-            subtitle: "Avidentifisert · \(formattedExportDate(date))",
-            statsLine: statsLine.isEmpty
-                ? nil
-                : "Fjernet: \(statsLine)",
-            body: body
-        )
-
-        let filename = RTFExporter.sanitisedFilename(from: displayName)
-            + "_avidentifisert.rtf"
-
-        if let url = RTFExporter.save(document: document, defaultFilename: filename) {
-            AuditLogger.shared.logTranscriptExported(
-                recordingId: recordingId.uuidString,
-                format: "rtf",
-                filenameHint: url.lastPathComponent
-            )
-        }
-    }
-
-    private func formattedExportDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "nb_NO")
-        formatter.dateStyle = .long
-        formatter.timeStyle = .none
-        return formatter.string(from: date)
-    }
 
     private func statsSummary(_ stats: [String: Int]) -> String {
         let parts = stats.compactMap { (key, count) -> String? in
