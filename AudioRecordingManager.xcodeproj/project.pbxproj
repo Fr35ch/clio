@@ -75,7 +75,12 @@
 		AB1B2C3D4E5F60001020AA02 /* AnalysisComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B2C3D4E5F60001020AA01 /* AnalysisComposerView.swift */; };
 		AB1B2C3D4E5F60001020AB02 /* AnalysisResultDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B2C3D4E5F60001020AB01 /* AnalysisResultDetailView.swift */; };
 		F1A1B2C3D4E5F6001020A004 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = F1A1B2C3D4E5F6001020A002 /* FluidAudio */; };
-/* End PBXBuildFile section */
+		UP000000000000000000001 /* UploadGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = UP000000000000000000002 /* UploadGate.swift */; };
+		UP000000000000000000003 /* TeamsUploadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = UP000000000000000000004 /* TeamsUploadService.swift */; };
+		UP000000000000000000005 /* TeamsUploadSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = UP000000000000000000006 /* TeamsUploadSection.swift */; };
+		UP000000000000000000007 /* ComplianceChecklistSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = UP000000000000000000008 /* ComplianceChecklistSheet.swift */; };
+		UP000000000000000000009 /* UploadConfirmationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = UP000000000000000000010 /* UploadConfirmationSheet.swift */; };
+		/* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		3131B3745FCB4B0EA2C3DBB5 /* SystemRequirement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemRequirement.swift; sourceTree = "<group>"; };
@@ -146,7 +151,12 @@
 		AB1B2C3D4E5F60001020A901 /* AnalysisResultParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisResultParser.swift; sourceTree = "<group>"; };
 		AB1B2C3D4E5F60001020AA01 /* AnalysisComposerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisComposerView.swift; sourceTree = "<group>"; };
 		AB1B2C3D4E5F60001020AB01 /* AnalysisResultDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisResultDetailView.swift; sourceTree = "<group>"; };
-/* End PBXFileReference section */
+		UP000000000000000000002 /* UploadGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadGate.swift; sourceTree = "<group>"; };
+		UP000000000000000000004 /* TeamsUploadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamsUploadService.swift; sourceTree = "<group>"; };
+		UP000000000000000000006 /* TeamsUploadSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamsUploadSection.swift; sourceTree = "<group>"; };
+		UP000000000000000000008 /* ComplianceChecklistSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComplianceChecklistSheet.swift; sourceTree = "<group>"; };
+		UP000000000000000000010 /* UploadConfirmationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadConfirmationSheet.swift; sourceTree = "<group>"; };
+		/* End PBXFileReference section */
 
 /* Begin PBXGroup section */
 		0D20499F143447E789C45149 = {
@@ -247,6 +257,7 @@
 			children = (
 				74A331597C1C4628A6F1ABE2 /* Startup */,
 				BA1B2C3D4E5F60001020BA00 /* Storage */,
+				UP00000000000000000000GR /* Upload */,
 				CA1B2C3D4E5F60001020DA00 /* Design */,
 				DA1B2C3D4E5F60001020EA00 /* Playback */,
 				AB1B2C3D4E5F60001020A000 /* Analysis */,
@@ -296,7 +307,20 @@
 			path = Models;
 			sourceTree = "<group>";
 		};
-/* End PBXGroup section */
+
+		UP00000000000000000000GR /* Upload */ = {
+			isa = PBXGroup;
+			children = (
+				UP000000000000000000002 /* UploadGate.swift */,
+				UP000000000000000000004 /* TeamsUploadService.swift */,
+				UP000000000000000000006 /* TeamsUploadSection.swift */,
+				UP000000000000000000008 /* ComplianceChecklistSheet.swift */,
+				UP000000000000000000010 /* UploadConfirmationSheet.swift */,
+			);
+			path = Upload;
+			sourceTree = "<group>";
+		};
+		/* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
 		95918E45E4B0A1FA65B61162 /* AudioRecordingManager */ = {
@@ -386,6 +410,12 @@
 				76C0870C4F2C9649C96E1705 /* AnonymizationService.swift in Sources */,
 				AA1B2C3D4E5F60001020AA02 /* AudioLevelVisualization.swift in Sources */,
 				BA1B2C3D4E5F60001020BA02 /* StorageLayout.swift in Sources */,
+				UP000000000000000000001 /* UploadGate.swift in Sources */,
+				UP000000000000000000003 /* TeamsUploadService.swift in Sources */,
+				UP000000000000000000005 /* TeamsUploadSection.swift in Sources */,
+				UP000000000000000000007 /* ComplianceChecklistSheet.swift in Sources */,
+				UP000000000000000000009 /* UploadConfirmationSheet.swift in Sources */,
+
 				BA1B2C3D4E5F60001020BB02 /* RecordingMeta.swift in Sources */,
 				BA1B2C3D4E5F60001020BC02 /* AppState.swift in Sources */,
 				BA1B2C3D4E5F60001020BE02 /* DefaultAvidentExceptions.swift in Sources */,
