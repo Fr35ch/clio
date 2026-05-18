@@ -98,6 +98,15 @@ enum StorageLayout {
         recordingFolder(id: id).appendingPathComponent("transcript_anonymized.txt")
     }
 
+    /// `<recordingsRoot>/<uuid>/anonymization_result.json`
+    ///
+    /// Persists the full `AnonymizationResult` (including redaction spans and
+    /// replacements) so the editor can reconstruct word-level orange highlights
+    /// after a restart without re-running anonymization.
+    static func anonymizationResultURL(id: UUID) -> URL {
+        recordingFolder(id: id).appendingPathComponent("anonymization_result.json")
+    }
+
     /// `<recordingsRoot>/<uuid>/analysis.json`
     ///
     /// Legacy per-recording analysis blob from before the top-level Analyser

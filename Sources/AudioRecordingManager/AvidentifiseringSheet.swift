@@ -22,6 +22,10 @@
 // Implements US-T12 (run from editor), US-A3 (compare original vs
 // de-identified), US-A8 (global exception list).
 
+// DEPRECATED: Anonymization UX has moved inline into TranscriptEditorView.
+// This file is kept for reference and build compatibility but is no longer
+// presented from any call site. See TranscriptEditorView.swift.
+
 import SwiftUI
 
 private enum AnonymizationState: Equatable {
