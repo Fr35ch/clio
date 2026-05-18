@@ -43,6 +43,17 @@ private enum AnonymizationState: Equatable {
     case failed(String)
 }
 
+// MARK: - WordAnnotation
+
+/// Carries per-word display information derived from anonymization redactions.
+/// Computed at render time by `wordAnnotations(for:segmentOffset:redactions:)`.
+private struct WordAnnotation {
+    /// Text to display — original word or the redaction replacement (e.g. `[Navn]`).
+    let text: String
+    /// True when this word was replaced by the anonymizer; drives the orange background.
+    let isRedacted: Bool
+}
+
 // MARK: - TranscriptEditorView
 
 struct TranscriptEditorView: View {
@@ -62,6 +73,7 @@ struct TranscriptEditorView: View {
     @State private var showConsentModal: Bool = false
     @State private var flaggedReview: [FlaggedToken] = []
     @State private var researcherConfirmedAt: Date? = nil
+    @State private var anonymizationResult: AnonymizationResult? = nil
     @AppStorage("analysis.llmModel") private var llmModel: String = "qwen3:8b"
 
     init(
@@ -83,12 +95,8 @@ struct TranscriptEditorView: View {
             editorToolbar
             Divider()
 
-            if showAnonymized, case .completed = anonymizationState {
-                anonymizedTextView
-            } else {
-                ScrollView {
-                    segmentContent
-                }
+            ScrollView {
+                segmentContent
             }
 
             if case .completed = anonymizationState {
@@ -333,6 +341,12 @@ struct TranscriptEditorView: View {
 
     @ViewBuilder
     private func wordFlowView(segment: TranscriptionSegment, currentTime: Double) -> some View {
+        let annotations: [WordAnnotation]? = showAnonymized ? { () -> [WordAnnotation]? in
+            guard let result = anonymizationResult else { return nil }
+            let offset = segmentOffset(for: segment, in: editor.result.segments)
+            return wordAnnotations(for: segment, segmentOffset: offset, redactions: result.redactions)
+        }() : nil
+
         if segment.words.isEmpty {
             // Transcripts loaded from `transcript.txt` (legacy or
             // post-edit re-load) don't carry word-level timestamps —
@@ -347,15 +361,21 @@ struct TranscriptEditorView: View {
                 .contentShape(Rectangle())
         } else {
             WrappingHStack(alignment: .leading, spacing: 2) {
-                ForEach(Array(segment.words.enumerated()), id: \.offset) { _, word in
+                ForEach(Array(segment.words.enumerated()), id: \.offset) { idx, word in
                     let isHighlighted = currentTime >= word.start && currentTime < word.end
-                    Text(word.word)
+                    let annotation: WordAnnotation? = annotations.flatMap {
+                        $0.indices.contains(idx) ? $0[idx] : nil
+                    }
+                    let displayText = annotation?.text ?? word.word
+                    let isRedacted = annotation?.isRedacted ?? false
+                    Text(displayText)
                         .font(.system(size: 13))
                         .padding(.horizontal, 2)
                         .padding(.vertical, 1)
                         .background(
-                            isHighlighted
-                                ? AppColors.accent.opacity(0.25)
+                            isHighlighted && isRedacted ? Color.orange.opacity(0.50)
+                                : isRedacted            ? Color.orange.opacity(0.25)
+                                : isHighlighted         ? AppColors.accent.opacity(0.25)
                                 : Color.clear,
                             in: RoundedRectangle(cornerRadius: 3)
                         )
@@ -489,27 +509,6 @@ struct TranscriptEditorView: View {
         .frame(width: 36, alignment: .leading)
     }
 
-    // MARK: - Anonymized text view
-
-    private var anonymizedTextView: some View {
-        ScrollView {
-            Group {
-                if let text = loadAnonymizedText(), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    Text(text)
-                        .font(.system(size: 13))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else {
-                    Text("Fant ingen avidentifisert tekst på disk.")
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                }
-            }
-            .padding(AppSpacing.lg)
-        }
-    }
-
     // MARK: - Sign-off bar
 
     private var signOffBar: some View {
@@ -566,10 +565,11 @@ struct TranscriptEditorView: View {
                 researcherConfirmedAt = meta.anonymization.researcherConfirmedAt
             }
         } catch {}
-    }
 
-    private func loadAnonymizedText() -> String? {
-        try? String(contentsOf: StorageLayout.anonymizedTranscriptURL(id: recordingId), encoding: .utf8)
+        if let data = try? Data(contentsOf: StorageLayout.anonymizationResultURL(id: recordingId)),
+           let result = try? JSONDecoder().decode(AnonymizationResult.self, from: data) {
+            anonymizationResult = result
+        }
     }
 
     private func confirmSignOff() {
@@ -629,8 +629,13 @@ struct TranscriptEditorView: View {
                 ])
 
                 anonymizationState = .completed(date: Date(), stats: result.stats)
+                anonymizationResult = result
                 flaggedReview = result.flaggedForReview ?? []
                 showAnonymized = true
+
+                if let data = try? JSONEncoder().encode(result) {
+                    try? data.write(to: StorageLayout.anonymizationResultURL(id: recordingId), options: .atomic)
+                }
             } catch let error as AnonymizationError {
                 guard !Task.isCancelled else { return }
                 anonymizationState = .failed(error.errorDescription ?? "Ukjent feil")
@@ -657,6 +662,65 @@ struct TranscriptEditorView: View {
         }
         if parts.isEmpty { return "ingen identifiserende informasjon funnet" }
         return parts.joined(separator: ", ") + " fjernet"
+    }
+
+    // MARK: - Word annotation helpers
+
+    /// Returns the character offset (in Unicode scalars) of `target`'s text
+    /// within the full transcript string that was sent to the anonymizer.
+    /// The full text is `segments.map { $0.text.trimmed }.joined(separator: "\n\n")`.
+    private func segmentOffset(for target: TranscriptionSegment, in segments: [TranscriptionSegment]) -> Int {
+        var offset = 0
+        for seg in segments {
+            if seg.id == target.id { return offset }
+            offset += seg.text.trimmingCharacters(in: .whitespaces).count + 2  // +2 for "\n\n"
+        }
+        return offset
+    }
+
+    /// Builds per-word display annotations for `segment` by matching each
+    /// `TranscriptionWord` to the redaction spans returned by the anonymizer.
+    /// Words that overlap a redaction are marked `isRedacted = true` and carry
+    /// the replacement text (e.g. `[Navn]`); others carry their original text.
+    private func wordAnnotations(
+        for segment: TranscriptionSegment,
+        segmentOffset: Int,
+        redactions: [Redaction]
+    ) -> [WordAnnotation] {
+        let segText = segment.text.trimmingCharacters(in: .whitespaces)
+        var annotations: [WordAnnotation] = []
+        var charOffset = 0
+        var remaining = segText
+
+        for word in segment.words {
+            let trimmedWord = word.word.trimmingCharacters(in: .whitespaces)
+            guard !trimmedWord.isEmpty else {
+                annotations.append(WordAnnotation(text: word.word, isRedacted: false))
+                continue
+            }
+
+            var matchedRedaction: Redaction? = nil
+            if let range = remaining.range(of: trimmedWord) {
+                let localStart = charOffset + remaining.distance(from: remaining.startIndex, to: range.lowerBound)
+                let localEnd = charOffset + remaining.distance(from: remaining.startIndex, to: range.upperBound)
+                let absStart = segmentOffset + localStart
+                let absEnd = segmentOffset + localEnd
+
+                for red in redactions where absStart < (red.position + red.length) && absEnd > red.position {
+                    matchedRedaction = red
+                    break
+                }
+
+                charOffset += remaining.distance(from: remaining.startIndex, to: range.upperBound)
+                remaining = String(remaining[range.upperBound...])
+            }
+
+            annotations.append(WordAnnotation(
+                text: matchedRedaction?.replacement ?? word.word,
+                isRedacted: matchedRedaction != nil
+            ))
+        }
+        return annotations
     }
 }
 
