@@ -1347,28 +1347,37 @@ struct RecordingPlayerNative: View {
     }
 
     @ViewBuilder private var teamsUploadSection: some View {
-        if let meta = loadMeta() {
-            Section {
-                TeamsUploadSection(
-                    recording: meta,
-                    projects: AppStateStore.load().projects.filter { $0.isConfigured },
-                    onMetaChanged: { updated in
-                        try? RecordingStore.shared.updateMeta(id: updated.id) { m in
-                            m.neutralCode = updated.neutralCode
-                            m.projectId = updated.projectId
-                        }
-                    },
-                    onProjectUpdated: { updatedProject in
-                        try? AppStateStore.update { state in
-                            if let idx = state.projects.firstIndex(where: { $0.id == updatedProject.id }) {
-                                state.projects[idx] = updatedProject
-                            }
+        let meta = loadMeta() ?? RecordingMeta(
+            schemaVersion: RecordingMeta.currentSchemaVersion,
+            id: recording.id,
+            createdAt: recording.date,
+            displayName: recording.filename,
+            durationSeconds: recording.duration,
+            audio: AudioMeta(filename: recording.filename, status: .done),
+            transcript: TranscriptMeta(status: (TranscriptionCache.shared.hasResult(for: recording.path) || FileManager.default.fileExists(atPath: StorageLayout.transcriptURL(id: recording.id).path)) ? .done : .pending),
+            anonymization: AnonymizationMeta(),
+            upload: UploadState()
+        )
+        Section {
+            TeamsUploadSection(
+                recording: meta,
+                projects: AppStateStore.load().projects.filter { $0.isConfigured },
+                onMetaChanged: { updated in
+                    try? RecordingStore.shared.updateMeta(id: updated.id) { m in
+                        m.neutralCode = updated.neutralCode
+                        m.projectId = updated.projectId
+                    }
+                },
+                onProjectUpdated: { updatedProject in
+                    try? AppStateStore.update { state in
+                        if let idx = state.projects.firstIndex(where: { $0.id == updatedProject.id }) {
+                            state.projects[idx] = updatedProject
                         }
                     }
-                )
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-            }
+                }
+            )
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
         }
     }
 
