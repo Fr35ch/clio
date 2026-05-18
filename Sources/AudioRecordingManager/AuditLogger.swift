@@ -100,6 +100,7 @@ enum AuditEventType: String {
     case transcriptEdited
     case transcriptAnonymized
     case transcriptAnalysed
+    case transcriptExported
     case anonymizationStarted
     case anonymizationDiscarded
     case complianceCheckConfirmed
@@ -192,6 +193,22 @@ class AuditLogger {
     }
 
     // MARK: - Typed helpers (B5, B6)
+
+    /// Emit when the researcher exports an anonymized transcript to a
+    /// portable document (RTF today). `filenameHint` is the basename
+    /// only — the full path is intentionally not logged because it can
+    /// leak organisational structure or PII via folder names.
+    func logTranscriptExported(
+        recordingId: String,
+        format: String,
+        filenameHint: String
+    ) {
+        log(.transcriptExported, payload: [
+            "recordingId": .string(recordingId),
+            "format": .string(format),
+            "filename": .string(filenameHint),
+        ])
+    }
 
     /// Emitted on each app launch for recordings in `.sevenDays` or `.oneDay` warning state.
     /// Deduplication (one per calendar day) is the caller's responsibility — see `RecordingExpiryManager`.

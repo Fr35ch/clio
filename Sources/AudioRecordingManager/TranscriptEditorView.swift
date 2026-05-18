@@ -40,8 +40,6 @@ struct TranscriptEditorView: View {
     let recordingId: UUID
     let audioURL: URL
     let transcriptionResult: TranscriptionResult
-    /// Callback to navigate to the linked recording in the Lydopptak tab.
-    let onShowLinkedRecording: (() -> Void)?
 
     @StateObject private var playback: TranscriptPlaybackController
     @StateObject private var editor: TranscriptEditorState
@@ -52,13 +50,11 @@ struct TranscriptEditorView: View {
     init(
         recordingId: UUID,
         audioURL: URL,
-        transcriptionResult: TranscriptionResult,
-        onShowLinkedRecording: (() -> Void)? = nil
+        transcriptionResult: TranscriptionResult
     ) {
         self.recordingId = recordingId
         self.audioURL = audioURL
         self.transcriptionResult = transcriptionResult
-        self.onShowLinkedRecording = onShowLinkedRecording
         _playback = StateObject(wrappedValue: TranscriptPlaybackController(audioURL: audioURL))
         _editor = StateObject(wrappedValue: TranscriptEditorState(
             result: transcriptionResult, recordingId: recordingId
@@ -111,20 +107,6 @@ struct TranscriptEditorView: View {
 
     private var editorToolbar: some View {
         HStack(spacing: AppSpacing.md) {
-            if let onShowLinkedRecording {
-                Button {
-                    onShowLinkedRecording()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "waveform")
-                        Text("Vis opptak")
-                    }
-                    .font(.system(size: 11, weight: .medium))
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            }
-
             Button {
                 showAvidentSheet = true
             } label: {
@@ -205,6 +187,11 @@ struct TranscriptEditorView: View {
         let isCurrent = segment.start <= currentTime && currentTime < segment.end
 
         return HStack(alignment: .center, spacing: 12) {
+            // Speaker badge — coloured dot + short label ("T1", "T2") so
+            // the researcher can scan turn-taking at a glance. Populated
+            // by the diarization pass (`SpeakerAlignment.attachSpeakers`).
+            speakerBadge(for: segment.speaker)
+
             // Timestamp gutter — own tap handlers so clicks land directly
             // on it without depending on outer-row fallthrough.
             Text(formatTimestamp(segment.start))
@@ -408,6 +395,24 @@ struct TranscriptEditorView: View {
         }
         .padding(.horizontal, AppSpacing.lg)
         .padding(.vertical, AppSpacing.md)
+    }
+
+    // MARK: - Speaker badge
+
+    /// Renders a coloured dot + short label ("T1", "T2") for a segment.
+    /// Uses the file-level `colorForSpeaker(_:)` and
+    /// `shortSpeakerLabel(_:)` helpers (defined at the top of the file)
+    /// so the same colour mapping is shared across views.
+    private func speakerBadge(for speaker: String) -> some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(colorForSpeaker(speaker))
+                .frame(width: 8, height: 8)
+            Text(shortSpeakerLabel(speaker))
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.secondary)
+        }
+        .frame(width: 36, alignment: .leading)
     }
 
     // MARK: - Helpers

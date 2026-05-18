@@ -115,20 +115,33 @@ struct AvidentExceptionsView: View {
     // MARK: - Footer
 
     private var footer: some View {
-        HStack {
-            if let saveError {
-                Label(saveError, systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption)
-                    .foregroundStyle(AppColors.destructive)
-            } else {
-                Text("\(exceptions.count) \(exceptions.count == 1 ? "unntak" : "unntak") lagret")
+        VStack(spacing: AppSpacing.sm) {
+            HStack {
+                if let saveError {
+                    Label(saveError, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(AppColors.destructive)
+                } else {
+                    Text("\(exceptions.count) \(exceptions.count == 1 ? "unntak" : "unntak") lagret")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text("Endringene gjelder neste gang en avidentifisering kjøres.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Spacer()
-            Text("Endringene gjelder neste gang en avidentifisering kjøres.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack {
+                Button(action: restoreDefaults) {
+                    Label("Tilbakestill til anbefalte unntak", systemImage: "arrow.counterclockwise")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("Legger til den kuraterte listen av norske ord som v0.5.0-modellen ofte feiltagger som personnavn. Eksisterende egne unntak beholdes.")
+                .hoverCursor()
+                Spacer()
+            }
         }
         .padding(.horizontal, AppSpacing.lg)
         .padding(.vertical, AppSpacing.md)
@@ -156,6 +169,14 @@ struct AvidentExceptionsView: View {
     private func remove(at index: Int) {
         guard exceptions.indices.contains(index) else { return }
         exceptions.remove(at: index)
+        persist()
+    }
+
+    /// Re-merges the curated defaults into the current list. Existing
+    /// entries are preserved (deduped case-insensitively), so the
+    /// researcher's customisations survive a "restore defaults" click.
+    private func restoreDefaults() {
+        exceptions = DefaultAvidentExceptions.mergedWith(exceptions)
         persist()
     }
 

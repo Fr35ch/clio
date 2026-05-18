@@ -918,12 +918,22 @@ final class TranscriptionService: ObservableObject, @unchecked Sendable {
 
     // MARK: - Public diarize/analyze API
 
+    /// Speaker diarization via FluidAudio (CoreML, on-device).
+    ///
+    /// Replaces the previous pyannote.audio Python subprocess. The
+    /// `hfToken` parameter is kept on the signature for source-level
+    /// back-compat with the player's old call site — its value is
+    /// ignored; FluidAudio pulls public CoreML models from
+    /// `FluidInference/speaker-diarization-coreml` without auth.
+    /// Drop the parameter once the player stops passing it.
     func diarize(
         audioFile: URL,
         existingResult: TranscriptionResult,
-        hfToken: String,
+        hfToken: String = "",
         speakers: Int
     ) async throws -> TranscriptionResult {
+        _ = hfToken  // ignored — see docstring
+
         await MainActor.run {
             self.stage = .diarizing
             self.diarizationProgress = 0
@@ -931,21 +941,22 @@ final class TranscriptionService: ObservableObject, @unchecked Sendable {
         ProcessingStateCache.shared.setStep(.diarization, status: .inProgress, for: audioFile.path)
 
         do {
-            let result = try await withCheckedThrowingContinuation { continuation in
-                DispatchQueue.global(qos: .userInitiated).async {
-                    do {
-                        let r = try self.runDiarizeSubprocess(
-                            audioFile: audioFile,
-                            existingResult: existingResult,
-                            hfToken: hfToken,
-                            speakers: speakers
-                        )
-                        continuation.resume(returning: r)
-                    } catch {
-                        continuation.resume(throwing: error)
-                    }
-                }
-            }
+            // 1. Run FluidAudio diarization on the audio file. Yields
+            //    [DiarizationSegment] with absolute timestamps; speaker
+            //    identity is local to this recording.
+            let speakerSegments = try await FluidDiarizationService.shared.diarize(
+                audioURL: audioFile, expectedSpeakers: speakers)
+
+            // 2. Align the speaker timeline with the existing transcript
+            //    segments by maximum temporal overlap, mutating speaker
+            //    labels in place.
+            var result = existingResult
+            result.segments = SpeakerAlignment.attachSpeakers(
+                to: result.segments,
+                using: speakerSegments)
+            result.numSpeakers = Set(result.segments.map { $0.speaker }).count
+            result.metadata.diarizationRun = true
+
             TranscriptionCache.shared.store(result, for: audioFile.path)
             if let recId = StorageLayout.recordingId(from: audioFile.deletingLastPathComponent()) {
                 saveTranscriptJSON(result, recordingId: recId)

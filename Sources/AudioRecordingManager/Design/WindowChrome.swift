@@ -43,19 +43,27 @@ import SwiftUI
 ///                 .transition(.opacity)
 ///         }
 ///     }
-///     // Invisible toolbar item triggers SwiftUI's unified chrome.
-///     // Without this, `windowToolbarStyle(.unified(showsTitle:))`
-///     // silently falls back to the plain title bar look.
-///     .toolbar {
-///         ToolbarItem(placement: .automatic) { EmptyView() }
-///     }
+///     // NO `.toolbar { ... }` modifier. We deliberately do not
+///     // install a chrome-trigger toolbar item. Every variant we
+///     // tried (`EmptyView()` in `.automatic`, `Color.clear` in
+///     // `.principal`, paired with NSToolbar
+///     // `allowsUserCustomization = false`,
+///     // `displayMode = .iconOnly`, and
+///     // `.toolbar(removing: .sidebarToggle)`) produced a visible
+///     // button next to the traffic lights on the current macOS
+///     // build. The trade-off: without a toolbar item,
+///     // `windowToolbarStyle(.unified(...))` doesn't activate, so
+///     // the rounded-corner clip rectangle on the content can
+///     // differ slightly from the window's outer frame radius.
+///     // Accepted because researcher feedback was unambiguous:
+///     // the button was worse than the corner mismatch.
 /// }
 /// // Hide the system-drawn title area so traffic lights float over
 /// // the window's content. Required for the modern rounded look.
 /// .windowStyle(.hiddenTitleBar)
-/// // macOS 15+: unified toolbar without title text. This is what
-/// // gives the Tahoe/Sequoia "airy" floating-traffic-lights chrome.
-/// .windowToolbarStyle(.unified(showsTitle: false))
+/// // `.windowToolbarStyle(...)` was previously here paired with the
+/// // toolbar trigger above; removed alongside the trigger because
+/// // it's only meaningful when a toolbar exists.
 /// ```
 ///
 /// If you need to change the chrome, change it in `VirginProjectApp.body`

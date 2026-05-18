@@ -6,9 +6,8 @@
 // tab's column 2. Implements US-R13–R18:
 //
 //   - Title + summary stats (N opptak · M transkribert · K analysert)
-//   - Search by displayName
 //   - Sort menu (newest / oldest / name / expiry soonest)
-//   - Filter chip row with counts independent of search
+//   - Filter chip row with counts
 //   - Conditional expiry-warning banner
 //   - Table with NAVN / VARIGH. / DATO / TRANSKR. / AVIDENT. / ANALYSE
 //     / TEAMS / SLETTES status chips
@@ -27,17 +26,18 @@ struct BibliotekView: View {
     @ObservedObject var recordingsManager: RecordingsManager
     @ObservedObject var audioPlayer: AudioPlayer
     @ObservedObject var analysisStore = AnalysisStore.shared
+    @ObservedObject var transcriptionRunner = TranscriptionRunner.shared
     @Binding var selectedRecording: RecordingItem?
     /// `true` when column 3 is visible (a recording is selected); the
     /// table compresses to play + name + date + a single urgency chip.
     /// `false` when column 3 is hidden; the full status pipeline shows.
     let isCompact: Bool
 
-    @State private var searchText: String = ""
     @State private var activeFilter: BibliotekFilter = .alle
-    @State private var sort: BibliotekSort = .newestFirst
     @State private var bundles: [RecordingStatusBundle] = []
     @State private var projectConfigured: Bool = false
+
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(spacing: 0) {
@@ -66,6 +66,7 @@ struct BibliotekView: View {
         .onAppear { reload() }
         .onChange(of: recordingsManager.recordings) { _, _ in reload() }
         .onChange(of: analysisStore.changeToken) { _, _ in reload() }
+        .onChange(of: transcriptionRunner.inFlight) { _, _ in reload() }
     }
 
     // MARK: - Header
@@ -74,16 +75,14 @@ struct BibliotekView: View {
         HStack(alignment: .top, spacing: AppSpacing.lg) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Bibliotek")
-                    .font(.system(size: 28, weight: .semibold))
+                    .font(AppFont.screenTitle)
                 Text(summaryLine)
-                    .font(.caption)
+                    .font(AppFont.caption)
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
                     .tracking(0.5)
             }
             Spacer()
-            searchField
-            sortMenu
         }
         .padding(.horizontal, AppSpacing.lg)
         .padding(.top, AppSpacing.lg)
@@ -95,66 +94,6 @@ struct BibliotekView: View {
         let transcribed = bundles.filter { $0.isTranscribed }.count
         let analysed = bundles.filter { $0.analyse.label == "Ferdig" }.count
         return "\(total) opptak · \(transcribed) transkribert · \(analysed) analysert"
-    }
-
-    private var searchField: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "magnifyingglass")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            TextField("Søk i alle opptak …", text: $searchText)
-                .textFieldStyle(.plain)
-                .frame(width: 220)
-            if !searchText.isEmpty {
-                Button {
-                    searchText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .keyboardShortcut(.cancelAction)
-            }
-        }
-        .padding(.horizontal, AppSpacing.sm)
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.medium)
-                .stroke(Color.gray.opacity(0.25), lineWidth: 1)
-        )
-    }
-
-    private var sortMenu: some View {
-        Menu {
-            ForEach(BibliotekSort.allCases) { option in
-                Button {
-                    sort = option
-                } label: {
-                    HStack {
-                        Text(option.label)
-                        if sort == option {
-                            Spacer()
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 4) {
-                Text("Sorter")
-                Image(systemName: "arrow.down")
-            }
-            .font(.system(size: 12, weight: .medium))
-            .padding(.horizontal, AppSpacing.md)
-            .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: AppRadius.medium)
-                    .stroke(Color.gray.opacity(0.25), lineWidth: 1)
-            )
-        }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
     }
 
     // MARK: - Filter chips
@@ -173,8 +112,6 @@ struct BibliotekView: View {
 
     private func filterChip(_ filter: BibliotekFilter) -> some View {
         let isActive = activeFilter == filter
-        let count = filter.matches(bundles.first ?? .placeholder) ? 0 : 0  // recomputed below
-        _ = count  // silence warning; real value via helper
         let n = bundles.filter { filter.matches($0) }.count
         let tone = isActive ? filter.tone : ChipTone.neutral
 
@@ -183,24 +120,25 @@ struct BibliotekView: View {
         } label: {
             HStack(spacing: 4) {
                 Circle()
-                    .fill(chipForegroundColor(tone))
+                    .fill(StatusChipView.foreground(tone))
                     .frame(width: 6, height: 6)
                 Text("\(filter.label) (\(n))")
-                    .font(.system(size: 12, weight: isActive ? .medium : .regular))
+                    .font(isActive ? AppFont.chipLabelActive : AppFont.chipLabel)
             }
             .padding(.horizontal, AppSpacing.md)
             .padding(.vertical, 6)
             .background(
-                Capsule()
-                    .fill(chipBackgroundColor(tone, active: isActive))
+                Capsule().fill(StatusChipView.background(tone, active: isActive))
             )
             .overlay(
-                Capsule()
-                    .stroke(chipForegroundColor(tone).opacity(isActive ? 0 : 0.3), lineWidth: 1)
+                Capsule().stroke(
+                    StatusChipView.foreground(tone).opacity(isActive ? 0 : 0.3),
+                    lineWidth: 1)
             )
-            .foregroundStyle(isActive ? chipForegroundColor(tone) : .primary)
+            .foregroundStyle(isActive ? StatusChipView.foreground(tone) : .primary)
         }
         .buttonStyle(.plain)
+        .hoverCursor()
     }
 
     // MARK: - Expiry banner (US-R18)
@@ -215,7 +153,7 @@ struct BibliotekView: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(AppColors.warning)
                 Text("\(urgent.count) opptak slettes om under \(RecordingStatusBundle.bannerThresholdDays) dager — og transkripsjonene er ikke avidentifisert ennå. Fullfør avid. og last opp til Teams før fristen.")
-                    .font(.system(size: 12))
+                    .font(AppFont.tableMetaCell)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer()
                 Button {
@@ -225,10 +163,11 @@ struct BibliotekView: View {
                         Text("Vis dem")
                         Image(systemName: "arrow.right")
                     }
-                    .font(.system(size: 12, weight: .medium))
+                    .font(AppFont.chipLabelActive)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .hoverCursor()
             }
             .padding(AppSpacing.md)
             .background(
@@ -254,8 +193,8 @@ struct BibliotekView: View {
                 columnHeader("VARIGH.", width: 70, alignment: .leading)
             }
             columnHeader("DATO", width: 130, alignment: .leading)
+            columnHeader("TRANSKRIBERING", width: 150, alignment: .leading)
             if !isCompact {
-                columnHeader("TRANSKR.", width: 120, alignment: .leading)
                 columnHeader("AVIDENT.", width: 110, alignment: .leading)
                 columnHeader("ANALYSE", width: 100, alignment: .leading)
                 columnHeader("TEAMS", width: 70, alignment: .leading)
@@ -270,13 +209,13 @@ struct BibliotekView: View {
         Group {
             if let width {
                 Text(text)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(AppFont.tableColumnHeader)
                     .foregroundStyle(.secondary)
                     .tracking(0.5)
                     .frame(width: width, alignment: alignment)
             } else {
                 Text(text)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(AppFont.tableColumnHeader)
                     .foregroundStyle(.secondary)
                     .tracking(0.5)
                     .frame(maxWidth: .infinity, alignment: alignment)
@@ -293,40 +232,46 @@ struct BibliotekView: View {
                 playPreview(bundle)
             } label: {
                 Image(systemName: playIcon(for: bundle))
-                    .font(.system(size: 18))
+                    .font(AppFont.iconRow)
                     .foregroundStyle(AppColors.accent)
                     .frame(width: 32, height: 32)
             }
             .buttonStyle(.plain)
             .help("Spill av")
+            .hoverCursor()
 
             Text(bundle.displayName)
-                .font(.system(size: 13))
+                .font(AppFont.tableCell)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             if !isCompact {
                 Text(formatDuration(bundle.durationSeconds))
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(AppFont.tableMonoCell)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .frame(width: 70, alignment: .leading)
             }
 
             Text(formatDate(bundle.createdAt))
-                .font(.system(size: 12))
+                .font(AppFont.tableMetaCell)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .frame(width: 130, alignment: .leading)
 
+            transcribeActionButton(for: bundle)
+                .frame(width: 150, alignment: .leading)
+
             if !isCompact {
-                chipView(bundle.transcript).frame(width: 120, alignment: .leading)
-                chipView(bundle.avident).frame(width: 110, alignment: .leading)
-                chipView(bundle.analyse).frame(width: 100, alignment: .leading)
-                chipView(bundle.teams).frame(width: 70, alignment: .leading)
+                StatusChipView(chip: bundle.avident).frame(width: 110, alignment: .leading)
+                StatusChipView(chip: bundle.analyse).frame(width: 100, alignment: .leading)
+                StatusChipView(chip: bundle.teams).frame(width: 70, alignment: .leading)
             }
-            chipView(bundle.slettes).frame(width: 70, alignment: .leading)
+            Text(bundle.slettes.label)
+                .font(AppFont.tableMetaCell)
+                .foregroundStyle(StatusChipView.foreground(bundle.slettes.tone))
+                .frame(width: 70, alignment: .leading)
         }
         .padding(.horizontal, AppSpacing.lg)
         .padding(.vertical, 6)
@@ -336,9 +281,15 @@ struct BibliotekView: View {
                 : Color.clear
         )
         .contentShape(Rectangle())
+        .onTapGesture(count: 2) {
+            guard bundle.isTranscribed else { return }
+            openWindow(id: "transcript-editor", value: bundle.id)
+        }
         .onTapGesture {
             selectedRecording = recordingsManager.recordings.first { $0.id == bundle.id }
         }
+        .hoverCursor()
+        .help(bundle.isTranscribed ? "Dobbeltklikk for å åpne i editor" : bundle.displayName)
         .contextMenu {
             Button(role: .destructive) {
                 if let item = recordingsManager.recordings.first(where: { $0.id == bundle.id }) {
@@ -353,44 +304,44 @@ struct BibliotekView: View {
         }
     }
 
-    // MARK: - Chip rendering
+    // MARK: - Transcription action button
 
-    private func chipView(_ chip: StatusChip) -> some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(chipForegroundColor(chip.tone))
-                .frame(width: 6, height: 6)
-            Text(chip.label)
-                .font(.system(size: 11))
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-        }
-        .padding(.horizontal, AppSpacing.sm)
-        .padding(.vertical, 3)
-        .background(
-            Capsule()
-                .fill(chipBackgroundColor(chip.tone, active: false))
-        )
-        .overlay(
-            Capsule()
-                .stroke(chipForegroundColor(chip.tone).opacity(0.4), lineWidth: 1)
-        )
-        .foregroundStyle(chipForegroundColor(chip.tone))
+    /// Every pill click selects the row first so the right-pane player
+    /// follows whatever the user just acted on (start a transcription,
+    /// open the editor, or cancel an in-flight run). Without this, a
+    /// click on the pill would start work on a recording that the user
+    /// can't see in the detail pane — confusing, and led to users
+    /// pressing Transkriber twice from two different surfaces.
+    private func selectRow(_ id: UUID) {
+        selectedRecording = recordingsManager.recordings.first { $0.id == id }
     }
 
-    private func chipForegroundColor(_ tone: ChipTone) -> Color {
-        switch tone {
-        case .neutral: return .secondary
-        case .info:    return AppColors.accent
-        case .success: return AppColors.success
-        case .warning: return AppColors.warning
-        case .danger:  return AppColors.destructive
-        }
-    }
+    @ViewBuilder
+    private func transcribeActionButton(for bundle: RecordingStatusBundle) -> some View {
+        let isRunning = transcriptionRunner.inFlight.contains(bundle.id)
+        let p = transcriptionRunner.progress[bundle.id] ?? 0
 
-    private func chipBackgroundColor(_ tone: ChipTone, active: Bool) -> Color {
-        let base = chipForegroundColor(tone)
-        return active ? base.opacity(0.15) : base.opacity(0.08)
+        if isRunning {
+            RunningPill(progress: p) {
+                selectRow(bundle.id)
+                transcriptionRunner.cancel(recordingId: bundle.id)
+            }
+            .help("Avbryt transkripsjon")
+        } else if bundle.isTranscribed {
+            Button("Åpne") {
+                selectRow(bundle.id)
+                openWindow(id: "transcript-editor", value: bundle.id)
+            }
+            .buttonStyle(PillButtonStyle(variant: .secondary))
+            .help("Åpne transkripsjon i editor")
+        } else {
+            Button("Transkriber") {
+                selectRow(bundle.id)
+                transcriptionRunner.start(recordingId: bundle.id)
+            }
+            .buttonStyle(PillButtonStyle(variant: .primary))
+            .help("Start transkripsjon")
+        }
     }
 
     // MARK: - Empty state
@@ -399,25 +350,20 @@ struct BibliotekView: View {
         VStack(spacing: AppSpacing.md) {
             Spacer()
             Image(systemName: "tray")
-                .font(.system(size: 40, weight: .light))
+                .font(AppFont.iconEmptyState)
                 .foregroundStyle(.secondary.opacity(0.6))
-            if !searchText.isEmpty {
-                Text("Ingen treff for «\(searchText)»")
-                    .font(.system(size: 14, weight: .medium))
-                Button("Tøm søk") { searchText = "" }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-            } else if activeFilter != .alle {
+            if activeFilter != .alle {
                 Text("Ingen opptak i dette filteret")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(AppFont.bodyMedium)
                 Button("Vis alle") { activeFilter = .alle }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                    .hoverCursor()
             } else {
                 Text("Ingen opptak ennå")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(AppFont.bodyMedium)
                 Text("Bruk «Ta opp lyd» for å starte ditt første opptak.")
-                    .font(.caption)
+                    .font(AppFont.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -428,15 +374,9 @@ struct BibliotekView: View {
     // MARK: - Derived data
 
     private var filteredBundles: [RecordingStatusBundle] {
-        let filtered = bundles.filter { activeFilter.matches($0) }
-        let searched: [RecordingStatusBundle]
-        if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            searched = filtered
-        } else {
-            let needle = searchText.lowercased()
-            searched = filtered.filter { $0.displayName.lowercased().contains(needle) }
-        }
-        return sort.apply(to: searched)
+        bundles
+            .filter { activeFilter.matches($0) }
+            .sorted { $0.createdAt > $1.createdAt }
     }
 
     // MARK: - Reload

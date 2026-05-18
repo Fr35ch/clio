@@ -48,13 +48,22 @@ struct AppState: Codable, Equatable {
     /// principle be re-linked).
     var avidentExceptions: [String]
 
+    /// One-shot flag: when `false`, the next launch will seed
+    /// `avidentExceptions` with the curated defaults from
+    /// `DefaultAvidentExceptions.curated` (merged with anything the
+    /// researcher already added). When `true`, the seed has already run
+    /// and subsequent launches leave the list alone — so removing a
+    /// default entry is persistent, not silently re-added.
+    var hasSeededDefaultExceptions: Bool
+
     init(
         schemaVersion: Int = AppState.currentSchemaVersion,
         migrationCompletedAt: Date? = nil,
         migrationRecordingCount: Int? = nil,
         legacyMetadataCleanedAt: Date? = nil,
         currentProject: ProjectConfig? = nil,
-        avidentExceptions: [String] = []
+        avidentExceptions: [String] = [],
+        hasSeededDefaultExceptions: Bool = false
     ) {
         self.schemaVersion = schemaVersion
         self.migrationCompletedAt = migrationCompletedAt
@@ -62,6 +71,7 @@ struct AppState: Codable, Equatable {
         self.legacyMetadataCleanedAt = legacyMetadataCleanedAt
         self.currentProject = currentProject
         self.avidentExceptions = avidentExceptions
+        self.hasSeededDefaultExceptions = hasSeededDefaultExceptions
     }
 
     // MARK: - Forward-compat Codable
@@ -73,6 +83,7 @@ struct AppState: Codable, Equatable {
         case legacyMetadataCleanedAt
         case currentProject
         case avidentExceptions
+        case hasSeededDefaultExceptions
     }
 
     init(from decoder: Decoder) throws {
@@ -83,6 +94,8 @@ struct AppState: Codable, Equatable {
         legacyMetadataCleanedAt = try c.decodeIfPresent(Date.self, forKey: .legacyMetadataCleanedAt)
         currentProject = try c.decodeIfPresent(ProjectConfig.self, forKey: .currentProject)
         avidentExceptions = try c.decodeIfPresent([String].self, forKey: .avidentExceptions) ?? []
+        hasSeededDefaultExceptions = try c.decodeIfPresent(
+            Bool.self, forKey: .hasSeededDefaultExceptions) ?? false
     }
 }
 
@@ -108,13 +121,35 @@ enum AppStateStore {
     /// Loads current state. Returns a fresh empty `AppState` if the file is
     /// missing or unreadable — callers should not treat a missing state file
     /// as an error.
+    ///
+    /// Side-effect: every load merges the curated `DefaultAvidentExceptions`
+    /// into the persisted list. The merge is idempotent (case-insensitive
+    /// dedupe) so user-added entries are preserved. A previously-removed
+    /// default will reappear on next launch — by design, since the
+    /// observed failure mode was the opposite (a corrupted empty list with
+    /// the one-shot flag stuck at `true`, leaving recurring false
+    /// positives like "ha"). If a researcher genuinely needs a default
+    /// gone, the correct lever is to add a more specific span to the
+    /// exception list rather than removing the broad default.
+    ///
+    /// `hasSeededDefaultExceptions` is kept on the model for back-compat
+    /// with already-persisted JSON; the flag is set on every load but no
+    /// longer gates the merge.
     static func load() -> AppState {
         let url = StorageLayout.appStateURL
-        guard
-            let data = try? Data(contentsOf: url),
-            let state = try? decoder.decode(AppState.self, from: data)
-        else {
-            return AppState()
+        var state: AppState
+        if let data = try? Data(contentsOf: url),
+           let decoded = try? decoder.decode(AppState.self, from: data) {
+            state = decoded
+        } else {
+            state = AppState()
+        }
+
+        let merged = DefaultAvidentExceptions.mergedWith(state.avidentExceptions)
+        if merged != state.avidentExceptions || !state.hasSeededDefaultExceptions {
+            state.avidentExceptions = merged
+            state.hasSeededDefaultExceptions = true
+            try? save(state)
         }
         return state
     }

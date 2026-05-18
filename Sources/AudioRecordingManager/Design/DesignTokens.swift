@@ -25,11 +25,21 @@ struct AppColors {
     // Brand accent
     static let accent = Color.blue
     static let accentSubtle = Color.blue.opacity(0.2)
+    static let accentTint = Color.blue.opacity(0.08)
+    static let accentFill = Color.blue.opacity(0.35)
 
     // Status
     static let destructive = Color.red
     static let success = Color.green
     static let warning = Color.orange
+
+    // Neutral surfaces — for outlined pills, chip backgrounds, dividers.
+    // Use these instead of `Color.gray.opacity(...)` so opacities stay
+    // consistent across the app.
+    static let neutralSurface = Color.gray.opacity(0.08)
+    static let neutralSurfaceStrong = Color.gray.opacity(0.12)
+    static let neutralBorder = Color.gray.opacity(0.25)
+    static let neutralBorderStrong = Color.gray.opacity(0.5)
 }
 
 // MARK: - AppSpacing
@@ -57,4 +67,19 @@ struct AppRadius {
     static let medium: CGFloat = 8
     static let large: CGFloat = 10
     static let xlarge: CGFloat = 12
+}
+
+// MARK: - AppSize
+
+/// Canonical sizes for elements that recur across the app. Add here
+/// rather than hard-coding magic numbers at the callsite.
+struct AppSize {
+    /// Standard pill-button frame. Used for action pills in the
+    /// Bibliotek table and anywhere else a compact pill is needed.
+    static let pillWidth: CGFloat = 130
+    static let pillHeight: CGFloat = 26
+
+    /// Compact nav-panel icon button (NavPanel.navItem, footerIconButton).
+    static let navItemWidth: CGFloat = 44
+    static let navItemHeight: CGFloat = 36
 }

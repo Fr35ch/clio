@@ -15,11 +15,8 @@ struct AnalysisDetailColumn: View {
             if let id = selectedAnalysisId,
                let analysis = try? AnalysisStore.shared.load(id: id)
             {
-                AnalysisResultDetailView(
-                    analysis: analysis,
-                    selectedAnalysisId: $selectedAnalysisId
-                )
-                .id(analysis.id)
+                AnalysisResultDetailView(analysis: analysis)
+                    .id(analysis.id)
             } else {
                 AnalysisComposerView(selectedAnalysisId: $selectedAnalysisId)
             }

@@ -16,13 +16,22 @@ let package = Package(
         ),
     ],
     dependencies: [
-        // Add dependencies here if needed
+        // FluidAudio: Apache-2.0 Swift SDK for on-device speaker
+        // diarization (CoreML / Apple Neural Engine). Replaces the
+        // pyannote.audio Python subprocess + HuggingFace-token UX.
+        // See `docs/no_anonymizer_v2_implementasjon.md` for context —
+        // and `FluidDiarizationService.swift` for the Swift wrapper.
+        .package(
+            url: "https://github.com/FluidInference/FluidAudio.git",
+            from: "0.12.4"),
     ],
     targets: [
         // Executable app target (combines all sources)
         .executableTarget(
             name: "AudioRecordingManager",
-            dependencies: [],
+            dependencies: [
+                .product(name: "FluidAudio", package: "FluidAudio"),
+            ],
             path: "Sources/AudioRecordingManager"
         ),
     ]

@@ -2,7 +2,7 @@
 
 **Status:** active iteration log
 **Owners:** product owner + Claude
-**Last updated:** 2026-05-11
+**Last updated:** 2026-05-13
 
 This is a working document, not a spec. It's where prompts get tested, edited, and refined against real interview material before the changes are folded back into the bundled templates in `PromptTemplateLibrary.swift`.
 
@@ -32,19 +32,20 @@ The point of this doc is to keep the iteration *fast* — try things, note what 
 > Pick one. Switching focus is fine; just update this section so the next session knows what's in flight.
 
 - **Template being iterated:** `single-interview-themes-v1`
-- **Started iterating:** 2026-05-11
-- **Goal of this iteration:** validate v0 against real interviews; flip to v1 when output quality is acceptable, or change the prompt if not.
-- **Acceptance criteria for v1 ship** (from `PROMPT_RESEARCH.md` §7):
-  - 100% quote fidelity (verbatim, not paraphrased)
-  - ≥ 1 latent reading per theme
-  - No redundant themes
-  - Fluent Bokmål throughout
+- **Started iterating:** 2026-05-13 (reset after v1 ship)
+- **Goal of this iteration:** validate v1 against three real NAV interviews per `PROMPT_RESEARCH.md` §7. Promote to "stable" if all four rating axes pass; iterate to v2 if not.
+- **Acceptance criteria for stable status** (from `PROMPT_RESEARCH.md` §7.2):
+  - **Quote verifiability**: ≥ 95% of cited quotes pass substring-against-transcript-at-cited-timestamp check.
+  - **Latent vs. semantic balance**: ≥ 50% of themes carry a `(tolkning)` line.
+  - **Theme redundancy**: no two themes share > 50% of their underlying quotes.
+  - **Norwegian fluency**: no English content outside proper names from source material.
+- **Pre-validation sanity tests to run first** (see "Pre-validation tests" below): false-researchContext probe, low-content transcript probe. These run before the three-interview validation set.
 
 ---
 
 ## Current draft
 
-> The prompt as it would land in `PromptTemplateLibrary.swift`. Start by pasting in the current bundled body, then edit in place. Add a `## Diff from bundled v0` section below when you've changed something nontrivial.
+> The prompt as it would land in `PromptTemplateLibrary.swift`. Start by pasting in the current bundled body, then edit in place. Add a `## Diff from bundled v1` section below when you've changed something nontrivial.
 
 ```text
 Du er en erfaren NAV-brukerforsker som gjennomfører refleksiv tematisk
@@ -54,69 +55,135 @@ Forskningskontekst:
 {{researchContext}}
 
 Kildemateriale:
-{{transcript}}
+{{transcripts}}
+
+Notat om format på kildematerialet:
+- Hver replikk har et tidsstempel [tt:mm:ss] eller [mm:ss] som første
+  element.
+- Hvis transkripsjonen inneholder SPEAKER_XX-labels (f.eks. SPEAKER_00,
+  SPEAKER_01), kommer disse av automatisk talerseparering. Bruk dem til
+  å skille intervjuer fra informant i sitatseksjonen. Hvis SPEAKER_XX-
+  labels mangler, omtal alle utsagn nøytralt uten å gjette rolle.
 
 Analyseinstrukser:
 
-Gjennomfør analysen mentalt i seks faser (Braun & Clarke) før du svarer.
-Ikke skriv ut fase 1–3; bare resultatet av fase 4–5.
+Du har thinking-modus aktivert. Bruk thinking-fasen til å gjennomføre
+analysen og selvkontrollen før du formaterer det endelige svaret.
 
-  Fase 1. Bli kjent med materialet. Les hele transkripsjonen.
-  Fase 2. Identifiser nøkkelord og uttrykk som bærer betydning for
-          forskningskonteksten over.
-  Fase 3. Generer åpne koder. Vær abduktiv — la teksten styre, men hold
-          forskningsspørsmålet i bakhodet.
-  Fase 4. Grupper koder til 3–6 hovedtemaer. Hvert tema må være distinkt;
-          slå sammen overlappende temaer.
-  Fase 5. For hvert tema, identifiser både semantisk innhold (det som blir
-          sagt) og latent innhold (det som blir antydet eller tatt for gitt).
-          Latente tolkninger må markeres «(tolkning)».
+I thinking-fasen:
+  1. Les hele transkripsjonen.
+  2. Identifiser nøkkelord og uttrykk som bærer betydning for
+     forskningskonteksten over.
+  3. Generér åpne koder abduktivt — la teksten styre, men hold
+     forskningsspørsmålet i bakhodet.
+  4. Grupper koder til distinkte hovedtemaer. Slå sammen overlappende
+     temaer.
+  5. For hvert tema, skill mellom semantisk innhold (det som blir sagt)
+     og latent innhold (det som blir antydet eller tatt for gitt).
+     Latente tolkninger må markeres «(tolkning)» i output.
+  6. Gjennomfør selvkontrollen nedenfor før du formaterer svaret.
 
-Når du svarer, lever resultatet med eksakt disse seksjonene og overskriftene:
+Produser deretter resultatet med eksakt disse seksjonene og overskriftene:
 
-  ## Hovedtemaer (key_themes)
-  Maks 6. Hvert tema som et kulepunkt. Tittel på temaet i kursiv, fulgt
-  av én setning som beskriver tema'et. Hvis det fins en latent dimensjon,
-  legg den til som en setning prefikset «(tolkning)».
+  ## Sammendrag
+  3–5 setninger. Beskriver intervjuets overordnede tema og kontekst.
+  Nevner informantens situasjon eller rolle hvis det fremgår av
+  transkripsjonen. Ingen tolkning her — kun oppsummering. Skal være
+  orienterende for en leser som ikke har lest transkripsjonen.
 
-  ## Nøkkelsitater (key_quotes)
-  Maks 8 sitater. Hvert sitat eksakt slik det står i transkripsjonen
-  (ikke parafraser, ikke korriger grammatikk, behold pauser). Etter
-  sitatet, oppgi avsnittsindeks i parentes: «(avsnitt N)». Hvis sitatet
-  illustrerer et bestemt tema, oppgi tema-tittelen først.
+  ## Hovedtemaer
+  3–6 temaer. Hvis du finner under 3, er det fordi materialet er kort
+  eller du har slått sammen for hardt — vurder å splitte. Hvert tema
+  som ett kulepunkt:
+    - Tittel i kursiv (3–6 ord).
+    - Én setning som beskriver temaet.
+    - Hvis det finnes en latent dimensjon, én setning prefikset
+      «(tolkning)».
 
-  ## Identifiserte behov (identified_needs)
-  Maks 6. Hvert behov fra brukerens perspektiv, formulert som «Som
-  bruker trenger jeg ...». Behov må være forankret i materialet — ikke
-  speculer.
+  ## Nøkkelsitater
+  5–8 sitater. Eksakt slik de står i transkripsjonen — ikke parafraser,
+  ikke korriger grammatikk, behold pauser og repetisjoner. Format per
+  sitat:
+    - Uten taleridentifikasjon:
+      [tidsstempel] «sitat» — kort kontekst i én setning.
+    - Med taleridentifikasjon:
+      [tidsstempel] SPEAKER_XX: «sitat» — kort kontekst i én setning.
+  Hvis sitatet illustrerer et bestemt tema, oppgi tema-tittelen først.
 
-  ## Muligheter (opportunities)
-  Maks 4. Konkrete muligheter for NAV å handle på. Hver mulighet som et
-  kulepunkt med én setning. Hvis muligheten er spekulativ, marker med
-  «(tolkning)».
+  ## Identifiserte behov
+  3–6 behov. Hvert behov fra brukerens perspektiv, formulert som «Som
+  bruker trenger jeg ...». Hvert behov må være forankret i et konkret
+  utsagn eller en hendelse i transkripsjonen — ikke spekulér.
+
+  ## Muligheter
+  2–4 muligheter. Konkrete handlingsrom for NAV. Hver mulighet som ett
+  kulepunkt med én setning. Hvis muligheten er en plausibel inferanse
+  uten direkte belegg, marker med «(tolkning)».
 
 Krav til output:
-- Bokmål.
-- Eksakte sitater. Du må ikke parafrasere eller komprimere.
-- Maks 6 temaer, 8 sitater, 6 behov, 4 muligheter. Slå sammen
-  overlappende funn fremfor å øke antallet.
+- Bokmål gjennomgående. Engelske ord i analysen er ikke akseptable,
+  med unntak av navn og egennavn som forekommer i materialet.
+- Eksakte sitater med tidsstempel. Tidsstempelet må finnes i
+  transkripsjonen.
 - Format: ren markdown med eksakt seksjonsoverskriftene ovenfor.
+- Ingen forklarende tekst utenfor strukturen.
 
-Selvkontroll før du svarer:
-- Står alle sitater nøyaktig slik de finnes i kildematerialet? Hvis ikke,
-  fjern dem.
-- Er hvert tema forankret i minst ett sitat? Hvis ikke, fjern det.
-- Har du blandet semantiske observasjoner og latente tolkninger?
-  Marker latente med «(tolkning)».
-- Er output på bokmål gjennomgående? Engelske ord i analysen er ikke
-  akseptable, med unntak av seksjonsoverskriftene.
+Selvkontroll — gjennomfør i thinking-fasen før du formaterer svaret:
+1. Står hvert sitat eksakt slik det finnes i kildematerialet? Hvis du
+   er usikker på ett tegn, fjern sitatet.
+2. Har hvert tidsstempel et reelt forankringspunkt i transkripsjonen?
+3. Er hvert tema forankret i minst ett konkret sitat? Hvis ikke, fjern
+   eller flytt til muligheter med «(tolkning)»-markering.
+4. Har du blandet semantiske observasjoner med latente tolkninger?
+   Marker latente med «(tolkning)».
+5. Hvis transkripsjonen har SPEAKER_XX-labels, har du brukt dem riktig
+   i sitatseksjonen? Hvis ikke til stede, har du unngått å gjette
+   rolle?
+6. Er all output på bokmål?
 ```
 
-### Diff from bundled v0
+### Diff from bundled v1
 
 > Note here when this draft has diverged from what `PromptTemplateLibrary.swift` ships. Use brief bullet points; don't paste full before/after blocks — the git diff is the source of truth.
 
-- *(no diff yet — this is verbatim v0)*
+- *(no diff yet — this is verbatim v1)*
+
+---
+
+## Pre-validation tests
+
+> Run these *before* the three-interview validation set. They probe specific failure modes that real-material validation may not surface, because real material is by construction grounded and well-formed.
+
+### Test 1 — False-researchContext probe
+
+**Purpose:** verify that the model is grounded in the transcript content rather than being steered by the framing in `{{researchContext}}`.
+
+**Method:**
+1. Pick one real interview transcript.
+2. Run the analysis once with a truthful `researchContext`. Capture output.
+3. Run the analysis again on the same transcript with a deliberately *false but plausible* `researchContext` (e.g. claim the study is about a completely different service area than what the transcript actually discusses).
+4. Compare themes, quotes, and identified needs between runs.
+
+**Acceptable behaviour:** the themes and quotes are substantively the same; the model anchors to the transcript content, not the framing. Slight shifts in emphasis (e.g. which themes are framed as primary) are acceptable.
+
+**Failure signal:** the model invents themes that match the false context but don't appear in the transcript. If this happens, strengthen the "Basér ALL analyse utelukkende på innholdet" instruction in the prompt and add a counter-example to the analyseinstrukser section.
+
+**Status:** *not yet run*
+
+### Test 2 — Low-content transcript probe
+
+**Purpose:** verify that the model under-produces rather than invents when material is thin.
+
+**Method:**
+1. Pick or construct a deliberately short transcript with only 2–3 genuinely distinct themes (5–10 minutes of material on a narrow topic).
+2. Run the analysis.
+3. Check whether the model produces 5–6 themes (filling the range) or 2–3 themes (matching the material).
+
+**Acceptable behaviour:** the model produces 2–3 themes and the output is shorter than for a rich transcript. The range guidance in the prompt ("3–6, vurder å splitte hvis under 3") should bias toward fewer, more honest themes — not toward filling quota.
+
+**Failure signal:** the model produces 5–6 themes by inventing or by splitting one real theme into artificial sub-themes. If this happens, add explicit "fewer themes is honest, padded themes is failure" guidance.
+
+**Status:** *not yet run*
 
 ---
 
@@ -124,19 +191,18 @@ Selvkontroll før du svarer:
 
 > One row per analysis you've actually executed in the app. Keep it terse. Use the analysisId from the result detail view's header if you need to find the on-disk manifest later (`<dataRoot>/analyses/<id>/`).
 
-| Date | Template | Version | Model | Interview (description, not name) | Top-line observation | Quote fidelity | Acceptable? |
-|------|----------|---------|-------|-----------------------------------|----------------------|----------------|-------------|
-| 2026-05-11 | single-interview-themes | v0 | qwen3:8b | First test run after build (placeholder) | _fill in_ | _verbatim ✔ / paraphrased ✘_ | yes / no / partial |
+| Date | Template | Version | Model | Interview (description, not name) | Top-line observation | Quote verifiability | Acceptable? |
+|------|----------|---------|-------|-----------------------------------|----------------------|----------------------|-------------|
 |  |  |  |  |  |  |  |  |
 
-### Quote-fidelity check protocol
+### Quote-verifiability check protocol
 
-For each run logged above, spot-check at least 2 quotes:
+For each run logged above, spot-check at least 2 quotes manually in addition to the automated verification pass:
 
-1. Pick a quote that "looks too good" — neatly framed, suspiciously articulate. Search for it verbatim in the transcript. Does it match exactly?
-2. Pick a quote that includes a hesitation, repetition, or interruption. Did the LLM preserve the rough edges or smooth them out?
+1. Pick a quote that "looks too good" — neatly framed, suspiciously articulate. Search for it verbatim in the transcript at the cited timestamp. Does it match exactly? Does the timestamp resolve to that moment in the audio if you scrub?
+2. Pick a quote that includes a hesitation, repetition, or transcription marker like `(sukker)`. Did the LLM preserve the rough edges or smooth them out?
 
-A single paraphrased quote means the prompt is failing its core constraint. Note it in the issues list with the exact mismatch.
+A single paraphrased quote that *passed* the automated verification pass means the substring check is too lenient — that's a finding about the verification pass, not the prompt. Note it in the issues list.
 
 ---
 
@@ -163,11 +229,16 @@ A single paraphrased quote means the prompt is failing its core constraint. Note
 
 > Things you changed in the draft above and the reason. Append-only. Don't delete old decisions — supersede them with a newer entry if you reverse course.
 
-### 2026-05-11 — baseline established
+### 2026-05-13 — v1 baseline established
 
-- Draft seeded from `PromptTemplateLibrary.swift` `single-interview-themes-v1` body (currently version 0).
-- Acceptance criteria pulled from `PROMPT_RESEARCH.md` §7.
-- No prompt changes yet — first iteration loop is observe-only.
+- Draft re-seeded from `PromptTemplateLibrary.swift` `single-interview-themes` v1 body.
+- v1 changes (vs. v0) summarized in the template's `single-interview-themes.md` revision log: timestamps replace paragraph indices; SPEAKER_XX handling added; Sammendrag prelude reintroduced; self-check folded into thinking-phase; range caps replace `Maks N`.
+- Acceptance criteria reset to match `PROMPT_RESEARCH.md` §7.2 (verification-pass survival rather than 100% verbatim).
+- Pre-validation tests (false-researchContext, low-content) added as a gate before the three-interview validation set.
+
+### 2026-05-11 — v0 baseline (superseded)
+
+- Initial draft. Iteration loop was observe-only; no prompt changes were made before v1 supersession.
 
 ---
 
@@ -175,23 +246,23 @@ A single paraphrased quote means the prompt is failing its core constraint. Note
 
 > Things you want to test but haven't yet. Pull from this list as you have time. When you do test one, move it to the run log + decisions.
 
-- Add an explicit "if uncertain, say so" instruction in the self-check section. The literature (Vikan et al. 2026) notes that LLMs over-claim confidence; an explicit out might surface uncertainty markers naturally.
-- Test with `llama3.2:latest` instead of `qwen3:8b` to see how Norwegian quality compares at the same prompt. PROMPT_RESEARCH.md predicts qwen3 wins for multilingual but worth measuring.
-- Test what happens when you set `{{researchContext}}` to something *false but plausible* — does the model still reason from the data, or does it bend to the false context?
-- Try removing the six-phase Braun & Clarke walkthrough in section 4 and see if output quality changes. Hypothesis: small models benefit from the scaffold; large models don't need it. Worth confirming on qwen3:8b specifically.
+- Test with `llama3.2:latest` instead of `qwen3:8b` to see how Norwegian quality compares at the same prompt. PROMPT_RESEARCH.md predicts qwen3 wins for multilingual but worth measuring once.
+- Try removing the six-step Braun & Clarke scaffold in the thinking-phase guidance and see if output quality changes. Hypothesis: small models benefit from the scaffold; large models don't need it. Worth confirming on qwen3:8b specifically.
 - Add a constraint: "every theme should be able to survive the question 'so what?'" — designed to push the model away from descriptive themes into interpretive ones.
+- Probe whether the Sammendrag prelude leaks into the rest of the analysis (i.e. does the model fall into "summary tone" for themes after writing the Sammendrag?). If so, consider generating the Sammendrag as a separate Ollama call after the structured sections are produced.
+- Test with a transcript where the interviewer is unusually leading (asks suggestive questions). Does the model attribute the interviewer's framings to the informant?
 
 ---
 
 ## Shipping a new version
 
-When the draft is ready to become v1 (or vN):
+When the draft is ready to become v2 (or vN):
 
-1. Update `PromptTemplateLibrary.swift`: copy the new prompt body into the relevant static, bump `version: 0` → `version: 1` (or next integer).
+1. Update `PromptTemplateLibrary.swift`: copy the new prompt body into the relevant static, bump `version: 1` → `version: 2` (or next integer).
 2. Update the template's markdown spec under `templates/<id>.md`: append a `## Revision log` entry summarizing what changed and why.
 3. Reset this doc:
    - Move all "Decisions" entries to the spec's revision log (or summarize them there) — git history retains the detail.
-   - Clear "Current draft" and "Diff from bundled v0" (re-seed from the new bundled body).
+   - Clear "Current draft" and "Diff from bundled" (re-seed from the new bundled body).
    - Clear "Run log" (keep the latest one or two as a baseline reference if useful).
    - Reset "Active focus" to whatever's next, or note that this template is now stable.
 4. Re-build and re-run at least one analysis end-to-end against a fresh interview to confirm the new version works.

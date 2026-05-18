@@ -12,8 +12,6 @@ struct TranscriptionSettingsView: View {
     @AppStorage("transcription.defaultSpeakers") private var defaultSpeakers = 2
     @AppStorage("transcription.verbatim")        private var verbatim = false
     @AppStorage("transcription.language")        private var language = "no"
-    @AppStorage("diarization.hfToken")           private var hfToken = ""
-
     // Transient UI state
     @State private var installState: ActionState = .idle
     @State private var updateState: ActionState = .idle
@@ -36,8 +34,6 @@ struct TranscriptionSettingsView: View {
                 modelSection
                 Divider()
                 defaultsSection
-                Divider()
-                hfTokenSection
             }
             .padding(24)
         }
@@ -180,9 +176,13 @@ struct TranscriptionSettingsView: View {
 
                     Divider()
 
-                    // Number of speakers
+                    // Number of speakers — minimum is 2 because the
+                    // diarization model would otherwise be told
+                    // "exactly 1 cluster" and collapse all turns into
+                    // a single speaker. For genuine monologue
+                    // recordings, just don't run diarization.
                     LabeledContent("Antall talere") {
-                        Stepper(value: $defaultSpeakers, in: 1...10) {
+                        Stepper(value: $defaultSpeakers, in: 2...10) {
                             Text("\(defaultSpeakers)")
                                 .monospacedDigit()
                                 .frame(width: 24, alignment: .trailing)
@@ -220,34 +220,6 @@ struct TranscriptionSettingsView: View {
                         }
                         .labelsHidden()
                         .frame(width: 120)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(4)
-            }
-        }
-    }
-
-    // MARK: - HuggingFace token section
-
-    private var hfTokenSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionHeader("HuggingFace-token", systemImage: "key")
-
-            GroupBox {
-                VStack(alignment: .leading, spacing: 10) {
-                    SecureField("hf_...", text: $hfToken)
-                        .textContentType(.password)
-
-                    Text("Kreves for talerutskilling (pyannote). Hent token på huggingface.co/settings/tokens — velg 'Read'-tilgang.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    if !hfToken.isEmpty {
-                        Label("Token lagret", systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                            .font(.system(size: 11))
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

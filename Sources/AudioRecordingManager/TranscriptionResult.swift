@@ -16,7 +16,10 @@ struct TranscriptionSegment: Codable, Identifiable {
     let start: Double
     let end: Double
     var text: String
-    let speaker: String
+    /// Set initially by NB-Whisper (placeholder "SPEAKER_0") then updated
+    /// by the diarization pass that runs after transcription.
+    /// `SpeakerAlignment.attachSpeakers(to:using:)` overwrites it.
+    var speaker: String
     let confidence: Double
     let words: [TranscriptionWord]
 }
@@ -29,7 +32,9 @@ struct TranscriptionResultMetadata: Codable {
     let modelVariant: String
     let computeType: String
     let device: String
-    let diarizationRun: Bool?
+    /// Set to `true` after the diarization pass runs. Persisted in JSON
+    /// so we can detect "transcribed but not yet diarised" recordings.
+    var diarizationRun: Bool?
 }
 
 // MARK: - Top-level result (mirrors no-transcribe JSON contract v1.0)
@@ -42,7 +47,11 @@ struct TranscriptionResult: Codable {
     let model: String
     let language: String
     let durationSeconds: Double
-    let numSpeakers: Int
+    /// Updated by the diarization pass once it completes — count of
+    /// unique speakers the model identified.
+    var numSpeakers: Int
     var segments: [TranscriptionSegment]
-    let metadata: TranscriptionResultMetadata
+    /// `var` so the diarization pass can flip `diarizationRun = true`
+    /// without rebuilding the whole struct.
+    var metadata: TranscriptionResultMetadata
 }

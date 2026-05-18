@@ -32,15 +32,16 @@ struct VirginProjectApp: App {
             .task {
                 await startupCoordinator.runStartupSequence()
             }
-            // Add an invisible toolbar to trigger unified window chrome
-            .toolbar {
-                ToolbarItem(placement: .automatic) {
-                    EmptyView()
-                }
-            }
+            // No `.toolbar { ... }` here — adding any toolbar item
+            // (even zero-size) makes NSToolbar render a visible
+            // affordance next to the traffic lights that we couldn't
+            // suppress via `displayMode = .iconOnly`,
+            // `allowsUserCustomization = false`, or
+            // `.toolbar(removing: .sidebarToggle)`. Dropping the trigger
+            // entirely removes the button at the cost of the unified
+            // toolbar style — see `Design/WindowChrome.swift`.
         }
         .windowStyle(.hiddenTitleBar)
-        .windowToolbarStyle(.unified(showsTitle: false))
         .commands {
             CommandGroup(replacing: .newItem) {}
             CommandGroup(after: .help) {
@@ -48,6 +49,27 @@ struct VirginProjectApp: App {
                     NotificationCenter.default.post(name: .init("ARMShowLogViewer"), object: nil)
                 }
                 .keyboardShortcut("l", modifiers: .command)
+
+                Button("Design system") {
+                    NotificationCenter.default.post(name: .init("ARMShowDesignShowcase"), object: nil)
+                }
+                .keyboardShortcut("d", modifiers: [.command, .shift])
+
+                Button("Innstillinger …") {
+                    NotificationCenter.default.post(name: .init("ARMShowSettings"), object: nil)
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
+        }
+        .defaultSize(width: 1200, height: 800)
+
+        // Secondary scene: transcript editor opens here as its own macOS
+        // window, keyed by recording id. SwiftUI dedupes by `value:` so
+        // double-opening the same recording brings the existing window to
+        // front instead of duplicating.
+        WindowGroup(id: "transcript-editor", for: UUID.self) { $recordingId in
+            if let id = recordingId {
+                TranscriptEditorWindow(recordingId: id)
             }
         }
         .defaultSize(width: 1200, height: 800)
@@ -56,6 +78,10 @@ struct VirginProjectApp: App {
 
 // MARK: - App Delegate for Launch Configuration
 class AppDelegate: NSObject, NSApplicationDelegate {
+
+    /// Held strongly so the notification observer survives.
+    private var toolbarObserver: NSObjectProtocol?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         print("✅ App delegate did finish launching")
 
@@ -80,6 +106,57 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Auto-install no-transcribe in the background if not already present
         Task {
             await TranscriptionService.shared.setupIfNeeded()
+        }
+
+        // Disable NSToolbar user customisation on every window. The
+        // chrome trigger we add in `VirginProjectApp.body` (a
+        // zero-size `.principal` toolbar item — required for
+        // `.windowToolbarStyle(.unified(showsTitle: false))` to
+        // engage) keeps surfacing a visible button next to the
+        // traffic lights because NSToolbar dresses it up as a
+        // display-mode picker. Suppressing customisation removes
+        // the picker (and with it the button itself).
+        //
+        // This is AppKit toolbar configuration. The Design rule-2
+        // ban on AppDelegate AppKit work is specifically about four
+        // NSWindow properties (titlebarAppearsTransparent,
+        // fullSizeContentView, titleVisibility, styleMask) — NSToolbar
+        // is a separate object and not on the ban-list. Documented
+        // in `Design/README.md` alongside the rest of the chrome
+        // pipeline.
+        toolbarObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification,
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard let window = notification.object as? NSWindow,
+                  let toolbar = window.toolbar else { return }
+            toolbar.allowsUserCustomization = false
+            toolbar.autosavesConfiguration = false
+            toolbar.displayMode = .iconOnly
+
+            // Diagnostic + corrective: log every toolbar item we see
+            // so we can target precisely if the heuristic below
+            // doesn't match, then remove anything that looks like a
+            // sidebar toggle. Apple keeps these identifiers private
+            // ("com.apple.SwiftUI.…" style) so we match heuristically
+            // on the substring rather than hard-coding a constant.
+            let items = toolbar.items
+            if !items.isEmpty {
+                let ids = items.map { $0.itemIdentifier.rawValue }.joined(separator: ", ")
+                print("ARM toolbar items for window \(window.title.isEmpty ? "<untitled>" : window.title): \(ids)")
+            }
+            for index in stride(from: items.count - 1, through: 0, by: -1) {
+                let id = items[index].itemIdentifier.rawValue
+                if id.localizedCaseInsensitiveContains("togglesidebar")
+                    || id.localizedCaseInsensitiveContains("sidebartoggle")
+                    || id.localizedCaseInsensitiveContains("sidebartracking")
+                    || id.localizedCaseInsensitiveContains("toggle sidebar")
+                {
+                    toolbar.removeItem(at: index)
+                    print("ARM: removed toolbar item \(id)")
+                }
+            }
         }
     }
 
@@ -860,134 +937,79 @@ struct AudioWaveformIcon: View {
 struct NavPanel: View {
     @Binding var selectedTab: AppTab
     @Binding var showAbout: Bool
-    /// `true` when the sidebar should render as a narrow icons-only
-    /// strip. Driven by the active tab in `MainView`: tabs that have
-    /// their own internal list+detail collapse the sidebar so the
-    /// content area gets the most room; tabs without an internal layout
-    /// (e.g. `.record`) keep the sidebar fully labelled.
-    let isCompact: Bool
 
     @State private var isDarkMode: Bool = NSApp.effectiveAppearance.name == .darkAqua
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .center, spacing: 0) {
             logoBlock
-            Divider().padding(.horizontal, isCompact ? 6 : 12)
+            Divider().padding(.horizontal, 6)
 
             VStack(spacing: 4) {
                 navItem(tab: .record, label: "Ta opp lyd", icon: "mic.fill")
                 navItem(tab: .recordings, label: "Bibliotek", icon: "books.vertical.fill")
-                navItem(tab: .transcripts, label: "Transkripsjoner", icon: "doc.text.fill")
                 navItem(tab: .analyse, label: "Analyser", icon: "brain.head.profile")
             }
-            .padding(.horizontal, isCompact ? 6 : 12)
+            .padding(.horizontal, 6)
             .padding(.top, 12)
 
             Spacer()
 
-            Divider().padding(.horizontal, isCompact ? 6 : 12)
+            Divider().padding(.horizontal, 6)
             footerBlock
         }
         .background(Color(nsColor: .controlBackgroundColor))
     }
 
-    // MARK: - Logo
-
-    @ViewBuilder
     private var logoBlock: some View {
-        if isCompact {
-            AudioWaveformIcon()
-                .frame(width: 32, height: 32)
-                .padding(.top, 12)
-                .padding(.bottom, 16)
-                .frame(maxWidth: .infinity)
-        } else {
-            VStack(spacing: 8) {
-                AudioWaveformIcon()
-                    .frame(width: 44, height: 44)
-                Text("ARM")
-                    .font(.system(size: 18, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.primary)
-                Text("Audio Recording Manager")
-                    .font(.system(size: 8, weight: .regular))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                    .tracking(0.8)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity)
+        AudioWaveformIcon()
+            .frame(width: 32, height: 32)
             .padding(.top, 12)
-            .padding(.bottom, 20)
-            .padding(.horizontal, 16)
-        }
+            .padding(.bottom, 16)
+            .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Footer (theme toggle + about)
-
-    @ViewBuilder
     private var footerBlock: some View {
-        if isCompact {
-            VStack(spacing: 4) {
-                Button(action: toggleAppearance) {
-                    Image(systemName: isDarkMode ? "sun.max" : "moon")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 36, height: 32)
+        VStack(spacing: 4) {
+            footerIconButton(
+                icon: isDarkMode ? "sun.max" : "moon",
+                helpText: isDarkMode ? "Light mode" : "Dark mode",
+                action: toggleAppearance
+            )
+            footerIconButton(
+                icon: "gearshape",
+                helpText: "Innstillinger",
+                action: {
+                    NotificationCenter.default.post(
+                        name: .init("ARMShowSettings"), object: nil)
                 }
-                .buttonStyle(.plain)
-                .help(isDarkMode ? "Light mode" : "Dark mode")
+            )
+            footerIconButton(
+                icon: "info.circle",
+                helpText: "About",
+                action: { showAbout = true }
+            )
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+    }
 
-                Button(action: { showAbout = true }) {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 36, height: 32)
-                }
-                .buttonStyle(.plain)
-                .help("About")
+    private func footerIconButton(icon: String, helpText: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+                .frame(width: 44, height: 36)
+                .contentShape(Rectangle())
+                .help(helpText)
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            if hovering {
+                NSCursor.pointingHand.set()
+            } else {
+                NSCursor.arrow.set()
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-        } else {
-            VStack(spacing: 0) {
-                Button(action: toggleAppearance) {
-                    HStack(spacing: 10) {
-                        Image(systemName: isDarkMode ? "sun.max" : "moon")
-                            .font(.system(size: 13))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 16)
-                        Text(isDarkMode ? "Light Mode" : "Dark Mode")
-                            .font(.system(size: 13))
-                        Spacer()
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 7)
-                }
-                .buttonStyle(.plain)
-
-                Button(action: { showAbout = true }) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 13))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 16)
-                        Text("About")
-                            .font(.system(size: 13))
-                        Spacer()
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 7)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.top, 8)
-
-            Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
-                .font(.system(size: 10))
-                .foregroundStyle(.tertiary)
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 12)
         }
     }
 
@@ -998,43 +1020,29 @@ struct NavPanel: View {
             : NSAppearance(named: .aqua)
     }
 
-    @ViewBuilder
     private func navItem(tab: AppTab, label: String, icon: String) -> some View {
         Button(action: { selectedTab = tab }) {
-            if isCompact {
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: selectedTab == tab ? .semibold : .regular))
-                    .frame(width: 36, height: 32)
-                    .background {
-                        if selectedTab == tab {
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(Color.accentColor.opacity(0.15))
-                        }
-                    }
-                    .foregroundStyle(selectedTab == tab ? .primary : .secondary)
-                    .help(label)
-            } else {
-                HStack(spacing: 10) {
-                    Image(systemName: icon)
-                        .font(.system(size: 13, weight: selectedTab == tab ? .semibold : .regular))
-                        .frame(width: 16)
-                    Text(label)
-                        .font(.system(size: 13, weight: selectedTab == tab ? .medium : .regular))
-                        .lineLimit(1)
-                    Spacer()
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: selectedTab == tab ? .semibold : .regular))
+                .frame(width: 44, height: 36)
                 .background {
                     if selectedTab == tab {
-                        RoundedRectangle(cornerRadius: 5)
+                        RoundedRectangle(cornerRadius: 6)
                             .fill(Color.accentColor.opacity(0.15))
                     }
                 }
                 .foregroundStyle(selectedTab == tab ? .primary : .secondary)
-            }
+                .contentShape(Rectangle())
+                .help(label)
         }
         .buttonStyle(.plain)
+        .onHover { hovering in
+            if hovering {
+                NSCursor.pointingHand.set()
+            } else {
+                NSCursor.arrow.set()
+            }
+        }
     }
 }
 
@@ -1144,8 +1152,14 @@ struct RecordingPlayerNative: View {
     @State private var isDraggingScrubber: Bool = false
     @State private var scrubberDragValue: Double = 0
 
+
     // Transcription
     @ObservedObject private var transcriptionService = TranscriptionService.shared
+    /// Shared in-flight tracker used by the Bibliotek pill. Observing
+    /// here means the player reflects whichever surface kicked off the
+    /// run — single source of truth, no double-press from two
+    /// locations.
+    @ObservedObject private var transcriptionRunner = TranscriptionRunner.shared
     @State private var transcriptionTask: Task<Void, Never>?
     @State private var transcriptionResult: TranscriptionResult?
     @State private var transcriptionError: TranscriptionError?
@@ -1159,7 +1173,6 @@ struct RecordingPlayerNative: View {
     @State private var diarizationTask: Task<Void, Never>?
     @State private var isDiarizing = false
     @State private var diarizationError: String? = nil
-    @AppStorage("diarization.hfToken") private var hfToken = ""
 
     @State private var showSettings = false
 
@@ -1287,28 +1300,6 @@ struct RecordingPlayerNative: View {
         }
         .navigationTitle(recording.filename)
         .navigationSubtitle("\(recording.formattedDate) · \(recording.formattedDuration)")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Button {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(recording.path, forType: .string)
-                    } label: {
-                        Label("Kopier filbane", systemImage: "doc.on.doc")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showSettings = true
-                } label: {
-                    Image(systemName: "gearshape")
-                }
-                .help("Innstillinger")
-            }
-        }
         .sheet(isPresented: $showSettings) {
             VStack(spacing: 0) {
                 HStack {
@@ -1330,6 +1321,15 @@ struct RecordingPlayerNative: View {
         // in TranscriptEditorView (Transkripsjoner tab).
         .onAppear {
             restoreTranscriptionStateIfNeeded()
+        }
+        .onChange(of: transcriptionRunner.inFlight) { _, newValue in
+            // When the runner removes this recording (job finished or
+            // was cancelled), refresh the local cache so the player
+            // flips from "Transkriberer …" to the completed state.
+            if !newValue.contains(recording.id) {
+                transcriptionResult = nil
+                restoreTranscriptionStateIfNeeded()
+            }
         }
         .onDisappear {
             transcriptionTask?.cancel()
@@ -1413,8 +1413,34 @@ struct RecordingPlayerNative: View {
     @ViewBuilder
     private var transcriptionSection: some View {
         Section("Transkripsjon") {
-            if isTranscribing {
-                // In progress
+            let runnerInFlight = transcriptionRunner.inFlight.contains(recording.id)
+            let runnerProgress = transcriptionRunner.progress[recording.id] ?? 0
+
+            if runnerInFlight {
+                // Bibliotek pill (or the player itself) kicked off the
+                // shared runner. Show the live progress and a Cancel
+                // button that routes through `TranscriptionRunner` so
+                // both UIs reflect the same state.
+                HStack(spacing: 10) {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .scaleEffect(0.75)
+                    Text(runnerProgress > 0
+                         ? "Transkriberer \(Int(runnerProgress * 100)) %"
+                         : "Transkriberer …")
+                        .font(.body)
+                }
+                if runnerProgress > 0 {
+                    ProgressView(value: runnerProgress)
+                        .animation(.easeInOut(duration: 0.4), value: runnerProgress)
+                }
+                Button("Avbryt", role: .destructive) {
+                    transcriptionRunner.cancel(recordingId: recording.id)
+                }
+            } else if isTranscribing {
+                // Local-state transcription path (kept for back-compat
+                // with the older player-only flow; new clicks now route
+                // through the runner above).
                 HStack(spacing: 10) {
                     ProgressView()
                         .progressViewStyle(.circular)
@@ -1443,7 +1469,7 @@ struct RecordingPlayerNative: View {
                     Label("Åpne i transkripsjonseditoren", systemImage: "doc.text")
                 }
                 Button {
-                    startTranscription()
+                    transcriptionRunner.start(recordingId: recording.id)
                 } label: {
                     Label("Transkriber på nytt", systemImage: "arrow.counterclockwise")
                 }
@@ -1455,12 +1481,14 @@ struct RecordingPlayerNative: View {
                 } icon: {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
                 }
-                Button("Prøv igjen", action: startTranscription)
+                Button("Prøv igjen") {
+                    transcriptionRunner.start(recordingId: recording.id)
+                }
             } else {
                 // Not started
                 if transcriptionService.isInstalled {
                     Button {
-                        startTranscription()
+                        transcriptionRunner.start(recordingId: recording.id)
                     } label: {
                         Label("Transkriber med NB-Whisper", systemImage: "waveform.and.mic")
                     }
@@ -1550,22 +1578,14 @@ struct RecordingPlayerNative: View {
             } else {
                 // Not started
                 if transcriptionResult != nil {
-                    if hfToken.isEmpty {
-                        Button {
-                            showSettings = true
-                        } label: {
-                            Label("Legg til HuggingFace-token i innstillinger", systemImage: "key")
-                        }
-                    } else {
-                        Button {
-                            startDiarization()
-                        } label: {
-                            Label("Identifiser talere", systemImage: "person.2.fill")
-                        }
-                        .disabled(isTranscribing)
-                        Text("Bruker pyannote · \(defaultSpeakers) talere")
-                            .font(.caption).foregroundStyle(.secondary)
+                    Button {
+                        startDiarization()
+                    } label: {
+                        Label("Identifiser talere", systemImage: "person.2.fill")
                     }
+                    .disabled(isTranscribing)
+                    Text("FluidAudio (lokalt, Apple Neural Engine) · \(defaultSpeakers) talere")
+                        .font(.caption).foregroundStyle(.secondary)
                 } else {
                     Text("Transkriber lydfilen først")
                         .foregroundStyle(.tertiary)
@@ -1663,7 +1683,6 @@ struct RecordingPlayerNative: View {
                 let updated = try await TranscriptionService.shared.diarize(
                     audioFile: recording.audioURL,
                     existingResult: result,
-                    hfToken: hfToken,
                     speakers: defaultSpeakers
                 )
                 await MainActor.run {
@@ -2691,29 +2710,38 @@ struct MainView: View {
     @StateObject private var audioRecorder = AudioRecorder.shared
     @StateObject private var recordingsManager = RecordingsManager.shared
     @StateObject private var audioPlayer = AudioPlayer.shared
-    @StateObject private var transcriptManager = TranscriptManager.shared
 
     @State private var selectedTab: AppTab = .record
     @State private var selectedRecording: RecordingItem? = nil
-    @State private var selectedTranscript: TranscriptItem? = nil
     @State private var selectedAnalysisId: UUID? = nil
     @State private var showAbout = false
     @State private var showLogViewer = false
+    @State private var showDesignShowcase = false
+    @State private var showSettings = false
 
     var body: some View {
-        HStack(spacing: 0) {
-            NavPanel(
-                selectedTab: $selectedTab,
-                showAbout: $showAbout,
-                isCompact: sidebarIsCompact
-            )
-            .frame(width: sidebarIsCompact ? 64 : 220)
+        // NavigationSplitView wrapper is REQUIRED for SwiftUI's unified
+        // chrome to extend content to the window's outer rounded frame.
+        // See `Design/WindowChrome.swift` — bare HStack at root breaks
+        // the corner-radius pipeline. The actual nav lives inside detail.
+        NavigationSplitView(columnVisibility: .constant(.detailOnly)) {
+            EmptyView()
+        } detail: {
+            HStack(spacing: 0) {
+                NavPanel(
+                    selectedTab: $selectedTab,
+                    showAbout: $showAbout
+                )
+                .frame(width: 64)
 
-            Divider()
+                Divider()
 
-            tabContent
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                tabContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .toolbar(removing: .sidebarToggle)
         }
+        .navigationSplitViewStyle(.balanced)
         .frame(minWidth: 1100, minHeight: 700)
         .sheet(isPresented: $showAbout) {
             AboutView().presentationDetents([.large])
@@ -2721,15 +2749,38 @@ struct MainView: View {
         .sheet(isPresented: $showLogViewer) {
             PasswordGateView(isPresented: $showLogViewer)
         }
+        .sheet(isPresented: $showDesignShowcase) {
+            DesignShowcaseView(isPresented: $showDesignShowcase)
+        }
+        .sheet(isPresented: $showSettings) {
+            VStack(spacing: 0) {
+                HStack {
+                    Text("Innstillinger")
+                        .font(.system(size: 15, weight: .semibold))
+                    Spacer()
+                    Button("Lukk") { showSettings = false }
+                        .keyboardShortcut(.cancelAction)
+                        .buttonStyle(.bordered)
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 16)
+                Divider()
+                TranscriptionSettingsView()
+            }
+            .frame(minWidth: 480, minHeight: 400)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .init("ARMShowLogViewer"))) { _ in
             showLogViewer = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .init("ARMShowDesignShowcase"))) { _ in
+            showDesignShowcase = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .init("ARMShowSettings"))) { _ in
+            showSettings = true
         }
         .onChange(of: selectedTab) { _, _ in autoSelectFirst() }
         .onChange(of: recordingsManager.recordings) { _, _ in
             if selectedTab == .recordings { autoSelectFirst() }
-        }
-        .onChange(of: transcriptManager.transcripts) { _, _ in
-            if selectedTab == .transcripts { autoSelectFirst() }
         }
         .onAppear { recordingsManager.loadRecordings() }
     }
@@ -2743,26 +2794,11 @@ struct MainView: View {
             BibliotekScreen(
                 recordingsManager: recordingsManager,
                 audioPlayer: audioPlayer,
-                transcriptManager: transcriptManager,
-                selectedRecording: $selectedRecording,
-                selectedTranscript: $selectedTranscript,
-                selectedTab: $selectedTab
-            )
-        case .transcripts:
-            TranscriptsScreen(
-                transcriptManager: transcriptManager,
-                recordingsManager: recordingsManager,
-                selectedTranscript: $selectedTranscript,
-                selectedRecording: $selectedRecording,
-                selectedTab: $selectedTab
+                selectedRecording: $selectedRecording
             )
         case .analyse:
             AnalyseScreen(selectedAnalysisId: $selectedAnalysisId)
         }
-    }
-
-    private var sidebarIsCompact: Bool {
-        selectedTab != .record
     }
 
     private func autoSelectFirst() {
@@ -2772,10 +2808,6 @@ struct MainView: View {
         case .recordings:
             if selectedRecording == nil {
                 selectedRecording = recordingsManager.recordings.first
-            }
-        case .transcripts:
-            if selectedTranscript == nil {
-                selectedTranscript = transcriptManager.transcripts.first
             }
         case .analyse:
             if selectedAnalysisId == nil {
@@ -2790,25 +2822,26 @@ private let listColumnWidth: CGFloat = 320
 struct BibliotekScreen: View {
     @ObservedObject var recordingsManager: RecordingsManager
     @ObservedObject var audioPlayer: AudioPlayer
-    @ObservedObject var transcriptManager: TranscriptManager
     @Binding var selectedRecording: RecordingItem?
-    @Binding var selectedTranscript: TranscriptItem?
-    @Binding var selectedTab: AppTab
+
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        HStack(spacing: 0) {
-            BibliotekView(
-                recordingsManager: recordingsManager,
-                audioPlayer: audioPlayer,
-                selectedRecording: $selectedRecording,
-                isCompact: true
-            )
-            .frame(width: listColumnWidth)
+        GeometryReader { geo in
+            HStack(spacing: 0) {
+                BibliotekView(
+                    recordingsManager: recordingsManager,
+                    audioPlayer: audioPlayer,
+                    selectedRecording: $selectedRecording,
+                    isCompact: true
+                )
+                .frame(width: max(560, geo.size.width * 0.62))
 
-            Divider()
+                Divider()
 
-            detail
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                detail
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
     }
 
@@ -2819,8 +2852,7 @@ struct BibliotekScreen: View {
                 recording: recording,
                 audioPlayer: audioPlayer,
                 onNavigateToTranscript: { id in
-                    selectedTranscript = transcriptManager.transcripts.first { $0.recordingId == id }
-                    selectedTab = .transcripts
+                    openWindow(id: "transcript-editor", value: id)
                 }
             )
             .id(recording.path)
@@ -2831,83 +2863,6 @@ struct BibliotekScreen: View {
                 description: Text("Bruk «Ta opp lyd» for å starte ditt første opptak.")
             )
         }
-    }
-}
-
-struct TranscriptsScreen: View {
-    @ObservedObject var transcriptManager: TranscriptManager
-    @ObservedObject var recordingsManager: RecordingsManager
-    @Binding var selectedTranscript: TranscriptItem?
-    @Binding var selectedRecording: RecordingItem?
-    @Binding var selectedTab: AppTab
-
-    var body: some View {
-        HStack(spacing: 0) {
-            TranscriptsListColumn(
-                transcriptManager: transcriptManager,
-                selectedTranscript: $selectedTranscript
-            )
-            .frame(width: listColumnWidth)
-
-            Divider()
-
-            detail
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-
-    @ViewBuilder
-    private var detail: some View {
-        if let transcript = selectedTranscript {
-            transcriptDetail(for: transcript)
-                .id(transcript.id)
-        } else {
-            ContentUnavailableView(
-                "Ingen transkripsjon valgt",
-                systemImage: "doc.text.magnifyingglass",
-                description: Text("Velg en transkripsjon i lista til venstre.")
-            )
-        }
-    }
-
-    @ViewBuilder
-    private func transcriptDetail(for transcript: TranscriptItem) -> some View {
-        let matching = matchingRecording(for: transcript)
-        if let recId = transcript.recordingId,
-           let result = loadTranscriptionResult(recordingId: recId) {
-            TranscriptEditorView(
-                recordingId: recId,
-                audioURL: StorageLayout.audioURL(id: recId),
-                transcriptionResult: result,
-                onShowLinkedRecording: {
-                    selectedRecording = matching
-                    selectedTab = .recordings
-                }
-            )
-        } else {
-            TranscriptDetailPanel(
-                transcript: transcript,
-                matchingRecording: matching,
-                onSwitchToRecordings: {
-                    selectedRecording = matching
-                    selectedTab = .recordings
-                }
-            )
-        }
-    }
-
-    private func loadTranscriptionResult(recordingId: UUID) -> TranscriptionResult? {
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let jsonURL = support.appendingPathComponent("AudioRecordingManager/transcripts/\(recordingId.uuidString).json")
-        guard let data = try? Data(contentsOf: jsonURL) else { return nil }
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try? decoder.decode(TranscriptionResult.self, from: data)
-    }
-
-    private func matchingRecording(for transcript: TranscriptItem) -> RecordingItem? {
-        guard let id = transcript.recordingId else { return nil }
-        return recordingsManager.recordings.first { $0.id == id }
     }
 }
 

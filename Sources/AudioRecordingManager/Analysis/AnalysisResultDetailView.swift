@@ -13,18 +13,8 @@ import SwiftUI
 
 struct AnalysisResultDetailView: View {
     let analysis: Analysis
-    @Binding var selectedAnalysisId: UUID?
 
     @State private var staleSourceIds: Set<UUID> = []
-    @State private var showDeleteConfirm = false
-    @State private var rerunTask: Task<Void, Never>?
-    @State private var rerunState: RerunState = .idle
-
-    private enum RerunState: Equatable {
-        case idle
-        case running
-        case failed(String)
-    }
 
     private var result: AnalysisResult? {
         AnalysisStore.shared.loadResult(id: analysis.id)
@@ -40,7 +30,6 @@ struct AnalysisResultDetailView: View {
             VStack(alignment: .leading, spacing: AppSpacing.xl) {
                 header
                 staleBanner
-                statusBanner
                 if let result = result {
                     sections(for: result)
                 } else if analysis.status == .running {
@@ -58,17 +47,6 @@ struct AnalysisResultDetailView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { refreshStaleness() }
         .onChange(of: analysis.id) { _, _ in refreshStaleness() }
-        .toolbar { toolbarContent }
-        .confirmationDialog(
-            "Slett denne analysen?",
-            isPresented: $showDeleteConfirm,
-            titleVisibility: .visible
-        ) {
-            Button("Slett", role: .destructive) { performDelete() }
-            Button("Avbryt", role: .cancel) {}
-        } message: {
-            Text("Manifest, prompt og resultat blir slettet permanent. Kildetranskripsjonene berøres ikke.")
-        }
     }
 
     // MARK: - Header
@@ -142,41 +120,6 @@ struct AnalysisResultDetailView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: AppRadius.medium)
                     .stroke(Color.orange.opacity(0.4), lineWidth: 1)
-            )
-        }
-    }
-
-    @ViewBuilder
-    private var statusBanner: some View {
-        switch rerunState {
-        case .idle:
-            EmptyView()
-        case .running:
-            HStack(spacing: AppSpacing.sm) {
-                ProgressView().controlSize(.small)
-                Text("Kjører på nytt …")
-                    .font(.caption)
-                Spacer()
-                Button("Avbryt", role: .destructive) { rerunTask?.cancel() }
-                    .buttonStyle(.bordered)
-            }
-            .padding(AppSpacing.md)
-            .background(
-                RoundedRectangle(cornerRadius: AppRadius.medium)
-                    .fill(Color.gray.opacity(0.08))
-            )
-        case .failed(let msg):
-            HStack(alignment: .top, spacing: AppSpacing.sm) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(AppColors.destructive)
-                Text(msg)
-                    .font(.caption)
-                Spacer()
-            }
-            .padding(AppSpacing.md)
-            .background(
-                RoundedRectangle(cornerRadius: AppRadius.medium)
-                    .fill(AppColors.destructive.opacity(0.08))
             )
         }
     }
@@ -303,34 +246,6 @@ struct AnalysisResultDetailView: View {
         )
     }
 
-    // MARK: - Toolbar
-
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            Button {
-                selectedAnalysisId = nil
-            } label: {
-                Label("Ny analyse", systemImage: "plus.circle")
-            }
-            .help("Tilbake til komponer-visningen for å starte en ny analyse")
-        }
-        ToolbarItem(placement: .primaryAction) {
-            Menu {
-                if analysis.status == .completed {
-                    Button { copyMarkdown() } label: { Label("Kopier som markdown", systemImage: "doc.on.doc") }
-                    Button { startRerun() } label: { Label("Kjør på nytt", systemImage: "arrow.counterclockwise") }
-                    Divider()
-                }
-                Button(role: .destructive) {
-                    showDeleteConfirm = true
-                } label: { Label("Slett analyse", systemImage: "trash") }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-            }
-        }
-    }
-
     // MARK: - Actions
 
     private func refreshStaleness() {
@@ -343,136 +258,6 @@ struct AnalysisResultDetailView: View {
             }
         }
         staleSourceIds = stale
-    }
-
-    private func copyMarkdown() {
-        guard let result = result else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(result.rawMarkdown, forType: .string)
-    }
-
-    private func performDelete() {
-        let id = analysis.id
-        do {
-            try AnalysisStore.shared.delete(id: id)
-            selectedAnalysisId = nil
-        } catch {
-            rerunState = .failed("Sletting feilet: \(error.localizedDescription)")
-        }
-    }
-
-    /// "Kjør på nytt" clones: same sources + template + model, new
-    /// analysis id, new transcript hashes captured now. The previous
-    /// analysis stays untouched on disk so the researcher can compare.
-    private func startRerun() {
-        guard let template = template else {
-            rerunState = .failed("Kan ikke kjøre på nytt — malen finnes ikke lenger.")
-            return
-        }
-        rerunState = .running
-        rerunTask?.cancel()
-        rerunTask = Task {
-            do {
-                let newId = try await performRerun(template: template)
-                await MainActor.run {
-                    rerunState = .idle
-                    selectedAnalysisId = newId
-                }
-            } catch is CancellationError {
-                await MainActor.run { rerunState = .failed("Avbrutt av bruker.") }
-            } catch let err as OllamaAnalysisError {
-                await MainActor.run { rerunState = .failed(err.localizedDescription) }
-            } catch {
-                await MainActor.run { rerunState = .failed(error.localizedDescription) }
-            }
-        }
-    }
-
-    private func performRerun(template: PromptTemplate) async throws -> UUID {
-        // Re-read sources with fresh transcript hashes.
-        var sources: [AnalysisSource] = []
-        var renderedSources: [(displayName: String, text: String)] = []
-        for src in analysis.sources {
-            let meta = (try? RecordingStore.shared.load(id: src.recordingId)) ?? nil
-            let txtURL = StorageLayout.transcriptURL(id: src.recordingId)
-            guard let text = try? String(contentsOf: txtURL, encoding: .utf8) else {
-                throw NSError(
-                    domain: "AnalysisRerun",
-                    code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "Mangler transkripsjon for \(src.displayName)."]
-                )
-            }
-            let displayName = meta?.displayName ?? src.displayName
-            let hash = TranscriptHash.hash(text: text)
-            sources.append(AnalysisSource(
-                recordingId: src.recordingId,
-                transcriptHash: hash,
-                displayName: displayName
-            ))
-            renderedSources.append((displayName: displayName, text: text))
-        }
-        try Task.checkCancellation()
-
-        let context: PromptRenderContext
-        switch analysis.kind {
-        case .single:
-            context = PromptRenderContext(
-                researchContext: "",
-                kind: .single,
-                transcript: renderedSources[0].text,
-                concatenatedTranscripts: "",
-                interviewCount: 1
-            )
-        case .group:
-            context = PromptRenderContext(
-                researchContext: "",
-                kind: .group,
-                transcript: "",
-                concatenatedTranscripts: GroupTranscriptAssembly.concatenate(renderedSources),
-                interviewCount: renderedSources.count
-            )
-        }
-        let renderedPrompt = template.render(context: context)
-
-        var clone = Analysis.new(
-            kind: analysis.kind,
-            sources: sources,
-            promptTemplateId: template.id,
-            model: analysis.model
-        )
-        try AnalysisStore.shared.create(clone)
-        try AnalysisStore.shared.savePrompt(renderedPrompt, id: clone.id)
-        clone.status = .running
-        clone.startedAt = Date()
-        try AnalysisStore.shared.save(clone)
-
-        try Task.checkCancellation()
-        do {
-            let result = try await OllamaAnalysisService.shared.analyse(
-                prompt: renderedPrompt,
-                model: analysis.model
-            )
-            try AnalysisStore.shared.saveResult(result, id: clone.id)
-            clone.status = .completed
-            clone.completedAt = Date()
-            try AnalysisStore.shared.save(clone)
-
-            AuditLogger.shared.log(.transcriptAnalysed, payload: [
-                "analysisId": .string(clone.id.uuidString),
-                "kind": .string(clone.kind.rawValue),
-                "sourceCount": .int(clone.sources.count),
-                "model": .string(clone.model),
-                "promptTemplateId": .string(template.id),
-                "rerunOf": .string(analysis.id.uuidString),
-            ])
-            return clone.id
-        } catch {
-            clone.status = .failed
-            clone.errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-            clone.completedAt = Date()
-            try? AnalysisStore.shared.save(clone)
-            throw error
-        }
     }
 
     private func formattedTimestamp(_ date: Date) -> String {

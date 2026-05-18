@@ -34,6 +34,7 @@ private enum AnonymizationState: Equatable {
 private enum CompareTab: String, CaseIterable {
     case original
     case avidentifisert
+    case tilGjennomgang
 }
 
 struct AvidentifiseringSheet: View {
@@ -41,11 +42,17 @@ struct AvidentifiseringSheet: View {
     let isDirty: Bool
     @Binding var isPresented: Bool
 
+    @AppStorage("analysis.llmModel") private var llmModel: String = "qwen3:8b"
+
     @State private var state: AnonymizationState = .idle
     @State private var task: Task<Void, Never>?
     @State private var showConsentModal = false
     @State private var showExceptionsSheet = false
     @State private var compareTab: CompareTab = .avidentifisert
+    /// Populated when a v2 anonymization run returns `flagged_for_review`
+    /// tokens — model-uncertain candidates that need researcher review.
+    /// Empty on v1 output. Not persisted yet (Phase B.1 scaffold only).
+    @State private var flaggedReview: [FlaggedToken] = []
 
     private let whatIsRemoved = [
         "Navn på personer",
@@ -207,43 +214,69 @@ struct AvidentifiseringSheet: View {
 
     private var compareTabBar: some View {
         HStack(spacing: 0) {
-            tabButton(.original, label: "Original")
-            tabButton(.avidentifisert, label: "Avidentifisert")
+            tabButton(.original, label: "Original", badge: nil)
+            tabButton(.avidentifisert, label: "Avidentifisert", badge: nil)
+            tabButton(
+                .tilGjennomgang,
+                label: "Til gjennomgang",
+                badge: flaggedReview.isEmpty ? nil : flaggedReview.count
+            )
             Spacer()
         }
     }
 
-    private func tabButton(_ tab: CompareTab, label: String) -> some View {
+    private func tabButton(_ tab: CompareTab, label: String, badge: Int?) -> some View {
         Button {
             compareTab = tab
         } label: {
-            Text(label)
-                .font(.system(size: 13, weight: compareTab == tab ? .semibold : .regular))
-                .foregroundStyle(compareTab == tab ? .primary : .secondary)
-                .padding(.horizontal, AppSpacing.md)
-                .padding(.vertical, AppSpacing.sm - 2)
-                .background(
-                    compareTab == tab
-                        ? AppColors.accent.opacity(0.10)
-                        : Color.clear,
-                    in: RoundedRectangle(cornerRadius: AppRadius.small)
-                )
+            HStack(spacing: 6) {
+                Text(label)
+                    .font(.system(size: 13, weight: compareTab == tab ? .semibold : .regular))
+                    .foregroundStyle(compareTab == tab ? .primary : .secondary)
+                if let badge {
+                    Text("\(badge)")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(Capsule().fill(AppColors.warning))
+                }
+            }
+            .padding(.horizontal, AppSpacing.md)
+            .padding(.vertical, AppSpacing.sm - 2)
+            .background(
+                compareTab == tab
+                    ? AppColors.accent.opacity(0.10)
+                    : Color.clear,
+                in: RoundedRectangle(cornerRadius: AppRadius.small)
+            )
         }
         .buttonStyle(.plain)
-    }
-
-    private func currentTabPayload() -> (text: String, emptyHint: String) {
-        switch compareTab {
-        case .original:
-            return (loadOriginalText() ?? "", "Fant ingen original transkripsjon.")
-        case .avidentifisert:
-            return (loadAnonymizedText() ?? "", "Fant ingen avidentifisert versjon på disk.")
-        }
+        .hoverCursor()
     }
 
     @ViewBuilder
     private var compareTabContent: some View {
-        let payload = currentTabPayload()
+        switch compareTab {
+        case .original, .avidentifisert:
+            textCompareContent
+        case .tilGjennomgang:
+            flaggedReviewContent
+        }
+    }
+
+    @ViewBuilder
+    private var textCompareContent: some View {
+        let payload: (text: String, emptyHint: String) = {
+            switch compareTab {
+            case .original:
+                return (loadOriginalText() ?? "", "Fant ingen original transkripsjon.")
+            case .avidentifisert:
+                return (loadAnonymizedText() ?? "", "Fant ingen avidentifisert versjon på disk.")
+            case .tilGjennomgang:
+                return ("", "")  // unreachable — handled in `compareTabContent`
+            }
+        }()
         if payload.text.isEmpty {
             VStack {
                 Spacer()
@@ -270,6 +303,89 @@ struct AvidentifiseringSheet: View {
                     .stroke(Color.gray.opacity(0.15), lineWidth: 1)
             )
         }
+    }
+
+    @ViewBuilder
+    private var flaggedReviewContent: some View {
+        if flaggedReview.isEmpty {
+            VStack(spacing: AppSpacing.sm) {
+                Spacer()
+                Image(systemName: "checkmark.circle")
+                    .font(.system(size: 32, weight: .light))
+                    .foregroundStyle(.secondary.opacity(0.6))
+                Text("Ingen tvilstilfeller for denne transkripsjonen")
+                    .font(AppFont.bodyMedium)
+                    .foregroundStyle(.secondary)
+                Text("Modellen var trygg på alle beslutninger. Når den er usikker, vises kandidatene her for manuell gjennomgang.")
+                    .font(AppFont.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 420)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            ScrollView {
+                VStack(spacing: AppSpacing.sm) {
+                    ForEach(flaggedReview, id: \.start) { token in
+                        flaggedCard(token)
+                    }
+                }
+                .padding(AppSpacing.md)
+            }
+        }
+    }
+
+    private func flaggedCard(_ token: FlaggedToken) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            HStack(spacing: AppSpacing.sm) {
+                Text(token.original)
+                    .font(AppFont.bodyMedium)
+                Text(token.type)
+                    .font(AppFont.caption)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 1)
+                    .background(Capsule().fill(AppColors.neutralSurfaceStrong))
+                Spacer()
+                Text("Skår \(String(format: "%.2f", token.score))")
+                    .font(AppFont.tableMonoCell)
+                    .foregroundStyle(.secondary)
+            }
+            Text("…\(token.contextSnippet)…")
+                .font(AppFont.body)
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(token.signalsSummary)
+                .font(AppFont.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            // Phase B.1: decision buttons not wired to persistence yet —
+            // disk-side flow lands in Phase B.2 once upstream v2 ships and
+            // we can validate against real flagged tokens.
+            HStack(spacing: AppSpacing.sm) {
+                Button("Behold") {}
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(true)
+                    .hoverCursor()
+                Button("Rediger") {}
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(true)
+                    .hoverCursor()
+                Spacer()
+            }
+        }
+        .padding(AppSpacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .fill(AppColors.neutralSurface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .strokeBorder(AppColors.neutralBorder, lineWidth: 1)
+        )
     }
 
     // MARK: Failed
@@ -310,11 +426,34 @@ struct AvidentifiseringSheet: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
 
+            Button {
+                exportToWord()
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "square.and.arrow.up")
+                    Text("Eksporter til Word")
+                }
+                .font(.system(size: 12))
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .disabled(!isCompleted)
+            .help(isCompleted
+                  ? "Lagre en RTF-fil for Word/OneDrive/Teams"
+                  : "Kjør avidentifisering først")
+
             Spacer()
 
             primaryAction
         }
         .padding(AppSpacing.lg)
+    }
+
+    /// Convenience predicate so the export button can flip its enabled
+    /// state without a wordy `if case let` inline in the view.
+    private var isCompleted: Bool {
+        if case .completed = state { return true }
+        return false
     }
 
     @ViewBuilder
@@ -412,7 +551,16 @@ struct AvidentifiseringSheet: View {
 
                 // Apply user's global exception list (post-processing —
                 // upstream no-anonymizer doesn't take exceptions natively).
-                let result = raw.applying(exceptions: exceptions, to: text)
+                let afterExceptions = raw.applying(exceptions: exceptions, to: text)
+                guard !Task.isCancelled else { return }
+
+                // Hybrid pass: context-disambiguate Norwegian-homograph
+                // redactions (Per/Slette/Vår/Mai/…) by asking the local
+                // LLM. BERT can't reason about full-sentence semantics;
+                // Ollama can. No-ops gracefully if Ollama isn't running.
+                let (result, homographReport) = await HomographDisambiguator.filter(
+                    result: afterExceptions, sourceText: text, model: llmModel)
+                guard !Task.isCancelled else { return }
 
                 // 1. Write de-identified text
                 let anonURL = StorageLayout.anonymizedTranscriptURL(id: recordingId)
@@ -431,9 +579,14 @@ struct AvidentifiseringSheet: View {
                     "recordingId": .string(recordingId.uuidString),
                     "stats": .string(statsSummary(result.stats)),
                     "exceptionCount": .int(exceptions.count),
+                    "homographQueried": .int(homographReport.queried),
+                    "homographDropped": .int(homographReport.dropped),
+                    "homographKept": .int(homographReport.kept),
+                    "homographSkipped": .int(homographReport.skipped),
                 ])
 
                 state = .completed(date: Date(), stats: result.stats)
+                flaggedReview = result.flaggedForReview ?? []
                 compareTab = .avidentifisert
             } catch let error as AnonymizationError {
                 guard !Task.isCancelled else { return }
@@ -443,6 +596,52 @@ struct AvidentifiseringSheet: View {
                 state = .failed(error.localizedDescription)
             }
         }
+    }
+
+    // MARK: - Export to Word (RTF)
+
+    /// Builds an RTF document from the on-disk anonymized text + the
+    /// completion stats and presents NSSavePanel. On confirm emits a
+    /// `transcriptExported` audit event with the basename only (no
+    /// full path — privacy).
+    private func exportToWord() {
+        guard case let .completed(date, stats) = state else { return }
+        guard let body = try? String(
+            contentsOf: StorageLayout.anonymizedTranscriptURL(id: recordingId),
+            encoding: .utf8
+        ), !body.isEmpty else { return }
+
+        let meta = try? RecordingStore.shared.load(id: recordingId)
+        let displayName = meta?.displayName ?? recordingId.uuidString
+
+        let statsLine = statsSummary(stats)
+        let document = RTFExporter.Document(
+            title: displayName,
+            subtitle: "Avidentifisert · \(formattedExportDate(date))",
+            statsLine: statsLine.isEmpty
+                ? nil
+                : "Fjernet: \(statsLine)",
+            body: body
+        )
+
+        let filename = RTFExporter.sanitisedFilename(from: displayName)
+            + "_avidentifisert.rtf"
+
+        if let url = RTFExporter.save(document: document, defaultFilename: filename) {
+            AuditLogger.shared.logTranscriptExported(
+                recordingId: recordingId.uuidString,
+                format: "rtf",
+                filenameHint: url.lastPathComponent
+            )
+        }
+    }
+
+    private func formattedExportDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "nb_NO")
+        formatter.dateStyle = .long
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
     }
 
     private func statsSummary(_ stats: [String: Int]) -> String {

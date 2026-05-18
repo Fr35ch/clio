@@ -205,8 +205,6 @@ extension RecordingStatusBundle {
 enum BibliotekFilter: String, CaseIterable, Identifiable {
     case alle
     case ikkeTranskribert
-    case venterAvident
-    case klarForTeams
     case utløperSnart
 
     var id: String { rawValue }
@@ -215,8 +213,6 @@ enum BibliotekFilter: String, CaseIterable, Identifiable {
         switch self {
         case .alle:              return "Alle"
         case .ikkeTranskribert:  return "Ikke transkribert"
-        case .venterAvident:     return "Venter avid."
-        case .klarForTeams:      return "Klar for Teams"
         case .utløperSnart:      return "Utløper snart"
         }
     }
@@ -227,8 +223,6 @@ enum BibliotekFilter: String, CaseIterable, Identifiable {
         switch self {
         case .alle:              return .info
         case .ikkeTranskribert:  return .neutral
-        case .venterAvident:     return .warning
-        case .klarForTeams:      return .success
         case .utløperSnart:      return .danger
         }
     }
@@ -237,49 +231,7 @@ enum BibliotekFilter: String, CaseIterable, Identifiable {
         switch self {
         case .alle:              return true
         case .ikkeTranskribert:  return !bundle.isTranscribed
-        case .venterAvident:     return bundle.venterAvident
-        case .klarForTeams:      return bundle.klarForTeams
         case .utløperSnart:      return bundle.utløperSnart
-        }
-    }
-}
-
-/// Sort options matching US-R16.
-enum BibliotekSort: String, CaseIterable, Identifiable {
-    case newestFirst
-    case oldestFirst
-    case nameAZ
-    case nameZA
-    case expirySoonest
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .newestFirst:    return "Nyeste først"
-        case .oldestFirst:    return "Eldste først"
-        case .nameAZ:         return "Navn A–Å"
-        case .nameZA:         return "Navn Å–A"
-        case .expirySoonest:  return "Slettes snart først"
-        }
-    }
-
-    func apply(to bundles: [RecordingStatusBundle]) -> [RecordingStatusBundle] {
-        switch self {
-        case .newestFirst:
-            return bundles.sorted { $0.createdAt > $1.createdAt }
-        case .oldestFirst:
-            return bundles.sorted { $0.createdAt < $1.createdAt }
-        case .nameAZ:
-            return bundles.sorted {
-                $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
-            }
-        case .nameZA:
-            return bundles.sorted {
-                $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedDescending
-            }
-        case .expirySoonest:
-            return bundles.sorted { $0.daysUntilExpiry < $1.daysUntilExpiry }
         }
     }
 }

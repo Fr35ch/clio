@@ -34,12 +34,12 @@
 **so that** I understand my responsibility to manually review the result.
 
 ### Acceptance Criteria
-- [ ] Informed consent modal shown before anonymization runs
-- [ ] Lists what IS detected (names, phone numbers, SSNs, email)
-- [ ] Lists what IS NOT detected (indirect identifiers, nicknames, geographic proximity, incomplete info)
-- [ ] Warning: "Automatisk anonymisering er ikke tilstrekkelig alene"
-- [ ] Checkbox: "Jeg forstår at teksten må kontrolleres manuelt" (must be checked to proceed)
-- [ ] Same modal used for both recording detail and transcript detail views
+- [x] Informed consent modal shown before anonymization runs
+- [x] Lists what IS detected (names, phone numbers, SSNs, email)
+- [x] Lists what IS NOT detected (indirect identifiers, nicknames, geographic proximity, incomplete info)
+- [x] Warning: "Automatisk anonymisering er ikke tilstrekkelig alene"
+- [x] Checkbox: "Jeg forstår at teksten må kontrolleres manuelt" (must be checked to proceed)
+- [x] Single modal (`AnonymizationModal`) presented from the transcript editor's avidentifisering sheet — the legacy "recording detail" + "transcript detail" surfaces have been consolidated into one entry point
 
 ---
 
@@ -79,9 +79,11 @@
 **so that** I know which ones are ready to share and which still need processing.
 
 ### Acceptance Criteria
-- [ ] Transcript list shows icon per entry: shield (anonymized) vs doc (not anonymized)
-- [ ] Status derived from metadata sidecar (`anonymizedTranscript != nil`)
-- [ ] Status updates automatically when anonymization completes
+- [x] Bibliotek table shows an **AVIDENT.** status chip per row: «Avid. ✓» (success) / «Påbegynt» (warning) / «Feilet» (danger) / «Ikke avid.» (neutral)
+- [x] Status derived from `meta.anonymization.status` in the canonical sidecar (`Storage/RecordingMeta.swift`)
+- [x] Status updates automatically when anonymization completes — `RecordingsManager` listens to `RecordingStore.didChangeNotification` and re-derives `RecordingStatusBundle`
+
+**Implementation note:** the original design assumed a separate "Transcripts" tab with shield-vs-doc list icons. That tab was consolidated into Bibliotek (see file-management redesign 2026-05-11); the AVIDENT. chip column carries the same information at a glance.
 
 ---
 
@@ -147,7 +149,7 @@
 | 1 | US-A1 | Done |
 | 2 | US-A2 | Done |
 | 3 | US-A3 | Done |
-| 4 | US-A7 | Not started |
+| 4 | US-A7 | Blocked on Phase 1 Teams uploader (Entra ID app registration) |
 | 5 | US-A5 | Done |
 | 6 | US-A6 | Done |
 | 7 | US-A4 | Done |
