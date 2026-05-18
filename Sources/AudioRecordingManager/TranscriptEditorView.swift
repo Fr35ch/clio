@@ -34,6 +34,15 @@ private func shortSpeakerLabel(_ speaker: String) -> String {
     return speaker
 }
 
+// MARK: - AnonymizationState
+
+private enum AnonymizationState: Equatable {
+    case idle
+    case running
+    case completed(date: Date, stats: [String: Int])
+    case failed(String)
+}
+
 // MARK: - TranscriptEditorView
 
 struct TranscriptEditorView: View {
@@ -46,6 +55,14 @@ struct TranscriptEditorView: View {
     @State private var editingSegmentId: Int? = nil
     @State private var editText: String = ""
     @State private var showUnsavedAlert = false
+
+    @State private var anonymizationState: AnonymizationState = .idle
+    @State private var showAnonymized: Bool = false
+    @State private var anonymizationTask: Task<Void, Never>?
+    @State private var showConsentModal: Bool = false
+    @State private var flaggedReview: [FlaggedToken] = []
+    @State private var researcherConfirmedAt: Date? = nil
+    @AppStorage("analysis.llmModel") private var llmModel: String = "qwen3:8b"
 
     init(
         recordingId: UUID,
@@ -61,64 +78,51 @@ struct TranscriptEditorView: View {
         ))
     }
 
-    @State private var showAvidentSheet: Bool = false
-
     var body: some View {
         VStack(spacing: 0) {
             editorToolbar
             Divider()
 
-            ScrollView {
-                segmentContent
+            if showAnonymized, case .completed = anonymizationState {
+                anonymizedTextView
+            } else {
+                ScrollView {
+                    segmentContent
+                }
+            }
+
+            if case .completed = anonymizationState {
+                Divider()
+                signOffBar
             }
 
             Divider()
             audioControls
         }
-        .sheet(isPresented: $showAvidentSheet) {
-            AvidentifiseringSheet(
-                recordingId: recordingId,
-                isDirty: editor.isDirty,
-                isPresented: $showAvidentSheet
-            )
+        .sheet(isPresented: $showConsentModal) {
+            AnonymizationModal(isPresented: $showConsentModal, onConfirm: runAnonymization)
         }
         .alert("Ulagrede endringer", isPresented: $showUnsavedAlert) {
             Button("Lagre og lukk") {
-                Task {
-                    await editor.save()
-                }
+                Task { await editor.save() }
             }
-            Button("Forkast", role: .destructive) {
-                // Allow navigation — dirty state is abandoned
-            }
+            Button("Forkast", role: .destructive) {}
             Button("Avbryt", role: .cancel) {}
         } message: {
             Text("Du har endringer som ikke er lagret. Vil du lagre før du forlater editoren?")
         }
         .onDisappear {
-            if editor.isDirty {
-                showUnsavedAlert = true
-            }
+            if editor.isDirty { showUnsavedAlert = true }
             playback.pause()
         }
+        .onAppear { loadExistingState() }
     }
 
     // MARK: - Toolbar
 
     private var editorToolbar: some View {
         HStack(spacing: AppSpacing.md) {
-            Button {
-                showAvidentSheet = true
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "shield.lefthalf.filled")
-                    Text("Avidentifiser")
-                }
-                .font(.system(size: 11, weight: .medium))
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .help("Åpne avidentifisering for denne transkripsjonen")
+            anonymizationToolbarSection
 
             Spacer()
 
@@ -140,8 +144,7 @@ struct TranscriptEditorView: View {
             } label: {
                 HStack(spacing: 4) {
                     if editor.isSaving {
-                        ProgressView()
-                            .controlSize(.small)
+                        ProgressView().controlSize(.small)
                     }
                     Text("Lagre endringer")
                 }
@@ -152,6 +155,77 @@ struct TranscriptEditorView: View {
         }
         .padding(.horizontal, AppSpacing.lg)
         .padding(.vertical, AppSpacing.sm)
+    }
+
+    @ViewBuilder
+    private var anonymizationToolbarSection: some View {
+        switch anonymizationState {
+        case .idle:
+            Button {
+                showConsentModal = true
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "shield.lefthalf.filled")
+                    Text("Avidentifiser")
+                }
+                .font(.system(size: 11, weight: .medium))
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Kjør automatisk avidentifisering for denne transkripsjonen")
+
+        case .running:
+            HStack(spacing: AppSpacing.sm) {
+                ProgressView().controlSize(.small)
+                Text("Avidentifiserer…")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                Button("Avbryt") {
+                    anonymizationTask?.cancel()
+                    anonymizationTask = nil
+                    anonymizationState = .idle
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+
+        case .completed:
+            HStack(spacing: AppSpacing.sm) {
+                Picker("", selection: $showAnonymized) {
+                    Text("Original").tag(false)
+                    Text("Avidentifisert").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 210)
+
+                Button {
+                    showConsentModal = true
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 11))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(editor.isDirty)
+                .help(editor.isDirty ? "Lagre endringer før ny avidentifisering" : "Kjør avidentifisering på nytt")
+            }
+
+        case .failed(let msg):
+            HStack(spacing: AppSpacing.sm) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(AppColors.destructive)
+                    .font(.system(size: 11))
+                Text(msg)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Button("Prøv igjen") {
+                    showConsentModal = true
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
     }
 
     // MARK: - Segment list
@@ -415,11 +489,174 @@ struct TranscriptEditorView: View {
         .frame(width: 36, alignment: .leading)
     }
 
+    // MARK: - Anonymized text view
+
+    private var anonymizedTextView: some View {
+        ScrollView {
+            Group {
+                if let text = loadAnonymizedText(), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(text)
+                        .font(.system(size: 13))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text("Fant ingen avidentifisert tekst på disk.")
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+            }
+            .padding(AppSpacing.lg)
+        }
+    }
+
+    // MARK: - Sign-off bar
+
+    private var signOffBar: some View {
+        HStack(spacing: AppSpacing.md) {
+            if let date = researcherConfirmedAt {
+                Image(systemName: "checkmark.seal.fill")
+                    .foregroundStyle(AppColors.success)
+                Text("Gjennomgått og godkjent \(date.formatted(date: .abbreviated, time: .omitted))")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            } else {
+                Image(systemName: "exclamationmark.circle")
+                    .foregroundStyle(AppColors.warning)
+                Text("Gjennomgå den avidentifiserte teksten og bekreft at den er klar for deling.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            if researcherConfirmedAt == nil {
+                Button("Godkjenn og signer") {
+                    confirmSignOff()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppColors.success)
+                .controlSize(.small)
+            }
+        }
+        .padding(.horizontal, AppSpacing.lg)
+        .padding(.vertical, AppSpacing.sm)
+        .background(
+            researcherConfirmedAt != nil
+                ? AppColors.success.opacity(0.08)
+                : AppColors.warning.opacity(0.06)
+        )
+    }
+
     // MARK: - Helpers
 
     private var currentSegmentId: Int? {
         let time = playback.currentTime
         return editor.result.segments.last(where: { $0.start <= time && time < $0.end })?.id
+    }
+
+    // MARK: - Anonymization
+
+    private func loadExistingState() {
+        do {
+            if let meta = try RecordingStore.shared.load(id: recordingId),
+               meta.anonymization.status == .done,
+               let date = meta.anonymization.completedAt {
+                anonymizationState = .completed(date: date, stats: meta.anonymization.stats ?? [:])
+                researcherConfirmedAt = meta.anonymization.researcherConfirmedAt
+            }
+        } catch {}
+    }
+
+    private func loadAnonymizedText() -> String? {
+        try? String(contentsOf: StorageLayout.anonymizedTranscriptURL(id: recordingId), encoding: .utf8)
+    }
+
+    private func confirmSignOff() {
+        do {
+            _ = try RecordingStore.shared.updateMeta(id: recordingId) { meta in
+                meta.anonymization.researcherConfirmedAt = Date()
+            }
+            researcherConfirmedAt = Date()
+            AuditLogger.shared.logAnonymizationConfirmedByResearcher(
+                recordingId: recordingId,
+                armToolUsed: true
+            )
+        } catch {}
+    }
+
+    private func runAnonymization() {
+        let txtURL = StorageLayout.transcriptURL(id: recordingId)
+        guard let text = try? String(contentsOf: txtURL, encoding: .utf8),
+              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            anonymizationState = .failed("Ingen transkripsjon funnet å avidentifisere")
+            return
+        }
+
+        let exceptions = AppStateStore.load().avidentExceptions
+
+        anonymizationState = .running
+        anonymizationTask = Task { @MainActor in
+            do {
+                let raw = try await AnonymizationService.shared.anonymize(transcript: text)
+                guard !Task.isCancelled else { return }
+
+                let afterExceptions = raw.applying(exceptions: exceptions, to: text)
+                guard !Task.isCancelled else { return }
+
+                let (result, homographReport) = await HomographDisambiguator.filter(
+                    result: afterExceptions, sourceText: text, model: llmModel)
+                guard !Task.isCancelled else { return }
+
+                let anonURL = StorageLayout.anonymizedTranscriptURL(id: recordingId)
+                try result.anonymizedText.write(to: anonURL, atomically: true, encoding: .utf8)
+
+                _ = try RecordingStore.shared.updateMeta(id: recordingId) { meta in
+                    meta.anonymization.status = .done
+                    meta.anonymization.completedAt = Date()
+                    meta.anonymization.filename = "transcript_anonymized.txt"
+                    meta.anonymization.stats = result.stats
+                }
+
+                AuditLogger.shared.log(.transcriptAnonymized, payload: [
+                    "recordingId": .string(recordingId.uuidString),
+                    "stats": .string(statsSummary(result.stats)),
+                    "exceptionCount": .int(exceptions.count),
+                    "homographQueried": .int(homographReport.queried),
+                    "homographDropped": .int(homographReport.dropped),
+                    "homographKept": .int(homographReport.kept),
+                    "homographSkipped": .int(homographReport.skipped),
+                ])
+
+                anonymizationState = .completed(date: Date(), stats: result.stats)
+                flaggedReview = result.flaggedForReview ?? []
+                showAnonymized = true
+            } catch let error as AnonymizationError {
+                guard !Task.isCancelled else { return }
+                anonymizationState = .failed(error.errorDescription ?? "Ukjent feil")
+            } catch {
+                guard !Task.isCancelled else { return }
+                anonymizationState = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    private func statsSummary(_ stats: [String: Int]) -> String {
+        let parts = stats.compactMap { (key, count) -> String? in
+            guard count > 0 else { return nil }
+            switch key {
+            case "NAVN": return "\(count) navn"
+            case "TELEFON": return "\(count) telefonnummer"
+            case "FØDSELSNUMMER": return "\(count) fødselsnummer"
+            case "D-NUMMER": return "\(count) d-nummer"
+            case "EPOST": return "\(count) e-postadresse"
+            case "ORG": return "\(count) organisasjon"
+            case "STED": return "\(count) stedsnavn"
+            default: return "\(count) \(key.lowercased())"
+            }
+        }
+        if parts.isEmpty { return "ingen identifiserende informasjon funnet" }
+        return parts.joined(separator: ", ") + " fjernet"
     }
 }
 
