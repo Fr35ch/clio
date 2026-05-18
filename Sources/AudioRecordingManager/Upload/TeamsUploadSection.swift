@@ -29,27 +29,13 @@ struct TeamsUploadSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Opplasting til Teams")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-
-            sectionBody
-                .padding(16)
-                .background(Color.gray.opacity(0.04))
-                .cornerRadius(AppRadius.large)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppRadius.large)
-                        .stroke(Color.gray.opacity(0.15), lineWidth: 1)
-                )
-        }
-        .sheet(isPresented: $showConfirmationSheet) {
-            confirmationSheet
-        }
-        .sheet(isPresented: $showComplianceSheet) {
-            complianceSheet
-        }
+        sectionBody
+            .sheet(isPresented: $showConfirmationSheet) {
+                confirmationSheet
+            }
+            .sheet(isPresented: $showComplianceSheet) {
+                complianceSheet
+            }
     }
 
     // MARK: - State machine

@@ -1282,6 +1282,8 @@ struct RecordingPlayerNative: View {
                     transcriptionSection
                     diarizationSection
 
+                    teamsUploadSection
+
                     Section("Fil informasjon") {
                         LabeledContent("Filnavn") {
                             Text(recording.filename)
@@ -1294,8 +1296,6 @@ struct RecordingPlayerNative: View {
                         }
                         LabeledContent("Størrelse") { Text(recording.formattedSize) }
                     }
-
-                    teamsUploadSection
                 }
                 .formStyle(.grouped)
             }
@@ -1358,7 +1358,7 @@ struct RecordingPlayerNative: View {
             anonymization: AnonymizationMeta(),
             upload: UploadState()
         )
-        Section {
+        Section("Opplasting til Teams") {
             TeamsUploadSection(
                 recording: meta,
                 projects: AppStateStore.load().projects.filter { $0.isConfigured },
@@ -1376,8 +1376,6 @@ struct RecordingPlayerNative: View {
                     }
                 }
             )
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
         }
     }
 
