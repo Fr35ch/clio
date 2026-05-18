@@ -42,8 +42,16 @@ struct TeamsUploadSection: View {
 
     @ViewBuilder
     private var sectionBody: some View {
-        switch readiness {
-        case .blockedNoTranscript:
+        let r = readiness
+        if case .uploading = r {
+            uploadingView
+        } else if case .alreadyUploaded(let uploadedAt, let remoteName) = r {
+            uploadedView(uploadedAt: uploadedAt, remoteName: remoteName)
+        } else if case .uploadFailed(let project, let remoteName) = r {
+            failedView(project: project, remoteName: remoteName)
+        } else if case .ready(let project, let remoteName) = r {
+            readyView(project: project, remoteName: remoteName)
+        } else if case .blockedNoTranscript = r {
             blockedView(
                 icon: "waveform.and.mic",
                 iconColor: .secondary,
@@ -52,24 +60,20 @@ struct TeamsUploadSection: View {
                 actionLabel: nil,
                 action: nil
             )
-
-        case .blockedNotAnonymized:
+        } else if case .blockedNotAnonymized = r {
             blockedView(
                 icon: "lock.shield",
                 iconColor: AppColors.warning,
                 title: "Avidentifisering mangler",
                 message: "Transkripsjonen må avidentifiseres før den kan lastes opp til Teams.",
-                actionLabel: "Åpne transkripsjon",
-                action: nil // caller wires navigation to TranscriptEditorView
+                actionLabel: nil,
+                action: nil
             )
-
-        case .blockedNoNeutralCode:
+        } else if case .blockedNoNeutralCode = r {
             neutralCodeInputView
-
-        case .blockedNoProjectAssigned(let available):
+        } else if case .blockedNoProjectAssigned(let available) = r {
             projectPickerView(available: available)
-
-        case .blockedProjectNotFound:
+        } else if case .blockedProjectNotFound = r {
             blockedView(
                 icon: "exclamationmark.triangle",
                 iconColor: AppColors.warning,
@@ -78,8 +82,7 @@ struct TeamsUploadSection: View {
                 actionLabel: nil,
                 action: nil
             )
-
-        case .blockedNoProjectConfig(let project):
+        } else if case .blockedNoProjectConfig(let project) = r {
             blockedView(
                 icon: "gear.badge.questionmark",
                 iconColor: AppColors.warning,
@@ -88,8 +91,7 @@ struct TeamsUploadSection: View {
                 actionLabel: nil,
                 action: nil
             )
-
-        case .blockedComplianceNotConfirmed(let project):
+        } else if case .blockedComplianceNotConfirmed(let project) = r {
             blockedView(
                 icon: "checkmark.shield",
                 iconColor: AppColors.accent,
@@ -101,18 +103,6 @@ struct TeamsUploadSection: View {
                     showComplianceSheet = true
                 }
             )
-
-        case .ready(let project, let remoteName):
-            readyView(project: project, remoteName: remoteName)
-
-        case .uploading:
-            uploadingView
-
-        case .alreadyUploaded(let uploadedAt, let remoteName):
-            uploadedView(uploadedAt: uploadedAt, remoteName: remoteName)
-
-        case .uploadFailed(let project, let remoteName):
-            failedView(project: project, remoteName: remoteName)
         }
     }
 
