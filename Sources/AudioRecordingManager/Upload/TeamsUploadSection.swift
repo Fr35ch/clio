@@ -19,6 +19,7 @@ struct TeamsUploadSection: View {
     let onProjectUpdated: (ProjectConfig) -> Void
 
     @StateObject private var uploadService = TeamsUploadService.shared
+    @State private var showComingSoonAlert = false
     @State private var showConfirmationSheet = false
     @State private var showComplianceSheet = false
     @State private var pendingProject: ProjectConfig?
@@ -30,6 +31,11 @@ struct TeamsUploadSection: View {
 
     var body: some View {
         sectionBody
+            .alert("Funksjonen kommer snart", isPresented: $showComingSoonAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Opplasting til Teams er under utvikling og vil være tilgjengelig i en kommende versjon.")
+            }
             .sheet(isPresented: $showConfirmationSheet) {
                 confirmationSheet
             }
@@ -233,7 +239,7 @@ struct TeamsUploadSection: View {
             }
 
             Button("Last opp") {
-                showConfirmationSheet = true
+                showComingSoonAlert = true
             }
             .buttonStyle(PillButtonStyle(variant: .primary))
             .frame(maxWidth: .infinity)
