@@ -582,6 +582,11 @@ struct RecordingDetailView: View {
 
                 transcriptionState = .completed(result)
                 loadTranscriptMeta()
+            } catch let error as TranscriptionError {
+                guard !Task.isCancelled else { return }
+                _ = try? RecordingStore.shared.updateMeta(id: recording.id) { meta in
+                    meta.transcript.status = .failed
+                }
                 AuditLogger.shared.log(.transcriptFailed, payload: [
                     "recordingId": .string(recording.id.uuidString),
                     "error": .string(error.errorDescription ?? "unknown"),
