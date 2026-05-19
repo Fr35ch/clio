@@ -1334,9 +1334,10 @@ struct RecordingPlayerNative: View {
             }
         }
         .onDisappear {
+            // Cancel only local-state tasks (legacy path). Never cancel the
+            // shared TranscriptionRunner — jobs must survive navigation.
             transcriptionTask?.cancel()
             diarizationTask?.cancel()
-            TranscriptionService.shared.cancel()
         }
     }
 
