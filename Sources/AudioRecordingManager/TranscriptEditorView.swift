@@ -98,7 +98,7 @@ struct TranscriptEditorView: View {
             ScrollView {
                 segmentContent
             }
-            .background(showAnonymized ? Color.orange.opacity(0.04) : Color.clear)
+            .background(showAnonymized ? AppColors.anonymizerBackground : Color.clear)
 
             if case .completed = anonymizationState {
                 Divider()
@@ -138,7 +138,7 @@ struct TranscriptEditorView: View {
             if editor.isDirty {
                 Text("Ulagrede endringer")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(AppColors.warning)
             }
 
             if let err = editor.saveError {
@@ -386,8 +386,8 @@ struct TranscriptEditorView: View {
                             .padding(.horizontal, 2)
                             .padding(.vertical, 1)
                             .background(
-                                isHighlighted && isRedacted ? Color.orange.opacity(0.50)
-                                    : isRedacted            ? Color.orange.opacity(0.25)
+                                isHighlighted && isRedacted ? AppColors.anonymizerTokenBackgroundStrong
+                                    : isRedacted            ? AppColors.anonymizerTokenBackground
                                     : isHighlighted         ? AppColors.accent.opacity(0.25)
                                     : Color.clear,
                                 in: RoundedRectangle(cornerRadius: 3)
@@ -432,7 +432,7 @@ struct TranscriptEditorView: View {
         for match in pattern.matches(in: text, range: nsRange) {
             guard let stringRange = Range(match.range, in: text),
                   let attrRange = Range(stringRange, in: attributed) else { continue }
-            attributed[attrRange].backgroundColor = Color.orange.opacity(0.25)
+            attributed[attrRange].backgroundColor = AppColors.anonymizerTokenBackground
         }
         return attributed
     }

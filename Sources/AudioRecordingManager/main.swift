@@ -29,6 +29,7 @@ struct VirginProjectApp: App {
                         .transition(.opacity)
                 }
             }
+            .tint(AppColors.accent)
             .task {
                 await startupCoordinator.runStartupSequence()
             }
@@ -70,6 +71,7 @@ struct VirginProjectApp: App {
         WindowGroup(id: "transcript-editor", for: UUID.self) { $recordingId in
             if let id = recordingId {
                 TranscriptEditorWindow(recordingId: id)
+                    .tint(AppColors.accent)
             }
         }
         .defaultSize(width: 1200, height: 800)
@@ -1217,7 +1219,6 @@ struct RecordingPlayerNative: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
-                    .tint(.blue)
 
                     if isCurrentFile {
                         VStack(spacing: 8) {

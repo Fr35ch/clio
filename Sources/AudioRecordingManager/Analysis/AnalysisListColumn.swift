@@ -155,7 +155,7 @@ private struct AnalysisListRow: View {
         case .pending, .running:
             Text(analysis.status == .running ? "Kjører" : "Venter")
                 .font(.system(size: 10))
-                .foregroundStyle(.orange)
+                .foregroundStyle(AppColors.warning)
         case .completed:
             EmptyView()
         case .failed:

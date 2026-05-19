@@ -88,7 +88,7 @@ struct AnalysisResultDetailView: View {
                                 .lineLimit(1)
                             if staleSourceIds.contains(src.recordingId) {
                                 Image(systemName: "exclamationmark.circle.fill")
-                                    .foregroundStyle(.orange)
+                                    .foregroundStyle(AppColors.warning)
                                     .help("Transkripsjonen er endret etter denne analysen ble kjørt.")
                             }
                         }
@@ -107,7 +107,7 @@ struct AnalysisResultDetailView: View {
         if !staleSourceIds.isEmpty {
             HStack(alignment: .top, spacing: AppSpacing.sm) {
                 Image(systemName: "exclamationmark.circle.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(AppColors.warning)
                 Text("En eller flere transkripsjoner er endret etter denne analysen ble kjørt. Kjør på nytt for oppdatert resultat.")
                     .font(.caption)
                 Spacer()
@@ -115,11 +115,11 @@ struct AnalysisResultDetailView: View {
             .padding(AppSpacing.md)
             .background(
                 RoundedRectangle(cornerRadius: AppRadius.medium)
-                    .fill(Color.orange.opacity(0.1))
+                    .fill(AppColors.warning.opacity(0.1))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: AppRadius.medium)
-                    .stroke(Color.orange.opacity(0.4), lineWidth: 1)
+                    .stroke(AppColors.warning.opacity(0.4), lineWidth: 1)
             )
         }
     }

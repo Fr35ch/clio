@@ -50,7 +50,7 @@ struct GlassButtonStyle: ButtonStyle {
                     if #available(macOS 26.0, *) {
                         RoundedRectangle(cornerRadius: AppRadius.medium)
                             .fill(.thinMaterial)
-                            .glassEffect(.regular.tint(.blue).interactive(), in: .rect(cornerRadius: AppRadius.medium))
+                            .glassEffect(.regular.tint(AppColors.accent).interactive(), in: .rect(cornerRadius: AppRadius.medium))
                     } else {
                         RoundedRectangle(cornerRadius: AppRadius.medium)
                             .fill(.thinMaterial)

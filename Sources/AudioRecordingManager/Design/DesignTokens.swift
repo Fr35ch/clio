@@ -63,22 +63,37 @@ struct AppColors {
     // MARK: Semantic tokens (used throughout the app — do not remove)
     // -------------------------------------------------------------------------
 
-    // Brand accent — maps to purple primary
-    static let accent           = purpleAccent
-    static let accentSubtle     = purpleAccent.opacity(0.2)
-    static let accentTint       = purpleAccent.opacity(0.08)
-    static let accentFill       = purpleAccent.opacity(0.35)
+    // Brand accent — adaptive: purple in light mode, pink in dark mode.
+    // All .borderedProminent buttons, pills, and highlights use this.
+    static let accent: Color = Color(NSColor(name: "ARMAccent", dynamicProvider: { appearance in
+        switch appearance.bestMatch(from: [.aqua, .darkAqua]) {
+        case .darkAqua: return NSColor(pinkAccent)
+        default:        return NSColor(purpleAccent)
+        }
+    }))
+    static var accentSubtle: Color     { accent.opacity(0.2) }
+    static var accentTint: Color       { accent.opacity(0.08) }
+    static var accentFill: Color       { accent.opacity(0.35) }
 
     // Status
     static let destructive      = pinkAccent
     static let success          = Color.green
-    static let warning          = Color.orange
+    /// Coral — used for warnings and messages.
+    static let warning          = coralGradient
+
+    // Anonymizer surfaces
+    /// Lavender page tint when anonymized mode is active.
+    static let anonymizerBackground     = lavenderTint.opacity(0.5)
+    /// Slightly darker lavender for [Token] box backgrounds.
+    static let anonymizerTokenBackground = Color(red: 210/255, green: 205/255, blue: 245/255)
+    /// Stronger version for highlighted/active token boxes.
+    static let anonymizerTokenBackgroundStrong = Color(red: 185/255, green: 175/255, blue: 235/255)
 
     // Neutral surfaces — for outlined pills, chip backgrounds, dividers.
-    static let neutralSurface       = Color.gray.opacity(0.08)
-    static let neutralSurfaceStrong = Color.gray.opacity(0.12)
-    static let neutralBorder        = Color.gray.opacity(0.25)
-    static let neutralBorderStrong  = Color.gray.opacity(0.5)
+    static let neutralSurface           = Color.gray.opacity(0.08)
+    static let neutralSurfaceStrong     = Color.gray.opacity(0.12)
+    static let neutralBorder            = Color.gray.opacity(0.25)
+    static let neutralBorderStrong      = Color.gray.opacity(0.5)
 }
 
 // MARK: - AppSpacing

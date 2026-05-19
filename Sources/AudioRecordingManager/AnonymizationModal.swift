@@ -104,7 +104,7 @@ struct AnonymizationModal: View {
             HStack(alignment: .top, spacing: 14) {
                 Image(systemName: "shield.checkered")
                     .font(.system(size: 24, weight: .medium))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(AppColors.accent)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Automatisk anonymisering")
