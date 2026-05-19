@@ -1223,8 +1223,7 @@ struct RecordingPlayerNative: View {
     @State private var diarizationError: String? = nil
 
     @State private var showSettings = false
-
-    private var isCurrentFile: Bool {
+    @State private var transcriptMeta: TranscriptMeta? = nil
         audioPlayer.currentPlayingURL == recording.audioURL
     }
 
@@ -1343,6 +1342,25 @@ struct RecordingPlayerNative: View {
                         }
                         LabeledContent("Størrelse") { Text(recording.formattedSize) }
                     }
+
+                    if let meta = transcriptMeta, meta.status == .done {
+                        Section("Transkripsjonsdetaljer") {
+                            if let engine = meta.engine {
+                                LabeledContent("Modell") { Text(transcriptionModelDisplayName(engine)) }
+                            }
+                            if let beams = meta.numBeams {
+                                LabeledContent("Nøyaktighet") { Text(beamsDisplayName(beams)) }
+                            }
+                            if let secs = meta.processingTimeSeconds {
+                                LabeledContent("Transkripsjonstid") { Text(formattedProcessingTime(secs)) }
+                            }
+                            if let completedAt = meta.completedAt {
+                                LabeledContent("Ferdigstilt") {
+                                    Text(completedAt.formatted(date: .abbreviated, time: .shortened))
+                                }
+                            }
+                        }
+                    }
                 }
                 .formStyle(.grouped)
             }
@@ -1370,6 +1388,7 @@ struct RecordingPlayerNative: View {
         // in TranscriptEditorView (Transkripsjoner tab).
         .onAppear {
             restoreTranscriptionStateIfNeeded()
+            transcriptMeta = loadMeta()?.transcript
         }
         .onChange(of: transcriptionRunner.inFlight) { _, newValue in
             // When the runner removes this recording (job finished or
@@ -1378,6 +1397,7 @@ struct RecordingPlayerNative: View {
             if !newValue.contains(recording.id) {
                 transcriptionResult = nil
                 restoreTranscriptionStateIfNeeded()
+                transcriptMeta = loadMeta()?.transcript
             }
         }
         .onDisappear {
@@ -1392,6 +1412,36 @@ struct RecordingPlayerNative: View {
 
     private func loadMeta() -> RecordingMeta? {
         try? RecordingStore.shared.load(id: recording.id)
+    }
+
+    private func transcriptionModelDisplayName(_ engine: String) -> String {
+        switch engine {
+        case "tiny":   return "NB-Whisper Tiny"
+        case "base":   return "NB-Whisper Base"
+        case "small":  return "NB-Whisper Small"
+        case "medium": return "NB-Whisper Medium"
+        case "large":  return "NB-Whisper Large"
+        default:       return engine
+        }
+    }
+
+    private func beamsDisplayName(_ beams: Int) -> String {
+        switch beams {
+        case 1: return "Raskest (1)"
+        case 2: return "Rask (2)"
+        case 3: return "Middels (3)"
+        case 4: return "Treg (4)"
+        case 5: return "Svært treg (5)"
+        default: return "\(beams)"
+        }
+    }
+
+    private func formattedProcessingTime(_ seconds: Double) -> String {
+        let s = Int(seconds)
+        if s < 60 { return "\(s) sek" }
+        let m = s / 60
+        let rem = s % 60
+        return rem == 0 ? "\(m) min" : "\(m) min \(rem) sek"
     }
 
     @ViewBuilder private var teamsUploadSection: some View {
