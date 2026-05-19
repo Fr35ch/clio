@@ -283,7 +283,7 @@ final class TranscriptionService: ObservableObject, @unchecked Sendable {
         let validateMode = UserDefaults.standard.string(forKey: "transcription.validateMode") ?? "warn"
         if validateMode != "none" { cmdParts += ["--validate", validateMode] }
         let numBeams = UserDefaults.standard.integer(forKey: "transcription.numBeams")
-        cmdParts += ["--num-beams", "\(numBeams > 0 ? numBeams : 2)"]
+        cmdParts += ["--num-beams", "\(max(1, min(5, numBeams)))"]
         let cmd = cmdParts.joined(separator: " ")
 
         let task = Process()

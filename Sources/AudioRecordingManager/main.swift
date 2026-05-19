@@ -87,6 +87,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         print("✅ App delegate did finish launching")
 
+        // Register default values so UserDefaults.standard.integer(forKey:)
+        // returns the correct fallback even before the user opens Settings.
+        UserDefaults.standard.register(defaults: [
+            "transcription.defaultModel":    TranscriptionModel.large.rawValue,
+            "transcription.defaultSpeakers": 2,
+            "transcription.verbatim":        false,
+            "transcription.language":        "no",
+            "transcription.validateMode":    "warn",
+            "transcription.numBeams":        2,
+        ])
+
         // Ensure storage directories exist
         try? StorageLayout.ensureDirectoriesExist()
 
