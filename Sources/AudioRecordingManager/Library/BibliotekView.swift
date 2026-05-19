@@ -322,7 +322,10 @@ struct BibliotekView: View {
         let p = transcriptionRunner.progress[bundle.id] ?? 0
 
         if isRunning {
-            RunningPill(progress: p) {
+            RunningPill(
+                startTime: transcriptionRunner.startTimes[bundle.id],
+                audioDuration: transcriptionRunner.audioDurations[bundle.id]
+            ) {
                 selectRow(bundle.id)
                 transcriptionRunner.cancel(recordingId: bundle.id)
             }
@@ -337,7 +340,7 @@ struct BibliotekView: View {
         } else {
             Button("Transkriber") {
                 selectRow(bundle.id)
-                transcriptionRunner.start(recordingId: bundle.id)
+                transcriptionRunner.start(recordingId: bundle.id, audioDuration: bundle.durationSeconds)
             }
             .buttonStyle(PillButtonStyle(variant: .primary))
             .help("Start transkripsjon")

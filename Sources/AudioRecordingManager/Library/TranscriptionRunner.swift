@@ -8,13 +8,15 @@ final class TranscriptionRunner: ObservableObject {
 
     @Published private(set) var inFlight: Set<UUID> = []
     @Published private(set) var progress: [UUID: Double] = [:]
+    @Published private(set) var startTimes: [UUID: Date] = [:]
+    @Published private(set) var audioDurations: [UUID: Double] = [:]
 
     private var tasks: [UUID: Task<Void, Never>] = [:]
     private var progressSubscription: AnyCancellable?
 
     private init() {}
 
-    func start(recordingId: UUID) {
+    func start(recordingId: UUID, audioDuration: Double? = nil) {
         guard tasks[recordingId] == nil else { return }
 
         let defaults = UserDefaults.standard
@@ -30,6 +32,8 @@ final class TranscriptionRunner: ObservableObject {
 
         inFlight.insert(recordingId)
         progress[recordingId] = 0
+        startTimes[recordingId] = Date()
+        if let d = audioDuration { audioDurations[recordingId] = d }
 
         // The service is a singleton with a single `activeProcess`; mirror
         // its published `progress` to this recording's slot while in-flight.
@@ -45,6 +49,8 @@ final class TranscriptionRunner: ObservableObject {
                 self?.tasks[recordingId] = nil
                 self?.inFlight.remove(recordingId)
                 self?.progress[recordingId] = nil
+                self?.startTimes[recordingId] = nil
+                self?.audioDurations[recordingId] = nil
                 self?.progressSubscription?.cancel()
                 self?.progressSubscription = nil
             }
@@ -109,6 +115,8 @@ final class TranscriptionRunner: ObservableObject {
         tasks[recordingId] = nil
         inFlight.remove(recordingId)
         progress[recordingId] = nil
+        startTimes[recordingId] = nil
+        audioDurations[recordingId] = nil
         progressSubscription?.cancel()
         progressSubscription = nil
 

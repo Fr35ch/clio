@@ -80,53 +80,37 @@ struct PillButtonStyle: ButtonStyle {
 
 // MARK: - RunningPill
 
-/// A pill that visually fills from 0 → 1 along the leading edge to
-/// indicate determinate progress. Tap to invoke `onCancel`.
-///
-/// Use this for any "in-flight, cancel by tap" affordance — e.g. the
-/// "Avbryt · 42 %" pill in the Bibliotek TRANSKRIBERING column.
-///
-/// Sized to match `PillButtonStyle` (`AppSize.pillWidth × pillHeight`)
-/// so it slots into the same column without layout jitter.
+/// Indeterminate in-flight pill with elapsed-time label. Tap to cancel.
+/// Sized to match `PillButtonStyle` so it slots into the same column without jitter.
 struct RunningPill: View {
-    let progress: Double
-    let labelWhileRunning: String
-    let labelWaiting: String
+    let startTime: Date?
+    let audioDuration: Double?
     let onCancel: () -> Void
 
-    /// Convenience initialiser with the default Norwegian copy used by
-    /// the Bibliotek transcription column.
     init(
-        progress: Double,
-        labelWhileRunning: String? = nil,
-        labelWaiting: String = "Avbryt …",
+        startTime: Date? = nil,
+        audioDuration: Double? = nil,
         onCancel: @escaping () -> Void
     ) {
-        self.progress = progress
-        self.labelWhileRunning = labelWhileRunning
-            ?? "Avbryt · \(Int((progress * 100).rounded())) %"
-        self.labelWaiting = labelWaiting
+        self.startTime = startTime
+        self.audioDuration = audioDuration
         self.onCancel = onCancel
     }
 
     var body: some View {
         Button(action: onCancel) {
-            ZStack(alignment: .leading) {
-                AppColors.accentTint
-                GeometryReader { geo in
-                    Rectangle()
-                        .fill(AppColors.accentFill)
-                        .frame(width: max(0, geo.size.width * progress))
-                        .animation(.easeInOut(duration: 0.25), value: progress)
+            TimelineView(.periodic(from: .now, by: 1)) { _ in
+                ZStack {
+                    AppColors.accentTint
+                    HStack(spacing: 4) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(AppFont.pillLabel)
+                        Text(pillLabel)
+                            .font(AppFont.pillLabel)
+                            .monospacedDigit()
+                    }
+                    .foregroundStyle(.primary)
                 }
-                HStack(spacing: 4) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(AppFont.pillLabel)
-                    Text(progress > 0 ? labelWhileRunning : labelWaiting)
-                        .font(AppFont.pillLabel)
-                }
-                .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity)
             }
             .frame(width: AppSize.pillWidth, height: AppSize.pillHeight)
             .clipShape(Capsule())
@@ -135,5 +119,75 @@ struct RunningPill: View {
         }
         .buttonStyle(.plain)
         .hoverCursor()
+    }
+
+    private var pillLabel: String {
+        guard let start = startTime else { return "Avbryt …" }
+        let elapsed = Int(-start.timeIntervalSinceNow)
+        let mm = elapsed / 60
+        let ss = elapsed % 60
+        return String(format: "Avbryt · %d:%02d", mm, ss)
+    }
+}
+
+// MARK: - TranscriptionProgressView
+
+/// Indeterminate progress block shown in the detail pane during transcription.
+/// Shows a spinner, stage label, elapsed time, and an estimated remaining time
+/// derived from audio duration × a per-model speed factor.
+struct TranscriptionProgressView: View {
+    let stageName: String
+    let startTime: Date?
+    let audioDuration: Double?
+
+    // Approximate realtime factor for NB-Whisper on Apple Silicon MPS (float32).
+    // Large ≈ 0.25×, Medium ≈ 0.35×, Small ≈ 0.5×. We use 0.3 as a safe middle.
+    private let realtimeFactor: Double = 0.3
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .scaleEffect(0.75)
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    Text(statusLine)
+                        .font(.body)
+                        .monospacedDigit()
+                }
+            }
+            TimelineView(.periodic(from: .now, by: 1)) { _ in
+                if let est = estimateLine {
+                    Text(est)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
+        }
+    }
+
+    private var elapsed: Int {
+        guard let start = startTime else { return 0 }
+        return max(0, Int(-start.timeIntervalSinceNow))
+    }
+
+    private var statusLine: String {
+        let e = elapsed
+        if e == 0 { return stageName.isEmpty ? "Forbereder…" : stageName }
+        let mm = e / 60, ss = e % 60
+        let label = stageName.isEmpty ? "Transkriberer" : stageName.replacingOccurrences(of: "…", with: "").trimmingCharacters(in: .whitespaces)
+        return String(format: "%@ · %d:%02d", label, mm, ss)
+    }
+
+    private var estimateLine: String? {
+        guard let dur = audioDuration, dur > 0, let start = startTime else { return nil }
+        let e = -start.timeIntervalSinceNow
+        guard e > 5 else { return nil } // don't show estimate until 5s in
+        let totalEstimate = dur * realtimeFactor
+        let remaining = max(0, totalEstimate - e)
+        if remaining < 10 { return "Fullfører snart…" }
+        let mins = Int(remaining / 60) + 1
+        return "ca. \(mins) min gjenstår"
     }
 }

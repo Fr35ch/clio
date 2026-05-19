@@ -1453,47 +1453,23 @@ struct RecordingPlayerNative: View {
     private var transcriptionSection: some View {
         Section("Transkripsjon") {
             let runnerInFlight = transcriptionRunner.inFlight.contains(recording.id)
-            let runnerProgress = transcriptionRunner.progress[recording.id] ?? 0
 
             if runnerInFlight {
-                // Bibliotek pill (or the player itself) kicked off the
-                // shared runner. Show the live progress and a Cancel
-                // button that routes through `TranscriptionRunner` so
-                // both UIs reflect the same state.
-                HStack(spacing: 10) {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .scaleEffect(0.75)
-                    Text(runnerProgress > 0
-                         ? "Transkriberer \(Int(runnerProgress * 100)) %"
-                         : "Transkriberer …")
-                        .font(.body)
-                }
-                if runnerProgress > 0 {
-                    ProgressView(value: runnerProgress)
-                        .animation(.easeInOut(duration: 0.4), value: runnerProgress)
-                }
+                TranscriptionProgressView(
+                    stageName: transcriptionService.stage.displayName,
+                    startTime: transcriptionRunner.startTimes[recording.id],
+                    audioDuration: transcriptionRunner.audioDurations[recording.id]
+                )
                 Button("Avbryt", role: .destructive) {
                     transcriptionRunner.cancel(recordingId: recording.id)
                 }
             } else if isTranscribing {
-                // Local-state transcription path (kept for back-compat
-                // with the older player-only flow; new clicks now route
-                // through the runner above).
-                HStack(spacing: 10) {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .scaleEffect(0.75)
-                    Text(transcriptionService.stage.displayName.isEmpty
-                         ? "Forbereder..."
-                         : transcriptionService.stage.displayName)
-                        .font(.body)
-                        .animation(.default, value: transcriptionService.stage.displayName)
-                }
-                if transcriptionService.progress > 0 {
-                    ProgressView(value: transcriptionService.progress)
-                        .animation(.easeInOut(duration: 0.4), value: transcriptionService.progress)
-                }
+                // Local-state transcription path (back-compat; new clicks go through runner).
+                TranscriptionProgressView(
+                    stageName: transcriptionService.stage.displayName,
+                    startTime: nil,
+                    audioDuration: nil
+                )
                 Button("Avbryt", role: .destructive, action: cancelTranscription)
             } else if let result = transcriptionResult {
                 // Completed
@@ -1508,7 +1484,7 @@ struct RecordingPlayerNative: View {
                     Label("Åpne i transkripsjonseditoren", systemImage: "doc.text")
                 }
                 Button {
-                    transcriptionRunner.start(recordingId: recording.id)
+                    transcriptionRunner.start(recordingId: recording.id, audioDuration: recording.duration)
                 } label: {
                     Label("Transkriber på nytt", systemImage: "arrow.counterclockwise")
                 }
@@ -1521,13 +1497,13 @@ struct RecordingPlayerNative: View {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
                 }
                 Button("Prøv igjen") {
-                    transcriptionRunner.start(recordingId: recording.id)
+                    transcriptionRunner.start(recordingId: recording.id, audioDuration: recording.duration)
                 }
             } else {
                 // Not started
                 if transcriptionService.isInstalled {
                     Button {
-                        transcriptionRunner.start(recordingId: recording.id)
+                        transcriptionRunner.start(recordingId: recording.id, audioDuration: recording.duration)
                     } label: {
                         Label("Transkriber med NB-Whisper", systemImage: "waveform.and.mic")
                     }

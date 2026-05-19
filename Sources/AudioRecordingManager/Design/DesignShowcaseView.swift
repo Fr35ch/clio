@@ -155,9 +155,8 @@ struct DesignShowcaseView: View {
     private var runningPillSection: some View {
         section(title: "RunningPill", subtitle: "Sources/AudioRecordingManager/Design/PillButton.swift") {
             HStack(spacing: AppSpacing.md) {
-                RunningPill(progress: 0.0)    {}
-                RunningPill(progress: 0.42)   {}
-                RunningPill(progress: 0.95)   {}
+                RunningPill(startTime: nil) {}
+                RunningPill(startTime: Date().addingTimeInterval(-142), audioDuration: 3600) {}
                 Spacer()
             }
         }
