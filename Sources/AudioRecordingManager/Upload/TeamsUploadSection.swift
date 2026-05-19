@@ -248,28 +248,56 @@ struct TeamsUploadSection: View {
     }
 
     private func signOffView(armToolRan: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "signature")
-                    .foregroundStyle(AppColors.accent)
-                    .font(.system(size: 14))
-                Text("Bekreft avidentifisering")
-                    .font(.system(size: 13, weight: .semibold))
+        ZStack(alignment: .leading) {
+            // Card background
+            RoundedRectangle(cornerRadius: AppRadius.large)
+                .fill(AppColors.anonymizerBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppRadius.large)
+                        .strokeBorder(AppColors.accent.opacity(0.25), lineWidth: 1)
+                )
+
+            // Left accent stripe
+            RoundedRectangle(cornerRadius: 2)
+                .fill(AppColors.accent)
+                .frame(width: 3)
+                .padding(.vertical, 10)
+                .padding(.leading, 0)
+                .clipped()
+
+            // Content
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: armToolRan ? "checkmark.seal.fill" : "lock.shield")
+                        .font(.system(size: 18))
+                        .foregroundStyle(AppColors.accent)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Bekreft avidentifisering")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text(armToolRan ? "ARM-verktøyet er brukt" : "Manuell eller ARM")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Text(armToolRan
+                    ? "Gjennomgå transkripsjonen og bekreft at alle personopplysninger er fjernet."
+                    : "Avidentifiser transkripsjonen med ARM-verktøyet eller manuelt, og bekreft før opplasting."
+                )
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    showSignOffAlert = true
+                } label: {
+                    Label("Jeg bekrefter", systemImage: "checkmark")
+                }
+                .buttonStyle(PillButtonStyle(variant: .primary))
             }
-            if armToolRan {
-                Text("ARM-verktøyet er brukt. Bekreft at transkripsjonen er ferdig avidentifisert for å låse opp opplasting.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("Transkripsjonen må være avidentifisert — enten med ARM-verktøyet eller manuelt — før opplasting til Teams.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-            }
-            Button("Bekreft avidentifisering…") {
-                showSignOffAlert = true
-            }
-            .buttonStyle(PillButtonStyle(variant: .secondary))
-            .frame(maxWidth: .infinity)
+            .padding(.leading, 18)
+            .padding(.trailing, 12)
+            .padding(.vertical, 12)
         }
     }
 
