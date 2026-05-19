@@ -13,6 +13,7 @@ struct TranscriptionSettingsView: View {
     @AppStorage("transcription.verbatim")        private var verbatim = false
     @AppStorage("transcription.language")        private var language = "no"
     @AppStorage("transcription.validateMode")    private var validateMode = "warn"
+    @AppStorage("transcription.numBeams")        private var numBeams = 2
     // Transient UI state
     @State private var installState: ActionState = .idle
     @State private var updateState: ActionState = .idle
@@ -213,6 +214,27 @@ struct TranscriptionSettingsView: View {
 
                     Divider()
 
+                    // Transcription precision
+                    VStack(alignment: .leading, spacing: 6) {
+                        LabeledContent("Transkripsjonsnøyaktighet") {
+                            Picker("", selection: $numBeams) {
+                                Text("Raskest – mer manuell retting").tag(1)
+                                Text("Rask – anbefalt").tag(2)
+                                Text("Middels – god balanse").tag(3)
+                                Text("Treg – høy nøyaktighet").tag(4)
+                                Text("Svært treg – best mulig").tag(5)
+                            }
+                            .labelsHidden()
+                            .frame(width: 220)
+                        }
+                        Text(numBeamsDescription)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Divider()
+
                     // Language picker
                     LabeledContent("Språk") {
                         Picker("", selection: $language) {
@@ -247,6 +269,17 @@ struct TranscriptionSettingsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(4)
             }
+        }
+    }
+
+    private var numBeamsDescription: String {
+        switch numBeams {
+        case 1: return "Raskest mulig, men modellen tar snarveier og hopper over usikker tale. Forvent hyppigere feil som du må rette manuelt."
+        case 2: return "Rask med god kvalitet. Anbefalt for de fleste intervjuer."
+        case 3: return "Noe tregere, men fanger opp mer tvetydig tale. Bra for opptak med mye bakgrunnsstøy eller sterke dialekter."
+        case 4: return "Treg. Brukes til opptak der nøyaktighet er viktigere enn ventetid."
+        case 5: return "Svært treg (3–5× lenger enn rask). Bruk kun når du absolutt trenger best mulig resultat."
+        default: return ""
         }
     }
 
