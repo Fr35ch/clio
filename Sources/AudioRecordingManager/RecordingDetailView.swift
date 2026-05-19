@@ -35,6 +35,7 @@ struct RecordingDetailView: View {
     @State private var scrubberProgress: Double = 0
     @State private var isDraggingScrubber = false
     @State private var scrubberTimer: Timer? = nil
+    @State private var transcriptMeta: TranscriptMeta? = nil
 
     private var isCurrentFile: Bool {
         audioPlayer.currentPlayingURL == recording.audioURL
@@ -61,12 +62,14 @@ struct RecordingDetailView: View {
                 transcriptionSection
                 diarizationSection
                 fileInfoSection
+                transcriptionDetailsSection
             }
             .padding(32)
         }
         .frame(width: 560)
         .onAppear {
             restoreTranscriptionState()
+            loadTranscriptMeta()
             startScrubberTimer()
         }
         .onDisappear {
@@ -378,8 +381,7 @@ struct RecordingDetailView: View {
 
     // MARK: - Filinformasjon
 
-    private var fileInfoSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private var fileInfoSection: some View {        VStack(alignment: .leading, spacing: 12) {
             Text("Filinformasjon")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.secondary)
@@ -400,6 +402,79 @@ struct RecordingDetailView: View {
                 RoundedRectangle(cornerRadius: AppRadius.large)
                     .stroke(Color.gray.opacity(0.15), lineWidth: 1)
             )
+        }
+    }
+
+    @ViewBuilder
+    private var transcriptionDetailsSection: some View {
+        if let meta = transcriptMeta, meta.status == .done {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Transkripsjonsdetaljer")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+
+                VStack(spacing: 0) {
+                    if let engine = meta.engine {
+                        infoRow(label: "Modell", value: modelDisplayName(engine))
+                        Divider().background(Color.gray.opacity(0.2))
+                    }
+                    if let beams = meta.numBeams {
+                        infoRow(label: "Nøyaktighet", value: beamsDisplayName(beams))
+                        Divider().background(Color.gray.opacity(0.2))
+                    }
+                    if let secs = meta.processingTimeSeconds {
+                        infoRow(label: "Transkripsjonstid", value: formattedProcessingTime(secs))
+                    }
+                    if let completedAt = meta.completedAt {
+                        Divider().background(Color.gray.opacity(0.2))
+                        infoRow(label: "Ferdigstilt", value: completedAt.formatted(date: .abbreviated, time: .shortened))
+                    }
+                }
+                .background(Color.gray.opacity(0.04))
+                .cornerRadius(AppRadius.large)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppRadius.large)
+                        .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+                )
+            }
+        }
+    }
+
+    private func modelDisplayName(_ engine: String) -> String {
+        switch engine {
+        case "tiny":   return "NB-Whisper Tiny"
+        case "base":   return "NB-Whisper Base"
+        case "small":  return "NB-Whisper Small"
+        case "medium": return "NB-Whisper Medium"
+        case "large":  return "NB-Whisper Large"
+        default:       return engine
+        }
+    }
+
+    private func beamsDisplayName(_ beams: Int) -> String {
+        switch beams {
+        case 1: return "Raskest (1)"
+        case 2: return "Rask (2)"
+        case 3: return "Middels (3)"
+        case 4: return "Treg (4)"
+        case 5: return "Svært treg (5)"
+        default: return "\(beams)"
+        }
+    }
+
+    private func formattedProcessingTime(_ seconds: Double) -> String {
+        let s = Int(seconds)
+        if s < 60 { return "\(s) sek" }
+        let m = s / 60
+        let rem = s % 60
+        if rem == 0 { return "\(m) min" }
+        return "\(m) min \(rem) sek"
+    }
+
+    private func loadTranscriptMeta() {
+        if let meta = try? RecordingStore.shared.load(id: recording.id) {
+            transcriptMeta = meta.transcript
         }
     }
 
@@ -506,11 +581,7 @@ struct RecordingDetailView: View {
                 ])
 
                 transcriptionState = .completed(result)
-            } catch let error as TranscriptionError {
-                guard !Task.isCancelled else { return }
-                _ = try? RecordingStore.shared.updateMeta(id: recording.id) { meta in
-                    meta.transcript.status = .failed
-                }
+                loadTranscriptMeta()
                 AuditLogger.shared.log(.transcriptFailed, payload: [
                     "recordingId": .string(recording.id.uuidString),
                     "error": .string(error.errorDescription ?? "unknown"),

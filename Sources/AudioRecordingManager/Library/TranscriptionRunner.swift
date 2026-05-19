@@ -23,6 +23,10 @@ final class TranscriptionRunner: ObservableObject {
         let modelRaw = defaults.string(forKey: "transcription.defaultModel")
             ?? TranscriptionModel.large.rawValue
         let model = TranscriptionModel(rawValue: modelRaw) ?? .medium
+        let numBeams: Int = {
+            let v = defaults.integer(forKey: "transcription.numBeams")
+            return v == 0 ? 3 : v
+        }()
         let speakers: Int = {
             let v = defaults.integer(forKey: "transcription.defaultSpeakers")
             return v == 0 ? 2 : v
@@ -82,6 +86,8 @@ final class TranscriptionRunner: ObservableObject {
                     meta.transcript.status = .done
                     meta.transcript.completedAt = Date()
                     meta.transcript.engine = model.rawValue
+                    meta.transcript.numBeams = numBeams
+                    meta.transcript.processingTimeSeconds = result.metadata.processingTimeSeconds
                 }
 
                 AuditLogger.shared.log(.transcriptCompleted, payload: [

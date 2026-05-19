@@ -63,26 +63,34 @@ struct AudioMeta: Codable, Equatable {
 struct TranscriptMeta: Codable, Equatable {
     var filename: String
     var status: ArtifactStatus
-    /// Engine identifier, e.g. `"whisper-large-v3"`. Optional so migrated records
+    /// Engine identifier, e.g. `"large"`, `"medium"`. Optional so migrated records
     /// don't have to invent a value.
     var engine: String?
     var completedAt: Date?
     /// When the researcher last edited the transcript in the transcript editor.
     /// `nil` if the transcript has never been edited (raw NB-Whisper output).
     var lastEditedAt: Date?
+    /// Number of beams used during transcription (1 = raskest, 5 = best).
+    var numBeams: Int?
+    /// Wall-clock seconds navt.py spent transcribing.
+    var processingTimeSeconds: Double?
 
     init(
         filename: String = "transcript.txt",
         status: ArtifactStatus = .pending,
         engine: String? = nil,
         completedAt: Date? = nil,
-        lastEditedAt: Date? = nil
+        lastEditedAt: Date? = nil,
+        numBeams: Int? = nil,
+        processingTimeSeconds: Double? = nil
     ) {
         self.filename = filename
         self.status = status
         self.engine = engine
         self.completedAt = completedAt
         self.lastEditedAt = lastEditedAt
+        self.numBeams = numBeams
+        self.processingTimeSeconds = processingTimeSeconds
     }
 }
 
