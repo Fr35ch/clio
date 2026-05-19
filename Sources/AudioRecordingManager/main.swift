@@ -95,7 +95,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             "transcription.verbatim":        false,
             "transcription.language":        "no",
             "transcription.validateMode":    "warn",
-            "transcription.numBeams":        2,
+            "transcription.numBeams":        3,
         ])
 
         // Ensure storage directories exist

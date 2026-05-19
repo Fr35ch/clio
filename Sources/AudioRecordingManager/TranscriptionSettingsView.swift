@@ -13,7 +13,7 @@ struct TranscriptionSettingsView: View {
     @AppStorage("transcription.verbatim")        private var verbatim = false
     @AppStorage("transcription.language")        private var language = "no"
     @AppStorage("transcription.validateMode")    private var validateMode = "warn"
-    @AppStorage("transcription.numBeams")        private var numBeams = 2
+    @AppStorage("transcription.numBeams")        private var numBeams = 3
     // Transient UI state
     @State private var installState: ActionState = .idle
     @State private var updateState: ActionState = .idle
