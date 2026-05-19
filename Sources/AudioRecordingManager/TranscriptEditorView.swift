@@ -74,6 +74,9 @@ struct TranscriptEditorView: View {
     @State private var flaggedReview: [FlaggedToken] = []
     @State private var researcherConfirmedAt: Date? = nil
     @State private var anonymizationResult: AnonymizationResult? = nil
+    /// Per-segment anonymized text, keyed by segment.id.
+    /// Pre-computed once when anonymizationResult is loaded/updated — never inside the render loop.
+    @State private var segmentAnonymizedTexts: [Int: String] = [:]
     @AppStorage("analysis.llmModel") private var llmModel: String = "qwen3:8b"
 
     init(
@@ -98,7 +101,6 @@ struct TranscriptEditorView: View {
             ScrollView {
                 segmentContent
             }
-            .background(showAnonymized ? AppColors.anonymizerBackground : Color.clear)
 
             if case .completed = anonymizationState {
                 Divider()
@@ -138,7 +140,7 @@ struct TranscriptEditorView: View {
             if editor.isDirty {
                 Text("Ulagrede endringer")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(AppColors.warning)
+                    .foregroundStyle(.orange)
             }
 
             if let err = editor.saveError {
@@ -342,35 +344,33 @@ struct TranscriptEditorView: View {
 
     @ViewBuilder
     private func wordFlowView(segment: TranscriptionSegment, currentTime: Double) -> some View {
-        let annotations: [WordAnnotation]? = showAnonymized ? { () -> [WordAnnotation]? in
-            guard let result = anonymizationResult else { return nil }
-            let offset = segmentOffset(for: segment, in: editor.result.segments)
-            return wordAnnotations(for: segment, segmentOffset: offset, redactions: result.redactions)
-        }() : nil
-
         if segment.words.isEmpty {
-            // Transcripts loaded from `transcript.txt` (legacy or post-edit re-load)
-            // don't carry word-level timestamps — render the whole segment as one hit
-            // target. When anonymized view is active, swap in the anonymized segment
-            // text with orange token highlights.
-            if showAnonymized, let anonText = anonymizedSegmentText(for: segment) {
-                anonymizedFallbackView(anonText)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .contentShape(Rectangle())
-            } else {
-                Text(segment.text.trimmingCharacters(in: .whitespaces))
-                    .font(.system(size: 13))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .contentShape(Rectangle())
-            }
-        } else if showAnonymized && annotations == nil,
-                  let anonText = anonymizedSegmentText(for: segment) {
-            // Words exist but no anonymization_result.json (older recordings).
-            // Fall back to segment-level text display with token highlights.
-            anonymizedFallbackView(anonText)
+            // Transcripts don't carry word-level timestamps (navt.py outputs words: []).
+            // Render the whole segment as a single hit target.
+            // When showAnonymized, swap in the pre-computed anonymized text for this segment.
+            // `.textSelection(.enabled)` is dropped on purpose: it absorbs clicks on macOS,
+            // blocking playSegment. Selection is still available via the toolbar copy affordance.
+            let displayText: String = {
+                if showAnonymized, let anonText = segmentAnonymizedTexts[segment.id] {
+                    return anonText
+                }
+                return segment.text.trimmingCharacters(in: .whitespaces)
+            }()
+            Text(displayText)
+                .font(.system(size: 13))
                 .fixedSize(horizontal: false, vertical: true)
                 .contentShape(Rectangle())
         } else {
+            // Word-level karaoke path — only reached when the transcription engine
+            // has populated word timestamps (future: when navt.py populates words[]).
+            let annotations: [WordAnnotation]? = showAnonymized
+                ? wordAnnotations(
+                    for: segment,
+                    segmentOffset: segmentOffset(for: segment, in: editor.result.segments),
+                    redactions: anonymizationResult?.redactions ?? []
+                )
+                : nil
+
             WrappingHStack(alignment: .leading, spacing: 2) {
                 ForEach(Array(segment.words.enumerated()), id: \.offset) { idx, word in
                     let isHighlighted = currentTime >= word.start && currentTime < word.end
@@ -379,85 +379,28 @@ struct TranscriptEditorView: View {
                     }
                     let displayText = annotation?.text ?? word.word
                     let isRedacted = annotation?.isRedacted ?? false
-                    // Skip suppressed words (trailing words of a multi-word redaction)
-                    if !displayText.isEmpty {
-                        Text(displayText)
-                            .font(.system(size: 13))
-                            .padding(.horizontal, 2)
-                            .padding(.vertical, 1)
-                            .background(
-                                isHighlighted && isRedacted ? AppColors.anonymizerTokenBackgroundStrong
-                                    : isRedacted            ? AppColors.anonymizerTokenBackground
-                                    : isHighlighted         ? AppColors.accent.opacity(0.25)
-                                    : Color.clear,
-                                in: RoundedRectangle(cornerRadius: 3)
-                            )
-                            // `Text` on macOS is not reliably hit-testable
-                            // for `onTapGesture` without an explicit content
-                            // shape — without this, clicks on words simply
-                            // don't fire. The Rectangle covers the padded
-                            // bounds so even the gap around the glyphs
-                            // counts.
-                            .contentShape(Rectangle())
-                            .pointingHandCursor()
-                            .onTapGesture(count: 2) {
-                                enterEditMode(for: segment)
-                            }
-                            .onTapGesture(count: 1) {
-                                playback.playSegment(from: word.start, to: segment.end)
-                            }
-                    }
+                    Text(displayText)
+                        .font(.system(size: 13))
+                        .padding(.horizontal, 2)
+                        .padding(.vertical, 1)
+                        .background(
+                            isHighlighted && isRedacted ? Color.orange.opacity(0.50)
+                                : isRedacted            ? Color.orange.opacity(0.25)
+                                : isHighlighted         ? AppColors.accent.opacity(0.25)
+                                : Color.clear,
+                            in: RoundedRectangle(cornerRadius: 3)
+                        )
+                        .contentShape(Rectangle())
+                        .pointingHandCursor()
+                        .onTapGesture(count: 2) {
+                            enterEditMode(for: segment)
+                        }
+                        .onTapGesture(count: 1) {
+                            playback.playSegment(from: word.start, to: segment.end)
+                        }
                 }
             }
         }
-    }
-
-    /// Renders anonymized segment text using a single `Text` view so typography is identical
-    /// to the original — no word splitting, no spacing changes. `[Xxx]` replacement tokens
-    /// get an orange `backgroundColor` via `AttributedString`.
-    @ViewBuilder
-    private func anonymizedFallbackView(_ text: String) -> some View {
-        Text(highlightedAnonymizedText(text))
-            .font(.system(size: 13))
-            .fixedSize(horizontal: false, vertical: true)
-            .contentShape(Rectangle())
-    }
-
-    private func highlightedAnonymizedText(_ text: String) -> AttributedString {
-        var attributed = AttributedString(text)
-        guard let pattern = try? NSRegularExpression(pattern: #"\[[^\]]+\]"#) else {
-            return attributed
-        }
-        let nsRange = NSRange(text.startIndex..., in: text)
-        for match in pattern.matches(in: text, range: nsRange) {
-            guard let stringRange = Range(match.range, in: text),
-                  let attrRange = Range(stringRange, in: attributed) else { continue }
-            attributed[attrRange].backgroundColor = AppColors.anonymizerTokenBackground
-        }
-        return attributed
-    }
-
-    /// Returns the anonymized text for `segment`, either from the loaded
-    /// `AnonymizationResult` or from the anonymized transcript file on disk.
-    /// Splits the full anonymized text by `"\n\n"` and picks the entry matching
-    /// this segment's position in `editor.result.segments`.
-    private func anonymizedSegmentText(for segment: TranscriptionSegment) -> String? {
-        let fullAnonText: String?
-        if let result = anonymizationResult {
-            fullAnonText = result.anonymizedText
-        } else {
-            fullAnonText = try? String(
-                contentsOf: StorageLayout.anonymizedTranscriptURL(id: recordingId),
-                encoding: .utf8
-            )
-        }
-        guard let anonText = fullAnonText else { return nil }
-        let segments = editor.result.segments
-        guard let idx = segments.firstIndex(where: { $0.id == segment.id }) else { return nil }
-        let parts = anonText.components(separatedBy: "\n\n")
-        guard idx < parts.count else { return nil }
-        let text = parts[idx].trimmingCharacters(in: .whitespaces)
-        return text.isEmpty ? nil : text
     }
 
     // MARK: - Edit row
@@ -631,6 +574,7 @@ struct TranscriptEditorView: View {
         if let data = try? Data(contentsOf: StorageLayout.anonymizationResultURL(id: recordingId)),
            let result = try? JSONDecoder().decode(AnonymizationResult.self, from: data) {
             anonymizationResult = result
+            segmentAnonymizedTexts = buildSegmentAnonymizedTexts(from: result)
         }
     }
 
@@ -692,6 +636,7 @@ struct TranscriptEditorView: View {
 
                 anonymizationState = .completed(date: Date(), stats: result.stats)
                 anonymizationResult = result
+                segmentAnonymizedTexts = buildSegmentAnonymizedTexts(from: result)
                 flaggedReview = result.flaggedForReview ?? []
                 showAnonymized = true
 
@@ -728,6 +673,21 @@ struct TranscriptEditorView: View {
 
     // MARK: - Word annotation helpers
 
+    /// Splits `result.anonymizedText` by the same `\n\n` separator the anonymizer received,
+    /// then maps each slice back to its segment by index. Called once when anonymization
+    /// completes or loads — never inside the per-frame render loop.
+    private func buildSegmentAnonymizedTexts(from result: AnonymizationResult) -> [Int: String] {
+        let lines = result.anonymizedText.components(separatedBy: "\n\n")
+        var map: [Int: String] = [:]
+        let segments = editor.result.segments
+        for (i, segment) in segments.enumerated() {
+            if i < lines.count {
+                map[segment.id] = lines[i]
+            }
+        }
+        return map
+    }
+
     /// Returns the character offset (in Unicode scalars) of `target`'s text
     /// within the full transcript string that was sent to the anonymizer.
     /// The full text is `segments.map { $0.text.trimmed }.joined(separator: "\n\n")`.
@@ -753,7 +713,6 @@ struct TranscriptEditorView: View {
         var annotations: [WordAnnotation] = []
         var charOffset = 0
         var remaining = segText
-        var lastEmittedRedaction: Redaction? = nil
 
         for word in segment.words {
             let trimmedWord = word.word.trimmingCharacters(in: .whitespaces)
@@ -778,18 +737,10 @@ struct TranscriptEditorView: View {
                 remaining = String(remaining[range.upperBound...])
             }
 
-            // Multi-word redaction: only the first word in the span emits the replacement.
-            // Subsequent words in the same redaction are suppressed (empty text, isRedacted=true)
-            // so the `[Xxx]` token doesn't repeat for every source word it covered.
-            if let red = matchedRedaction, red == lastEmittedRedaction {
-                annotations.append(WordAnnotation(text: "", isRedacted: true))
-            } else {
-                annotations.append(WordAnnotation(
-                    text: matchedRedaction?.replacement ?? word.word,
-                    isRedacted: matchedRedaction != nil
-                ))
-                lastEmittedRedaction = matchedRedaction
-            }
+            annotations.append(WordAnnotation(
+                text: matchedRedaction?.replacement ?? word.word,
+                isRedacted: matchedRedaction != nil
+            ))
         }
         return annotations
     }
