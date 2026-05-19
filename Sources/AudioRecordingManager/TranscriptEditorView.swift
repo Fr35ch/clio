@@ -98,6 +98,7 @@ struct TranscriptEditorView: View {
             ScrollView {
                 segmentContent
             }
+            .background(showAnonymized ? Color.orange.opacity(0.04) : Color.clear)
 
             if case .completed = anonymizationState {
                 Divider()
@@ -411,26 +412,29 @@ struct TranscriptEditorView: View {
         }
     }
 
-    /// Renders anonymized segment text with orange background on `[Xxx]` replacement tokens.
-    /// Used as fallback when per-word timing data is unavailable or anonymization_result.json
-    /// was not saved (older recordings).
+    /// Renders anonymized segment text using a single `Text` view so typography is identical
+    /// to the original — no word splitting, no spacing changes. `[Xxx]` replacement tokens
+    /// get an orange `backgroundColor` via `AttributedString`.
     @ViewBuilder
     private func anonymizedFallbackView(_ text: String) -> some View {
-        let tokens = text.components(separatedBy: " ")
-        WrappingHStack(alignment: .leading, spacing: 2) {
-            ForEach(Array(tokens.enumerated()), id: \.offset) { _, token in
-                let isReplacement = token.count > 2 && token.hasPrefix("[") && token.hasSuffix("]")
-                Text(token)
-                    .font(.system(size: 13))
-                    .padding(.horizontal, 2)
-                    .padding(.vertical, 1)
-                    .background(
-                        isReplacement ? Color.orange.opacity(0.25) : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 3)
-                    )
-                    .contentShape(Rectangle())
-            }
+        Text(highlightedAnonymizedText(text))
+            .font(.system(size: 13))
+            .fixedSize(horizontal: false, vertical: true)
+            .contentShape(Rectangle())
+    }
+
+    private func highlightedAnonymizedText(_ text: String) -> AttributedString {
+        var attributed = AttributedString(text)
+        guard let pattern = try? NSRegularExpression(pattern: #"\[[^\]]+\]"#) else {
+            return attributed
         }
+        let nsRange = NSRange(text.startIndex..., in: text)
+        for match in pattern.matches(in: text, range: nsRange) {
+            guard let stringRange = Range(match.range, in: text),
+                  let attrRange = Range(stringRange, in: attributed) else { continue }
+            attributed[attrRange].backgroundColor = Color.orange.opacity(0.25)
+        }
+        return attributed
     }
 
     /// Returns the anonymized text for `segment`, either from the loaded
