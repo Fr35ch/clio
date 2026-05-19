@@ -193,23 +193,35 @@ struct TranscriptionSettingsView: View {
 
                     Divider()
 
-                    // Verbatim toggle
-                    VStack(alignment: .leading, spacing: 6) {
-                        Toggle(isOn: $verbatim) {
-                            Text("Verbatim-modus")
-                                .font(.system(size: 13))
+                    // Transkripsjonsformat
+                    VStack(alignment: .leading, spacing: 8) {
+                        LabeledContent("Transkripsjonsformat") {
+                            Picker("", selection: $verbatim) {
+                                Text("Renset").tag(false)
+                                Text("Ordrett").tag(true)
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(width: 180)
                         }
-                        .toggleStyle(.checkbox)
 
-                        Text(
-                            verbatim
-                                ? "Alle lyder tas med: nøling, fyllord og gjentakelser."
-                                : "Fyllord og nøling renses bort. Anbefalt for de fleste intervjuer."
-                        )
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 3) {
+                            if verbatim {
+                                Text("Alle lyder skrives ned nøyaktig slik de ble sagt – fyllord (ehm, liksom), nøling og gjentakelser tas med.")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                                Text("Bruk dette når du analyserer talemønstre eller trenger fullstendig kilde.")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text("Fyllord (ehm, liksom), nøling og gjentakelser fjernes automatisk. Gir flytende tekst klar for analyse.")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                                Text("Anbefalt for de fleste intervjuer.")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(AppColors.accent.opacity(0.8))
+                            }
+                        }
                         .fixedSize(horizontal: false, vertical: true)
-                        .padding(.leading, 20)
                     }
 
                     Divider()
