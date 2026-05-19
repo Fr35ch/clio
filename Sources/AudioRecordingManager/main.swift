@@ -1224,6 +1224,8 @@ struct RecordingPlayerNative: View {
 
     @State private var showSettings = false
     @State private var transcriptMeta: TranscriptMeta? = nil
+
+    private var isCurrentFile: Bool {
         audioPlayer.currentPlayingURL == recording.audioURL
     }
 
