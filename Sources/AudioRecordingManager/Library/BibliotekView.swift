@@ -192,14 +192,14 @@ struct BibliotekView: View {
             if !isCompact {
                 columnHeader("VARIGH.", width: 70, alignment: .leading)
             }
-            columnHeader("DATO", width: 130, alignment: .leading)
+            columnHeader("DATO", width: 130, alignment: .center)
             columnHeader("TRANSKRIBERING", width: 150, alignment: .leading)
             if !isCompact {
                 columnHeader("AVIDENT.", width: 110, alignment: .leading)
                 columnHeader("ANALYSE", width: 100, alignment: .leading)
                 columnHeader("TEAMS", width: 70, alignment: .leading)
             }
-            columnHeader("SLETTES", width: 70, alignment: .leading)
+            columnHeader("SLETTES", width: 70, alignment: .center)
         }
         .padding(.horizontal, AppSpacing.lg)
         .padding(.vertical, AppSpacing.sm)
@@ -258,7 +258,7 @@ struct BibliotekView: View {
                 .font(AppFont.tableMetaCell)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-                .frame(width: 130, alignment: .leading)
+                .frame(width: 130, alignment: .center)
 
             transcribeActionButton(for: bundle)
                 .frame(width: 150, alignment: .leading)
@@ -271,7 +271,7 @@ struct BibliotekView: View {
             Text(bundle.slettes.label)
                 .font(AppFont.tableMetaCell)
                 .foregroundStyle(StatusChipView.foreground(bundle.slettes.tone))
-                .frame(width: 70, alignment: .leading)
+                .frame(width: 70, alignment: .center)
         }
         .padding(.horizontal, AppSpacing.lg)
         .padding(.vertical, 6)
