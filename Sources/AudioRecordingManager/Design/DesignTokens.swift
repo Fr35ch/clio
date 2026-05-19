@@ -19,27 +19,66 @@ import SwiftUI
 
 // MARK: - AppColors
 
-/// Modern Liquid Glass colour palette, driven by system colours so the
-/// app tracks light/dark appearance automatically.
+/// Custom colour palette — purple/pink accent, dark and light theme variants.
+/// See Design/README.md and the colour palette reference image before editing.
 struct AppColors {
-    // Brand accent
-    static let accent = Color.blue
-    static let accentSubtle = Color.blue.opacity(0.2)
-    static let accentTint = Color.blue.opacity(0.08)
-    static let accentFill = Color.blue.opacity(0.35)
+
+    // -------------------------------------------------------------------------
+    // MARK: Palette primitives
+    // -------------------------------------------------------------------------
+
+    // Dark theme backgrounds
+    /// #1a1a1f — darkest background layer
+    static let darkBackground   = Color(red: 26/255,  green: 26/255,  blue: 31/255)
+    /// #2a2a2f — raised surface in dark mode
+    static let darkSurface      = Color(red: 42/255,  green: 42/255,  blue: 47/255)
+
+    // Light theme backgrounds
+    /// #faf9ff — page background in light mode
+    static let lightBackground  = Color(red: 250/255, green: 249/255, blue: 255/255)
+    /// #f5f3ff — lavender-tinted surface in light mode
+    static let lavenderTint     = Color(red: 245/255, green: 243/255, blue: 255/255)
+
+    // Accent colours
+    /// #7c3aed — purple primary accent (both themes)
+    static let purpleAccent     = Color(red: 124/255, green: 58/255,  blue: 237/255)
+    /// #e91e63 — pink accent (dark theme primary, light theme secondary)
+    static let pinkAccent       = Color(red: 233/255, green: 30/255,  blue: 99/255)
+
+    // Text
+    /// #ffffff — primary text on dark backgrounds
+    static let lightText        = Color.white
+    /// #b0b0b5 — muted / secondary text on dark backgrounds
+    static let mutedText        = Color(red: 176/255, green: 176/255, blue: 181/255)
+    /// #1a1a1f — primary text on light backgrounds
+    static let darkText         = Color(red: 26/255,  green: 26/255,  blue: 31/255)
+
+    // Gradient stops
+    /// #ff9a8b — coral gradient start
+    static let coralGradient    = Color(red: 255/255, green: 154/255, blue: 139/255)
+    /// #ffa8a1 — peach gradient end
+    static let peachGradient    = Color(red: 255/255, green: 168/255, blue: 161/255)
+
+    // -------------------------------------------------------------------------
+    // MARK: Semantic tokens (used throughout the app — do not remove)
+    // -------------------------------------------------------------------------
+
+    // Brand accent — maps to purple primary
+    static let accent           = purpleAccent
+    static let accentSubtle     = purpleAccent.opacity(0.2)
+    static let accentTint       = purpleAccent.opacity(0.08)
+    static let accentFill       = purpleAccent.opacity(0.35)
 
     // Status
-    static let destructive = Color.red
-    static let success = Color.green
-    static let warning = Color.orange
+    static let destructive      = pinkAccent
+    static let success          = Color.green
+    static let warning          = Color.orange
 
     // Neutral surfaces — for outlined pills, chip backgrounds, dividers.
-    // Use these instead of `Color.gray.opacity(...)` so opacities stay
-    // consistent across the app.
-    static let neutralSurface = Color.gray.opacity(0.08)
+    static let neutralSurface       = Color.gray.opacity(0.08)
     static let neutralSurfaceStrong = Color.gray.opacity(0.12)
-    static let neutralBorder = Color.gray.opacity(0.25)
-    static let neutralBorderStrong = Color.gray.opacity(0.5)
+    static let neutralBorder        = Color.gray.opacity(0.25)
+    static let neutralBorderStrong  = Color.gray.opacity(0.5)
 }
 
 // MARK: - AppSpacing
