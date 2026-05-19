@@ -134,15 +134,35 @@ struct RunningPill: View {
 
 /// Indeterminate progress block shown in the detail pane during transcription.
 /// Shows a spinner, stage label, elapsed time, and an estimated remaining time
-/// derived from audio duration × a per-model speed factor.
+/// derived from audio duration × a per-model-and-beams speed factor.
 struct TranscriptionProgressView: View {
     let stageName: String
     let startTime: Date?
     let audioDuration: Double?
+    /// NB-Whisper model variant, e.g. "large", "medium". Nil = use safe default.
+    var model: String? = nil
+    /// Number of beams used. Nil = use safe default.
+    var numBeams: Int? = nil
 
-    // Approximate realtime factor for NB-Whisper on Apple Silicon MPS (float32).
-    // Large ≈ 0.25×, Medium ≈ 0.35×, Small ≈ 0.5×. We use 0.3 as a safe middle.
-    private let realtimeFactor: Double = 0.3
+    /// Realtime factor (processing time / audio duration) for NB-Whisper on
+    /// Apple Silicon MPS (float32). Measured empirically; beams scale roughly
+    /// linearly. Values are conservative (slightly high) so the estimate rarely
+    /// undershoots — surprising the user with "done" is better than "5 min left"
+    /// that never arrives.
+    private var realtimeFactor: Double {
+        let beams = numBeams ?? 3
+        let beamScale = 0.6 + Double(beams - 1) * 0.2  // 1→0.6, 2→0.8, 3→1.0, 4→1.2, 5→1.4
+        let baseForModel: Double
+        switch model ?? "medium" {
+        case "tiny":   baseForModel = 0.09
+        case "base":   baseForModel = 0.13
+        case "small":  baseForModel = 0.19
+        case "medium": baseForModel = 0.32
+        case "large":  baseForModel = 0.48
+        default:       baseForModel = 0.32
+        }
+        return baseForModel * beamScale
+    }
 
     var body: some View {
         VStack(spacing: 8) {
@@ -183,10 +203,13 @@ struct TranscriptionProgressView: View {
     private var estimateLine: String? {
         guard let dur = audioDuration, dur > 0, let start = startTime else { return nil }
         let e = -start.timeIntervalSinceNow
-        guard e > 5 else { return nil } // don't show estimate until 5s in
+        guard e > 5 else { return nil }
         let totalEstimate = dur * realtimeFactor
         let remaining = max(0, totalEstimate - e)
         if remaining < 10 { return "Fullfører snart…" }
+        if remaining < 120 {
+            return "ca. \(Int(remaining)) sek gjenstår"
+        }
         let mins = Int(remaining / 60) + 1
         return "ca. \(mins) min gjenstår"
     }

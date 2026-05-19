@@ -1558,7 +1558,9 @@ struct RecordingPlayerNative: View {
                 TranscriptionProgressView(
                     stageName: transcriptionService.stage.displayName,
                     startTime: transcriptionRunner.startTimes[recording.id],
-                    audioDuration: transcriptionRunner.audioDurations[recording.id]
+                    audioDuration: transcriptionRunner.audioDurations[recording.id],
+                    model: defaultModelRaw,
+                    numBeams: { let v = UserDefaults.standard.integer(forKey: "transcription.numBeams"); return v == 0 ? 3 : v }()
                 )
                 Button("Avbryt", role: .destructive) {
                     transcriptionRunner.cancel(recordingId: recording.id)
