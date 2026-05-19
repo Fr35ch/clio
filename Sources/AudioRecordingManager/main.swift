@@ -1009,21 +1009,9 @@ struct NavPanel: View {
 
     private func footerIconButton(icon: String, helpText: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 14))
-                .foregroundStyle(.secondary)
-                .frame(width: 44, height: 36)
-                .contentShape(Rectangle())
-                .help(helpText)
+            FooterIconButtonLabel(icon: icon, helpText: helpText)
         }
         .buttonStyle(.plain)
-        .onHover { hovering in
-            if hovering {
-                NSCursor.pointingHand.set()
-            } else {
-                NSCursor.arrow.set()
-            }
-        }
     }
 
     private func toggleAppearance() {
@@ -1035,27 +1023,74 @@ struct NavPanel: View {
 
     private func navItem(tab: AppTab, label: String, icon: String) -> some View {
         Button(action: { selectedTab = tab }) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: selectedTab == tab ? .semibold : .regular))
-                .frame(width: 44, height: 36)
-                .background {
-                    if selectedTab == tab {
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.accentColor.opacity(0.15))
-                    }
-                }
-                .foregroundStyle(selectedTab == tab ? .primary : .secondary)
-                .contentShape(Rectangle())
-                .help(label)
+            NavItemLabel(tab: tab, selectedTab: selectedTab, icon: icon, label: label)
         }
         .buttonStyle(.plain)
-        .onHover { hovering in
-            if hovering {
-                NSCursor.pointingHand.set()
-            } else {
-                NSCursor.arrow.set()
+    }
+}
+
+// Extracted to a struct so @State for hover can be used (functions can't hold @State).
+private struct NavItemLabel: View {
+    let tab: AppTab
+    let selectedTab: AppTab
+    let icon: String
+    let label: String
+
+    @State private var isHovered = false
+
+    private var isActive: Bool { selectedTab == tab }
+
+    var body: some View {
+        Image(systemName: icon)
+            .font(.system(size: 16, weight: isActive ? .semibold : .regular))
+            .frame(width: 44, height: 36)
+            .background {
+                RoundedRectangle(cornerRadius: AppRadius.small)
+                    .fill(isActive
+                        ? AppColors.accent.opacity(0.18)
+                        : isHovered
+                            ? AppColors.accent.opacity(0.09)
+                            : Color.clear
+                    )
+                    .animation(.easeInOut(duration: 0.15), value: isHovered)
             }
-        }
+            .foregroundStyle(isActive
+                ? AppColors.accent
+                : isHovered
+                    ? AppColors.accent.opacity(0.75)
+                    : Color.secondary
+            )
+            .contentShape(Rectangle())
+            .help(label)
+            .onHover { hovering in
+                isHovered = hovering
+                hovering ? NSCursor.pointingHand.set() : NSCursor.arrow.set()
+            }
+    }
+}
+
+private struct FooterIconButtonLabel: View {
+    let icon: String
+    let helpText: String
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Image(systemName: icon)
+            .font(.system(size: 14))
+            .frame(width: 44, height: 36)
+            .background {
+                RoundedRectangle(cornerRadius: AppRadius.small)
+                    .fill(isHovered ? AppColors.accent.opacity(0.09) : Color.clear)
+                    .animation(.easeInOut(duration: 0.15), value: isHovered)
+            }
+            .foregroundStyle(isHovered ? AppColors.accent.opacity(0.75) : Color.secondary)
+            .contentShape(Rectangle())
+            .help(helpText)
+            .onHover { hovering in
+                isHovered = hovering
+                hovering ? NSCursor.pointingHand.set() : NSCursor.arrow.set()
+            }
     }
 }
 
