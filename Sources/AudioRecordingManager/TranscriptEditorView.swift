@@ -348,15 +348,25 @@ struct TranscriptEditorView: View {
         }() : nil
 
         if segment.words.isEmpty {
-            // Transcripts loaded from `transcript.txt` (legacy or
-            // post-edit re-load) don't carry word-level timestamps —
-            // we render the whole segment as a single hit target.
-            // `.textSelection(.enabled)` is dropped here on purpose: it
-            // absorbs clicks on macOS, which would block the row from
-            // ever firing playSegment. Selection is still available via
-            // the toolbar's copy affordance.
-            Text(segment.text.trimmingCharacters(in: .whitespaces))
-                .font(.system(size: 13))
+            // Transcripts loaded from `transcript.txt` (legacy or post-edit re-load)
+            // don't carry word-level timestamps — render the whole segment as one hit
+            // target. When anonymized view is active, swap in the anonymized segment
+            // text with orange token highlights.
+            if showAnonymized, let anonText = anonymizedSegmentText(for: segment) {
+                anonymizedFallbackView(anonText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .contentShape(Rectangle())
+            } else {
+                Text(segment.text.trimmingCharacters(in: .whitespaces))
+                    .font(.system(size: 13))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .contentShape(Rectangle())
+            }
+        } else if showAnonymized && annotations == nil,
+                  let anonText = anonymizedSegmentText(for: segment) {
+            // Words exist but no anonymization_result.json (older recordings).
+            // Fall back to segment-level text display with token highlights.
+            anonymizedFallbackView(anonText)
                 .fixedSize(horizontal: false, vertical: true)
                 .contentShape(Rectangle())
         } else {
@@ -368,34 +378,82 @@ struct TranscriptEditorView: View {
                     }
                     let displayText = annotation?.text ?? word.word
                     let isRedacted = annotation?.isRedacted ?? false
-                    Text(displayText)
-                        .font(.system(size: 13))
-                        .padding(.horizontal, 2)
-                        .padding(.vertical, 1)
-                        .background(
-                            isHighlighted && isRedacted ? Color.orange.opacity(0.50)
-                                : isRedacted            ? Color.orange.opacity(0.25)
-                                : isHighlighted         ? AppColors.accent.opacity(0.25)
-                                : Color.clear,
-                            in: RoundedRectangle(cornerRadius: 3)
-                        )
-                        // `Text` on macOS is not reliably hit-testable
-                        // for `onTapGesture` without an explicit content
-                        // shape — without this, clicks on words simply
-                        // don't fire. The Rectangle covers the padded
-                        // bounds so even the gap around the glyphs
-                        // counts.
-                        .contentShape(Rectangle())
-                        .pointingHandCursor()
-                        .onTapGesture(count: 2) {
-                            enterEditMode(for: segment)
-                        }
-                        .onTapGesture(count: 1) {
-                            playback.playSegment(from: word.start, to: segment.end)
-                        }
+                    // Skip suppressed words (trailing words of a multi-word redaction)
+                    if !displayText.isEmpty {
+                        Text(displayText)
+                            .font(.system(size: 13))
+                            .padding(.horizontal, 2)
+                            .padding(.vertical, 1)
+                            .background(
+                                isHighlighted && isRedacted ? Color.orange.opacity(0.50)
+                                    : isRedacted            ? Color.orange.opacity(0.25)
+                                    : isHighlighted         ? AppColors.accent.opacity(0.25)
+                                    : Color.clear,
+                                in: RoundedRectangle(cornerRadius: 3)
+                            )
+                            // `Text` on macOS is not reliably hit-testable
+                            // for `onTapGesture` without an explicit content
+                            // shape — without this, clicks on words simply
+                            // don't fire. The Rectangle covers the padded
+                            // bounds so even the gap around the glyphs
+                            // counts.
+                            .contentShape(Rectangle())
+                            .pointingHandCursor()
+                            .onTapGesture(count: 2) {
+                                enterEditMode(for: segment)
+                            }
+                            .onTapGesture(count: 1) {
+                                playback.playSegment(from: word.start, to: segment.end)
+                            }
+                    }
                 }
             }
         }
+    }
+
+    /// Renders anonymized segment text with orange background on `[Xxx]` replacement tokens.
+    /// Used as fallback when per-word timing data is unavailable or anonymization_result.json
+    /// was not saved (older recordings).
+    @ViewBuilder
+    private func anonymizedFallbackView(_ text: String) -> some View {
+        let tokens = text.components(separatedBy: " ")
+        WrappingHStack(alignment: .leading, spacing: 2) {
+            ForEach(Array(tokens.enumerated()), id: \.offset) { _, token in
+                let isReplacement = token.count > 2 && token.hasPrefix("[") && token.hasSuffix("]")
+                Text(token)
+                    .font(.system(size: 13))
+                    .padding(.horizontal, 2)
+                    .padding(.vertical, 1)
+                    .background(
+                        isReplacement ? Color.orange.opacity(0.25) : Color.clear,
+                        in: RoundedRectangle(cornerRadius: 3)
+                    )
+                    .contentShape(Rectangle())
+            }
+        }
+    }
+
+    /// Returns the anonymized text for `segment`, either from the loaded
+    /// `AnonymizationResult` or from the anonymized transcript file on disk.
+    /// Splits the full anonymized text by `"\n\n"` and picks the entry matching
+    /// this segment's position in `editor.result.segments`.
+    private func anonymizedSegmentText(for segment: TranscriptionSegment) -> String? {
+        let fullAnonText: String?
+        if let result = anonymizationResult {
+            fullAnonText = result.anonymizedText
+        } else {
+            fullAnonText = try? String(
+                contentsOf: StorageLayout.anonymizedTranscriptURL(id: recordingId),
+                encoding: .utf8
+            )
+        }
+        guard let anonText = fullAnonText else { return nil }
+        let segments = editor.result.segments
+        guard let idx = segments.firstIndex(where: { $0.id == segment.id }) else { return nil }
+        let parts = anonText.components(separatedBy: "\n\n")
+        guard idx < parts.count else { return nil }
+        let text = parts[idx].trimmingCharacters(in: .whitespaces)
+        return text.isEmpty ? nil : text
     }
 
     // MARK: - Edit row
@@ -691,6 +749,7 @@ struct TranscriptEditorView: View {
         var annotations: [WordAnnotation] = []
         var charOffset = 0
         var remaining = segText
+        var lastEmittedRedaction: Redaction? = nil
 
         for word in segment.words {
             let trimmedWord = word.word.trimmingCharacters(in: .whitespaces)
@@ -715,10 +774,18 @@ struct TranscriptEditorView: View {
                 remaining = String(remaining[range.upperBound...])
             }
 
-            annotations.append(WordAnnotation(
-                text: matchedRedaction?.replacement ?? word.word,
-                isRedacted: matchedRedaction != nil
-            ))
+            // Multi-word redaction: only the first word in the span emits the replacement.
+            // Subsequent words in the same redaction are suppressed (empty text, isRedacted=true)
+            // so the `[Xxx]` token doesn't repeat for every source word it covered.
+            if let red = matchedRedaction, red == lastEmittedRedaction {
+                annotations.append(WordAnnotation(text: "", isRedacted: true))
+            } else {
+                annotations.append(WordAnnotation(
+                    text: matchedRedaction?.replacement ?? word.word,
+                    isRedacted: matchedRedaction != nil
+                ))
+                lastEmittedRedaction = matchedRedaction
+            }
         }
         return annotations
     }
