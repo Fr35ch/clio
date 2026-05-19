@@ -12,6 +12,7 @@ struct TranscriptionSettingsView: View {
     @AppStorage("transcription.defaultSpeakers") private var defaultSpeakers = 2
     @AppStorage("transcription.verbatim")        private var verbatim = false
     @AppStorage("transcription.language")        private var language = "no"
+    @AppStorage("transcription.validateMode")    private var validateMode = "warn"
     // Transient UI state
     @State private var installState: ActionState = .idle
     @State private var updateState: ActionState = .idle
@@ -221,10 +222,41 @@ struct TranscriptionSettingsView: View {
                         .labelsHidden()
                         .frame(width: 120)
                     }
+
+                    Divider()
+
+                    // Validation mode
+                    VStack(alignment: .leading, spacing: 6) {
+                        LabeledContent("Kvalitetskontroll") {
+                            Picker("", selection: $validateMode) {
+                                Text("Advar (anbefalt)").tag("warn")
+                                Text("Merk usikre").tag("flag")
+                                Text("Prøv på nytt").tag("retry")
+                                Text("Av").tag("none")
+                            }
+                            .labelsHidden()
+                            .frame(width: 160)
+                        }
+                        Text(validateModeDescription)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.leading, 0)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(4)
             }
+        }
+    }
+
+    private var validateModeDescription: String {
+        switch validateMode {
+        case "warn":  return "Logger potensielle problemer (hull, gjentakelser, hallusinasjoner) til diagnoseloggen uten å endre resultatet."
+        case "flag":  return "Markerer usikre segmenter i JSON-utdataene. Disse kan vises dempet i editoren."
+        case "retry": return "Transkriberer usikre regioner på nytt med høyere beam-bredde (saktere, men mer nøyaktig)."
+        case "none":  return "Ingen kvalitetskontroll kjøres etter transkripsjon."
+        default:      return ""
         }
     }
 
