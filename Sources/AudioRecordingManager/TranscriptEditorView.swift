@@ -128,10 +128,13 @@ struct TranscriptEditorView: View {
         }
         .onAppear { loadExistingState() }
         .onReceive(
-            NotificationCenter.default.publisher(for: .armTranscriptionDidComplete)
+            NotificationCenter.default.publisher(for: RecordingStore.didChangeNotification)
         ) { note in
             guard (note.object as? UUID) == recordingId else { return }
-            resetAnonymizationState()
+            // Re-read from disk whenever this recording's sidecar changes.
+            // This handles re-transcription resetting anonymization state
+            // even when the editor window is already open.
+            loadExistingState()
         }
     }
 
@@ -581,6 +584,13 @@ struct TranscriptEditorView: View {
     }
 
     private func loadExistingState() {
+        // Reset first so a sidecar downgrade (e.g. re-transcription clearing
+        // anonymization) is always reflected even when called on an open view.
+        anonymizationState = .idle
+        researcherConfirmedAt = nil
+        anonymizationResult = nil
+        segmentAnonymizedTexts = [:]
+
         do {
             if let meta = try RecordingStore.shared.load(id: recordingId),
                meta.anonymization.status == .done,
