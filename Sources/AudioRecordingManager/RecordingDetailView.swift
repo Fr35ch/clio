@@ -541,6 +541,10 @@ struct RecordingDetailView: View {
         transcriptionTask?.cancel()
         transcriptionState = .inProgress
 
+        // A new transcription invalidates any previous anonymization result.
+        // Clear storage now so the editor opens with a clean slate.
+        clearAnonymizationData(for: recording.id)
+
         transcriptionTask = Task { @MainActor in
             do {
                 let result = try await TranscriptionService.shared.transcribe(
@@ -603,5 +607,21 @@ struct RecordingDetailView: View {
         transcriptionTask = nil
         TranscriptionService.shared.cancel()
         transcriptionState = .notStarted
+    }
+
+    /// Clears all anonymization artefacts for a recording so that a fresh
+    /// transcription starts with a clean anonymization slate.
+    /// Affects: metadata sidecar, anonymized transcript text file, anonymization result JSON.
+    private func clearAnonymizationData(for id: UUID) {
+        _ = try? RecordingStore.shared.updateMeta(id: id) { meta in
+            meta.anonymization = AnonymizationMeta()
+        }
+        let fm = FileManager.default
+        try? fm.removeItem(at: StorageLayout.anonymizedTranscriptURL(id: id))
+        try? fm.removeItem(at: StorageLayout.anonymizationResultURL(id: id))
+        AuditLogger.shared.log(.anonymizationClearedOnRetranscription, payload: [
+            "recordingId": .string(id.uuidString),
+            "reason": .string("re-transcription"),
+        ])
     }
 }
