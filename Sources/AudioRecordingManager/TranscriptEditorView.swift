@@ -127,6 +127,12 @@ struct TranscriptEditorView: View {
             playback.pause()
         }
         .onAppear { loadExistingState() }
+        .onReceive(
+            NotificationCenter.default.publisher(for: .armTranscriptionDidComplete)
+        ) { note in
+            guard (note.object as? UUID) == recordingId else { return }
+            resetAnonymizationState()
+        }
     }
 
     // MARK: - Toolbar
@@ -560,6 +566,19 @@ struct TranscriptEditorView: View {
     }
 
     // MARK: - Anonymization
+
+    /// Resets all in-memory anonymization state. Called when the underlying
+    /// transcription is replaced so the editor never shows stale redactions.
+    private func resetAnonymizationState() {
+        anonymizationTask?.cancel()
+        anonymizationTask = nil
+        anonymizationState = .idle
+        showAnonymized = false
+        anonymizationResult = nil
+        segmentAnonymizedTexts = [:]
+        flaggedReview = []
+        researcherConfirmedAt = nil
+    }
 
     private func loadExistingState() {
         do {

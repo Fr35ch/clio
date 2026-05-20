@@ -1,5 +1,13 @@
 import SwiftUI
 
+// MARK: - Notification names
+
+extension Notification.Name {
+    /// Posted when a new transcription succeeds. `object` is the recording `UUID`.
+    /// TranscriptEditorView listens to this and resets its anonymization state.
+    static let armTranscriptionDidComplete = Notification.Name("ARMTranscriptionDidComplete")
+}
+
 // MARK: - Transcription UI state
 
 private enum TranscriptionUIState {
@@ -578,6 +586,10 @@ struct RecordingDetailView: View {
 
                 transcriptionState = .completed(result)
                 loadTranscriptMeta()
+                NotificationCenter.default.post(
+                    name: .armTranscriptionDidComplete,
+                    object: recording.id
+                )
             } catch let error as TranscriptionError {
                 guard !Task.isCancelled else { return }
                 _ = try? RecordingStore.shared.updateMeta(id: recording.id) { meta in
