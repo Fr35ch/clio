@@ -19,6 +19,10 @@ final class TranscriptionRunner: ObservableObject {
     func start(recordingId: UUID, audioDuration: Double? = nil) {
         guard tasks[recordingId] == nil else { return }
 
+        // Clear any prior anonymization data so the editor and library chips
+        // immediately reflect the clean state before the new transcript lands.
+        clearAnonymizationData(for: recordingId)
+
         let defaults = UserDefaults.standard
         let modelRaw = defaults.string(forKey: "transcription.defaultModel")
             ?? TranscriptionModel.large.rawValue
@@ -134,5 +138,24 @@ final class TranscriptionRunner: ObservableObject {
                 meta.transcript.status = .pending
             }
         }
+    }
+
+    // MARK: - Anonymization reset
+
+    /// Wipes all anonymization state for `id` — sidecar, anonymized transcript,
+    /// and the raw anonymization-result JSON — so re-transcription always starts
+    /// from a clean slate. The sidecar write posts `RecordingStore.didChangeNotification`,
+    /// which triggers `TranscriptEditorView` and `BibliotekView` to refresh.
+    private func clearAnonymizationData(for id: UUID) {
+        _ = try? RecordingStore.shared.updateMeta(id: id) { meta in
+            meta.anonymization = AnonymizationMeta()
+        }
+        let fm = FileManager.default
+        try? fm.removeItem(at: StorageLayout.anonymizedTranscriptURL(id: id))
+        try? fm.removeItem(at: StorageLayout.anonymizationResultURL(id: id))
+        AuditLogger.shared.log(.anonymizationClearedOnRetranscription, payload: [
+            "recordingId": .string(id.uuidString),
+            "reason": .string("re-transcription"),
+        ])
     }
 }
