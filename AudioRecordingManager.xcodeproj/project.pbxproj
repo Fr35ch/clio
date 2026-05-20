@@ -40,6 +40,7 @@
 		CA1B2C3D4E5F60001020DF02 /* PillButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1B2C3D4E5F60001020DF01 /* PillButton.swift */; };
 		CA1B2C3D4E5F60001020E002 /* StatusChipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1B2C3D4E5F60001020E001 /* StatusChipView.swift */; };
 		CA1B2C3D4E5F60001020E102 /* DesignShowcaseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1B2C3D4E5F60001020E101 /* DesignShowcaseView.swift */; };
+		CA1B2C3D4E5F60001020E202 /* Color+Clio.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1B2C3D4E5F60001020E201 /* Color+Clio.swift */; };
 		D1AD0DFEEF0241A88D89CA16 /* OllamaManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D07DCC68E64F1A9F234B17 /* OllamaManager.swift */; };
 		DA0C25C22B054B15AF00B983 /* ProcessingState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82989F1166754DF3BDB81BE6 /* ProcessingState.swift */; };
 		DA1B2C3D4E5F60001020EA02 /* TranscriptPlaybackController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA1B2C3D4E5F60001020EA01 /* TranscriptPlaybackController.swift */; };
@@ -115,6 +116,7 @@
 		CA1B2C3D4E5F60001020DF01 /* PillButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PillButton.swift; sourceTree = "<group>"; };
 		CA1B2C3D4E5F60001020E001 /* StatusChipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusChipView.swift; sourceTree = "<group>"; };
 		CA1B2C3D4E5F60001020E101 /* DesignShowcaseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignShowcaseView.swift; sourceTree = "<group>"; };
+		CA1B2C3D4E5F60001020E201 /* Color+Clio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Clio.swift"; sourceTree = "<group>"; };
 		CE5EE01B431596E611A2B34A /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		D4E5F600010203040506D704 /* TranscriptionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionModel.swift; sourceTree = "<group>"; };
 		DA1B2C3D4E5F60001020EA01 /* TranscriptPlaybackController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptPlaybackController.swift; sourceTree = "<group>"; };
@@ -210,6 +212,7 @@
 				CA1B2C3D4E5F60001020DF01 /* PillButton.swift */,
 				CA1B2C3D4E5F60001020E001 /* StatusChipView.swift */,
 				CA1B2C3D4E5F60001020E101 /* DesignShowcaseView.swift */,
+				CA1B2C3D4E5F60001020E201 /* Color+Clio.swift */,
 			);
 			path = Design;
 			sourceTree = "<group>";
@@ -425,6 +428,7 @@
 				CA1B2C3D4E5F60001020DF02 /* PillButton.swift in Sources */,
 				CA1B2C3D4E5F60001020E002 /* StatusChipView.swift in Sources */,
 				CA1B2C3D4E5F60001020E102 /* DesignShowcaseView.swift in Sources */,
+				CA1B2C3D4E5F60001020E202 /* Color+Clio.swift in Sources */,
 				DA1B2C3D4E5F60001020EA02 /* TranscriptPlaybackController.swift in Sources */,
 				DA1B2C3D4E5F60001020EB02 /* TranscriptEditorState.swift in Sources */,
 				DA1B2C3D4E5F60001020EC02 /* TranscriptEditorView.swift in Sources */,
