@@ -1722,6 +1722,9 @@ struct RecordingPlayerNative: View {
         transcriptionError = nil
         isTranscribing = true
 
+        // A new transcription invalidates any previous anonymization.
+        clearAnonymizationData(for: recording.id)
+
         transcriptionTask = Task { @MainActor in
             do {
                 let result = try await TranscriptionService.shared.transcribe(
@@ -1759,6 +1762,11 @@ struct RecordingPlayerNative: View {
                     "engine": .string(model.rawValue),
                     "segmentCount": .int(result.segments.count),
                 ])
+
+                NotificationCenter.default.post(
+                    name: .armTranscriptionDidComplete,
+                    object: recording.id
+                )
             } catch let error as TranscriptionError {
                 guard !Task.isCancelled else { return }
                 transcriptionError = error
@@ -1789,6 +1797,19 @@ struct RecordingPlayerNative: View {
         transcriptionTask?.cancel()
         TranscriptionService.shared.cancel()
         isTranscribing = false
+    }
+
+    private func clearAnonymizationData(for id: UUID) {
+        _ = try? RecordingStore.shared.updateMeta(id: id) { meta in
+            meta.anonymization = AnonymizationMeta()
+        }
+        let fm = FileManager.default
+        try? fm.removeItem(at: StorageLayout.anonymizedTranscriptURL(id: id))
+        try? fm.removeItem(at: StorageLayout.anonymizationResultURL(id: id))
+        AuditLogger.shared.log(.anonymizationClearedOnRetranscription, payload: [
+            "recordingId": .string(id.uuidString),
+            "reason": .string("re-transcription"),
+        ])
     }
 
     private func startDiarization() {
