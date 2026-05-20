@@ -95,7 +95,7 @@ struct AnalysisComposerView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
             Text("Ny analyse")
-                .font(.title.weight(.semibold))
+                .font(.clioH1)
             Text("Velg en eller flere transkripsjoner, en analyse-mal, og kjør analysen lokalt via Ollama.")
                 .font(.body)
                 .foregroundStyle(.secondary)
@@ -168,9 +168,9 @@ struct AnalysisComposerView: View {
                     .font(.body)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(rec.displayName)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.clioSubMedium)
                     Text(rec.subtitle)
-                        .font(.system(size: 11))
+                        .font(.clioLabel)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -277,9 +277,7 @@ struct AnalysisComposerView: View {
 
     private func sectionLabel(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(.secondary)
-            .textCase(.uppercase)
+            .clioSectionLabel()
     }
 
     // MARK: - Data loading
