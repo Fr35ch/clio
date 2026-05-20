@@ -22,6 +22,8 @@ struct DesignShowcaseView: View {
                 VStack(alignment: .leading, spacing: AppSpacing.xl) {
                     colorsSection
                     Divider()
+                    clioSection
+                    Divider()
                     typographySection
                     Divider()
                     spacingSection
@@ -84,6 +86,74 @@ struct DesignShowcaseView: View {
             }
         }
     }
+
+    private var clioSection: some View {
+        section(title: "Clio Design Tokens", subtitle: "Sources/AudioRecordingManager/Design/Color+Clio.swift · Brand Guide v1.0 · Nav Innsikt") {
+            VStack(alignment: .leading, spacing: AppSpacing.md) {
+                clioSwatchGroup("Brand · Primærfarger", [
+                    ("clioPurple",   .clioPurple,   "#7C3AED"),
+                    ("clioRec",      .clioRec,      "#E91E63"),
+                ])
+                clioSwatchGroup("Brand · Varmt spekter", [
+                    ("clioCoral",    .clioCoral,    "#FF9A8B"),
+                    ("clioPeach",    .clioPeach,    "#FFA8A1"),
+                    ("clioLavender", .clioLavender, "#F5F3FF"),
+                ])
+                clioSwatchGroup("Status · Arkivindikatorer (sidebar-dots)", [
+                    ("Analysert",    .clioStatusAnalysed,    "#7C3AED"),
+                    ("Transkribert", .clioStatusTranscribed, "#28C840"),
+                    ("Venter",       .clioStatusPending,     "#FEBC2E"),
+                    ("Importert",    .clioStatusImported,    "#3A3A42"),
+                ])
+                clioSwatchGroup("Tint-overflater", [
+                    ("purpleTint",   .clioPurpleTint,   "7C3AED·20%"),
+                    ("purpleBorder", .clioPurpleBorder, "7C3AED·35%"),
+                    ("recTint",      .clioRecTint,      "E91E63·15%"),
+                    ("coralTint",    .clioCoralTint,    "FF9A8B·15%"),
+                    ("whiteDim",     .clioWhiteDim,     "FFF·7%"),
+                    ("whiteBorder",  .clioWhiteBorder,  "FFF·10%"),
+                ])
+                clioSwatchGroup("Adaptive tokens (skifter med systemtema)", [
+                    ("windowBackground",  .clioWindowBackground,  "adaptiv"),
+                    ("surfaceAdaptive",   .clioSurfaceAdaptive,   "adaptiv"),
+                    ("contentAdaptive",   .clioContentAdaptive,   "adaptiv"),
+                    ("textPrimary",       .clioTextPrimary,       "adaptiv"),
+                    ("textSecondary",     .clioTextSecondary,     "adaptiv"),
+                    ("border",            .clioBorderColor,       "adaptiv"),
+                ])
+            }
+        }
+    }
+
+    private func clioSwatchGroup(_ title: String, _ swatches: [(String, Color, String)]) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            Text(title)
+                .font(AppFont.caption)
+                .foregroundStyle(.secondary)
+            LazyVGrid(columns: gridColumns(min: 130), alignment: .leading, spacing: AppSpacing.sm) {
+                ForEach(swatches, id: \.0) { name, color, hex in
+                    VStack(alignment: .leading, spacing: 4) {
+                        RoundedRectangle(cornerRadius: AppRadius.small)
+                            .fill(color)
+                            .frame(height: 36)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppRadius.small)
+                                    .strokeBorder(AppColors.neutralBorder, lineWidth: 0.5)
+                            )
+                        Text(name)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                        Text(hex)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+            }
+        }
+    }
+
 
     private var typographySection: some View {
         section(title: "AppFont", subtitle: "Sources/AudioRecordingManager/Design/AppFont.swift") {
