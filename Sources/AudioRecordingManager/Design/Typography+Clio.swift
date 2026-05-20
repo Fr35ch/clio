@@ -212,12 +212,12 @@ public struct ClioAnalysisBodyStyle: ViewModifier {
 
 // ── Transkripsjon ──────────────────────────────────────────────────────────
 
-/// Transkripsjonslinje — 12pt SF Mono, clioMuted.
+/// Transkripsjonslinje — 12pt SF Mono, clioTextPrimary (adaptiv: mørk i lys modus, hvit i mørk).
 public struct ClioTranscriptStyle: ViewModifier {
     public func body(content: Content) -> some View {
         content
             .font(.clioMono)
-            .foregroundStyle(Color.clioMuted)
+            .foregroundStyle(Color.clioTextPrimary)
     }
 }
 
