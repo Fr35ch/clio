@@ -88,7 +88,7 @@ struct RecordingDetailView: View {
                 .foregroundStyle(redAccent)
 
             Text(recording.filename)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.clioH2)
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
         }
@@ -156,11 +156,11 @@ struct RecordingDetailView: View {
 
                 HStack {
                     Text(formatTime(displayedCurrentTime))
-                        .font(.system(size: 11, weight: .regular, design: .monospaced))
+                        .font(.clioMonoSmall)
                         .foregroundStyle(.secondary)
                     Spacer()
                     Text(recording.formattedDuration)
-                        .font(.system(size: 11, weight: .regular, design: .monospaced))
+                        .font(.clioMonoSmall)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -179,9 +179,7 @@ struct RecordingDetailView: View {
     private var transcriptionSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Transkripsjon")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
+                .clioSectionLabel()
 
             VStack(alignment: .leading, spacing: 12) {
                 switch transcriptionState {
@@ -224,12 +222,12 @@ struct RecordingDetailView: View {
                 Label("Modell: \(model.displayName)", systemImage: "cpu")
                 Label("\(defaultSpeakers) taler\(defaultSpeakers == 1 ? "" : "e")", systemImage: "person.2")
             }
-            .font(.system(size: 11))
+            .font(.clioLabel)
             .foregroundStyle(.secondary)
 
             if !transcriptionService.isInstalled {
                 Label("no-transcribe er ikke installert. Åpne innstillinger for å installere.", systemImage: "exclamationmark.triangle")
-                    .font(.system(size: 11))
+                    .font(.clioLabel)
                     .foregroundStyle(AppColors.warning)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -244,7 +242,7 @@ struct RecordingDetailView: View {
                 Text(transcriptionService.stage.displayName.isEmpty
                      ? "Forbereder..."
                      : transcriptionService.stage.displayName)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.clioSubMedium)
                     .animation(.default, value: transcriptionService.stage.displayName)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -256,7 +254,7 @@ struct RecordingDetailView: View {
             }
 
             Text("NB-Whisper-modellen lastes ved første kjøring – dette kan ta et minutt.")
-                .font(.system(size: 11))
+                .font(.clioLabel)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -275,7 +273,7 @@ struct RecordingDetailView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(AppColors.success)
                 Text("Transkripsjon fullført")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.clioSubMedium)
                     .foregroundStyle(AppColors.success)
             }
 
@@ -284,7 +282,7 @@ struct RecordingDetailView: View {
                 Label("\(result.numSpeakers) taler\(result.numSpeakers == 1 ? "" : "e")", systemImage: "person.2")
                 Label(formattedDuration(result.durationSeconds), systemImage: "clock")
             }
-            .font(.system(size: 12))
+            .font(.clioCaption)
             .foregroundStyle(.secondary)
 
             HStack(spacing: 8) {
@@ -320,12 +318,12 @@ struct RecordingDetailView: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(AppColors.destructive)
                 Text("Feil ved transkripsjon")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.clioSubMedium)
                     .foregroundStyle(AppColors.destructive)
             }
 
             Text(error.errorDescription ?? "Ukjent feil")
-                .font(.system(size: 12))
+                .font(.clioCaption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -346,13 +344,11 @@ struct RecordingDetailView: View {
     private var diarizationSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Taleutskilling")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
+                .clioSectionLabel()
 
             VStack(alignment: .leading, spacing: 12) {
                 Text("Identifiser hvem som snakker i opptaket")
-                    .font(.system(size: 13))
+                    .font(.clioSub)
                     .foregroundStyle(.secondary)
 
                 Button {
@@ -383,9 +379,7 @@ struct RecordingDetailView: View {
 
     private var fileInfoSection: some View {        VStack(alignment: .leading, spacing: 12) {
             Text("Filinformasjon")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
+                .clioSectionLabel()
 
             VStack(spacing: 0) {
                 infoRow(label: "Filnavn", value: recording.filename)
@@ -410,9 +404,7 @@ struct RecordingDetailView: View {
         if let meta = transcriptMeta, meta.status == .done {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Transkripsjonsdetaljer")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
+                    .clioSectionLabel()
 
                 VStack(spacing: 0) {
                     if let engine = meta.engine {
@@ -481,11 +473,11 @@ struct RecordingDetailView: View {
     private func infoRow(label: String, value: String) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 13))
+                .font(.clioSub)
                 .foregroundStyle(.secondary)
             Spacer()
             Text(value)
-                .font(.system(size: 13))
+                .font(.clioSub)
                 .textSelection(.enabled)
         }
         .padding(.horizontal, 16)
