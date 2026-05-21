@@ -89,7 +89,7 @@ struct AnalysisListColumn: View {
                 Image(systemName: "plus.circle.fill")
                     .font(.body)
                 Text("Ny analyse")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.clioSubMedium)
                 Spacer()
                 if isComposerActive {
                     Image(systemName: "checkmark")
@@ -133,7 +133,7 @@ private struct AnalysisListRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text(analysis.title)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.clioSubMedium)
                     .lineLimit(1)
             }
             HStack(spacing: 6) {
@@ -143,7 +143,7 @@ private struct AnalysisListRow: View {
                 Spacer()
                 statusBadge
             }
-            .font(.system(size: 10))
+            .font(.clioLabelSmall)
             .foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)

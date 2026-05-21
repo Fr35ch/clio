@@ -54,7 +54,7 @@ struct AnalysisResultDetailView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
             Text(analysis.title)
-                .font(.title2.weight(.semibold))
+                .font(.clioH1)
                 .textSelection(.enabled)
 
             HStack(spacing: AppSpacing.lg) {
@@ -92,7 +92,7 @@ struct AnalysisResultDetailView: View {
                                     .help("Transkripsjonen er endret etter denne analysen ble kjørt.")
                             }
                         }
-                        .font(.system(size: 11))
+                        .font(.clioLabel)
                     }
                 }
                 .padding(.top, 2)
@@ -151,12 +151,13 @@ struct AnalysisResultDetailView: View {
     private func section(title: String, icon: String, items: [String]) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
             Label(title, systemImage: icon)
-                .font(.headline)
+                .font(.clioH2)
                 .foregroundStyle(.primary)
             ForEach(items.indices, id: \.self) { idx in
                 HStack(alignment: .top, spacing: 8) {
                     Text("•").foregroundStyle(.secondary)
                     Text(items[idx])
+                        .clioAnalysisBody()
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -172,9 +173,9 @@ struct AnalysisResultDetailView: View {
     private func rawFallback(_ markdown: String) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
             Label("Rå modellrespons", systemImage: "doc.plaintext")
-                .font(.headline)
+                .font(.clioH2)
             Text(markdown)
-                .font(.body)
+                .clioAnalysisBody()
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
         }

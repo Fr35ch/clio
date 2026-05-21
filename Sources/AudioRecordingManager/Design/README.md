@@ -9,8 +9,10 @@ from here; it does not define new ones.
 
 | File | Role |
 |------|------|
-| `DesignTokens.swift` | `AppColors`, `AppSpacing`, `AppRadius`, `AppSize` — colours, spacing, radii, canonical element sizes |
-| `AppFont.swift`      | `AppFont` — semantic typography tokens (`.pillLabel`, `.tableCell`, `.screenTitle`, …) |
+| `Color+Clio.swift`   | Clio design token layer — `Color` extensions (`.clioPurple`, `.clioRec`, adaptive tokens, status colours, tint surfaces). Brand Guide v1.0 · Nav Innsikt |
+| `Typography+Clio.swift` | Clio type scale — `Font` extensions (`.clioH1`–`.clioH3`, `.clioBody`, `.clioMono`, etc.), `ClioTracking` letter-spacing helpers, and composable `ViewModifier`s (`.clioWordmark()`, `.clioTranscript()`, etc.) |
+| `DesignTokens.swift` | `AppColors`, `AppSpacing`, `AppRadius`, `AppSize` — colours, spacing, radii, canonical element sizes. `AppColors` primitives are sourced from Clio tokens |
+| `AppFont.swift`      | `AppFont` — semantic typography tokens. Values sourced from Clio type scale where sizes align; bespoke otherwise |
 | `GlassStyles.swift`  | `GlassButtonStyle`, `HoverButtonStyle`, `glassEffectIfAvailable` |
 | `HoverCursor.swift`  | `.hoverCursor()` view modifier — pointing-hand on hover, arrow on exit |
 | `PillButton.swift`   | `PillButtonStyle(variant:)`, `RunningPill` — pill-shaped buttons + running-progress pill |

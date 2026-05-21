@@ -77,10 +77,7 @@ struct BibliotekView: View {
                 Text("Bibliotek")
                     .font(AppFont.screenTitle)
                 Text(summaryLine)
-                    .font(AppFont.caption)
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                    .tracking(0.5)
+                    .clioSectionLabel()
             }
             Spacer()
         }
@@ -209,15 +206,15 @@ struct BibliotekView: View {
         Group {
             if let width {
                 Text(text)
-                    .font(AppFont.tableColumnHeader)
+                    .font(.clioLabel)
+                    .tracking(ClioTracking.label())
                     .foregroundStyle(.secondary)
-                    .tracking(0.5)
                     .frame(width: width, alignment: alignment)
             } else {
                 Text(text)
-                    .font(AppFont.tableColumnHeader)
+                    .font(.clioLabel)
+                    .tracking(ClioTracking.label())
                     .foregroundStyle(.secondary)
-                    .tracking(0.5)
                     .frame(maxWidth: .infinity, alignment: alignment)
             }
         }

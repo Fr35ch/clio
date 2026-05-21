@@ -19,45 +19,35 @@ import SwiftUI
 
 // MARK: - AppColors
 
-/// Custom colour palette — purple/pink accent, dark and light theme variants.
-/// See Design/README.md and the colour palette reference image before editing.
+/// Custom colour palette — wired to the Clio design token layer in
+/// `Color+Clio.swift`. Brand Guide v1.0 · Nav Innsikt · Mai 2026.
+/// See Design/README.md and `Color+Clio.swift` before editing.
 struct AppColors {
 
     // -------------------------------------------------------------------------
-    // MARK: Palette primitives
+    // MARK: Palette primitives — sourced from Clio tokens
     // -------------------------------------------------------------------------
 
     // Dark theme backgrounds
-    /// #1a1a1f — darkest background layer
-    static let darkBackground   = Color(red: 26/255,  green: 26/255,  blue: 31/255)
-    /// #2a2a2f — raised surface in dark mode
-    static let darkSurface      = Color(red: 42/255,  green: 42/255,  blue: 47/255)
+    static let darkBackground   = Color.clioBackground   // #1A1A1F
+    static let darkSurface      = Color.clioSurface      // #2A2A2F
 
     // Light theme backgrounds
-    /// #faf9ff — page background in light mode
-    static let lightBackground  = Color(red: 250/255, green: 249/255, blue: 255/255)
-    /// #f5f3ff — lavender-tinted surface in light mode
-    static let lavenderTint     = Color(red: 245/255, green: 243/255, blue: 255/255)
+    static let lightBackground  = Color.clioLight        // #FAF9FF
+    static let lavenderTint     = Color.clioLavender     // #F5F3FF
 
     // Accent colours
-    /// #7c3aed — purple primary accent (both themes)
-    static let purpleAccent     = Color(red: 124/255, green: 58/255,  blue: 237/255)
-    /// #e91e63 — pink accent (dark theme primary, light theme secondary)
-    static let pinkAccent       = Color(red: 233/255, green: 30/255,  blue: 99/255)
+    static let purpleAccent     = Color.clioPurple       // #7C3AED
+    static let pinkAccent       = Color.clioRec          // #E91E63
 
     // Text
-    /// #ffffff — primary text on dark backgrounds
-    static let lightText        = Color.white
-    /// #b0b0b5 — muted / secondary text on dark backgrounds
-    static let mutedText        = Color(red: 176/255, green: 176/255, blue: 181/255)
-    /// #1a1a1f — primary text on light backgrounds
-    static let darkText         = Color(red: 26/255,  green: 26/255,  blue: 31/255)
+    static let lightText        = Color.clioWhite        // #FFFFFF
+    static let mutedText        = Color.clioMuted        // #B0B0B5
+    static let darkText         = Color.clioBackground   // #1A1A1F (same dark bg)
 
     // Gradient stops
-    /// #ff9a8b — coral gradient start
-    static let coralGradient    = Color(red: 255/255, green: 154/255, blue: 139/255)
-    /// #ffa8a1 — peach gradient end
-    static let peachGradient    = Color(red: 255/255, green: 168/255, blue: 161/255)
+    static let coralGradient    = Color.clioCoral        // #FF9A8B
+    static let peachGradient    = Color.clioPeach        // #FFA8A1
 
     // -------------------------------------------------------------------------
     // MARK: Semantic tokens (used throughout the app — do not remove)
@@ -67,8 +57,8 @@ struct AppColors {
     // All .borderedProminent buttons, pills, and highlights use this.
     static let accent: Color = Color(NSColor(name: "ARMAccent", dynamicProvider: { appearance in
         switch appearance.bestMatch(from: [.aqua, .darkAqua]) {
-        case .darkAqua: return NSColor(pinkAccent)
-        default:        return NSColor(purpleAccent)
+        case .darkAqua: return NSColor(Color.clioRec)
+        default:        return NSColor(Color.clioPurple)
         }
     }))
     static var accentSubtle: Color     { accent.opacity(0.2) }
@@ -76,24 +66,65 @@ struct AppColors {
     static var accentFill: Color       { accent.opacity(0.35) }
 
     // Status
-    static let destructive      = pinkAccent
-    static let success          = Color.green
+    static let destructive      = Color.clioRec
+    static let success          = Color.clioStatusTranscribed  // macOS system green
     /// Coral — used for warnings and messages.
-    static let warning          = coralGradient
+    static let warning          = Color.clioCoral
 
     // Anonymizer surfaces
     /// Lavender page tint when anonymized mode is active.
-    static let anonymizerBackground     = lavenderTint.opacity(0.5)
-    /// Slightly darker lavender for [Token] box backgrounds.
-    static let anonymizerTokenBackground = Color(red: 210/255, green: 205/255, blue: 245/255)
-    /// Stronger version for highlighted/active token boxes.
+    static let anonymizerBackground            = Color.clioLavender.opacity(0.5)
+    static let anonymizerTokenBackground       = Color(red: 210/255, green: 205/255, blue: 245/255)
     static let anonymizerTokenBackgroundStrong = Color(red: 185/255, green: 175/255, blue: 235/255)
 
     // Neutral surfaces — for outlined pills, chip backgrounds, dividers.
-    static let neutralSurface           = Color.gray.opacity(0.08)
-    static let neutralSurfaceStrong     = Color.gray.opacity(0.12)
-    static let neutralBorder            = Color.gray.opacity(0.25)
-    static let neutralBorderStrong      = Color.gray.opacity(0.5)
+    static let neutralSurface       = Color.gray.opacity(0.08)
+    static let neutralSurfaceStrong = Color.gray.opacity(0.12)
+    static let neutralBorder        = Color.gray.opacity(0.25)
+    static let neutralBorderStrong  = Color.gray.opacity(0.5)
+
+    // -------------------------------------------------------------------------
+    // MARK: Adaptive semantic tokens — from Clio (auto light/dark)
+    // -------------------------------------------------------------------------
+
+    /// Adaptive window background (FAF9FF / 1A1A1F).
+    static let windowBackground  = Color.clioWindowBackground
+    /// Adaptive surface — cards, panels, drawers (FFF / 2A2A2F).
+    static let surfaceAdaptive   = Color.clioSurfaceAdaptive
+    /// Adaptive content surface — one level deeper than surfaceAdaptive (F5F3FF / 1E1E24).
+    static let contentAdaptive   = Color.clioContentAdaptive
+    /// Adaptive primary text (1A1A1F / FFFFFF).
+    static let textPrimary       = Color.clioTextPrimary
+    /// Adaptive secondary text / metadata (5A5A62 / B0B0B5).
+    static let textSecondary     = Color.clioTextSecondary
+    /// Adaptive border / divider (E0DCF5 / 2A2A2F).
+    static let border            = Color.clioBorderColor
+    /// Subtle — placeholder text, disabled labels (5A5A62, fixed).
+    static let subtle            = Color.clioSubtle
+
+    // -------------------------------------------------------------------------
+    // MARK: Tint surfaces — pre-baked opacity variants
+    // -------------------------------------------------------------------------
+
+    static let purpleTint        = Color.clioPurpleTint    // clioPurple @ 20%
+    static let purpleBorder      = Color.clioPurpleBorder  // clioPurple @ 35%
+    static let recTint           = Color.clioRecTint       // clioRec @ 15%
+    static let coralTint         = Color.clioCoralTint     // clioCoral @ 15%
+    static let whiteDim          = Color.clioWhiteDim      // white @ 7%
+    static let whiteBorder       = Color.clioWhiteBorder   // white @ 10%
+
+    // -------------------------------------------------------------------------
+    // MARK: Recording status indicator colours (sidebar dots)
+    // -------------------------------------------------------------------------
+
+    /// File fully analysed (Transcribed + Analysed).
+    static let statusAnalysed    = Color.clioStatusAnalysed    // = clioPurple
+    /// File transcribed, not yet analysed.
+    static let statusTranscribed = Color.clioStatusTranscribed // macOS system green
+    /// File pending processing or currently processing.
+    static let statusPending     = Color.clioStatusPending     // macOS system yellow
+    /// File imported, no processing started.
+    static let statusImported    = Color.clioStatusImported    // neutral grey
 }
 
 // MARK: - AppSpacing

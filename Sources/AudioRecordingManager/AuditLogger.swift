@@ -104,6 +104,7 @@ enum AuditEventType: String {
     case anonymizationStarted
     case anonymizationDiscarded
     case anonymizationConfirmedByResearcher
+    case anonymizationClearedOnRetranscription
     case complianceCheckConfirmed
     case uploadQueued
     case uploadCompleted

@@ -127,6 +127,15 @@ struct TranscriptEditorView: View {
             playback.pause()
         }
         .onAppear { loadExistingState() }
+        .onReceive(
+            NotificationCenter.default.publisher(for: RecordingStore.didChangeNotification)
+        ) { note in
+            guard (note.object as? UUID) == recordingId else { return }
+            // Re-read from disk whenever this recording's sidecar changes.
+            // This handles re-transcription resetting anonymization state
+            // even when the editor window is already open.
+            loadExistingState()
+        }
     }
 
     // MARK: - Toolbar
@@ -139,13 +148,13 @@ struct TranscriptEditorView: View {
 
             if editor.isDirty {
                 Text("Ulagrede endringer")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.clioLabel)
                     .foregroundStyle(.orange)
             }
 
             if let err = editor.saveError {
                 Text(err)
-                    .font(.system(size: 11))
+                    .font(.clioLabel)
                     .foregroundStyle(.red)
                     .lineLimit(1)
             }
@@ -179,7 +188,7 @@ struct TranscriptEditorView: View {
                     Image(systemName: "shield.lefthalf.filled")
                     Text("Avidentifiser")
                 }
-                .font(.system(size: 11, weight: .medium))
+                .font(.clioLabel)
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
@@ -189,7 +198,7 @@ struct TranscriptEditorView: View {
             HStack(spacing: AppSpacing.sm) {
                 ProgressView().controlSize(.small)
                 Text("Avidentifiserer…")
-                    .font(.system(size: 11))
+                    .font(.clioLabel)
                     .foregroundStyle(.secondary)
                 Button("Avbryt") {
                     anonymizationTask?.cancel()
@@ -213,7 +222,7 @@ struct TranscriptEditorView: View {
                     showConsentModal = true
                 } label: {
                     Image(systemName: "arrow.counterclockwise")
-                        .font(.system(size: 11))
+                        .font(.clioLabel)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
@@ -225,9 +234,9 @@ struct TranscriptEditorView: View {
             HStack(spacing: AppSpacing.sm) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(AppColors.destructive)
-                    .font(.system(size: 11))
+                    .font(.clioLabel)
                 Text(msg)
-                    .font(.system(size: 11))
+                    .font(.clioLabel)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 Button("Prøv igjen") {
@@ -280,7 +289,7 @@ struct TranscriptEditorView: View {
             // Timestamp gutter — own tap handlers so clicks land directly
             // on it without depending on outer-row fallthrough.
             Text(formatTimestamp(segment.start))
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .font(.clioMonoSmall)
                 .foregroundStyle(isCurrent ? AppColors.accent : .secondary)
                 .frame(width: 40, alignment: .leading)
                 .contentShape(Rectangle())
@@ -305,7 +314,7 @@ struct TranscriptEditorView: View {
                 enterEditMode(for: segment)
             } label: {
                 Text("Rediger")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.clioLabel)
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
@@ -357,7 +366,7 @@ struct TranscriptEditorView: View {
                 return segment.text.trimmingCharacters(in: .whitespaces)
             }()
             Text(displayText)
-                .font(.system(size: 13))
+                .clioTranscript()
                 .fixedSize(horizontal: false, vertical: true)
                 .contentShape(Rectangle())
         } else {
@@ -380,7 +389,7 @@ struct TranscriptEditorView: View {
                     let displayText = annotation?.text ?? word.word
                     let isRedacted = annotation?.isRedacted ?? false
                     Text(displayText)
-                        .font(.system(size: 13))
+                        .clioTranscript()
                         .padding(.horizontal, 2)
                         .padding(.vertical, 1)
                         .background(
@@ -409,14 +418,14 @@ struct TranscriptEditorView: View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(formatTimestamp(segment.start))
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .font(.clioMonoSmall)
                     .foregroundStyle(.secondary)
             }
             .frame(width: 68, alignment: .leading)
 
             VStack(alignment: .leading, spacing: AppSpacing.sm) {
                 TextEditor(text: $editText)
-                    .font(.system(size: 13))
+                    .font(.clioMono)
                     .frame(minHeight: 60)
                     .overlay(
                         RoundedRectangle(cornerRadius: AppRadius.small)
@@ -454,7 +463,7 @@ struct TranscriptEditorView: View {
         HStack(spacing: AppSpacing.lg) {
             // Time display
             Text(formatTimestamp(playback.currentTime))
-                .font(.system(size: 12, design: .monospaced))
+                .font(.clioMonoSmall)
                 .foregroundStyle(.secondary)
                 .frame(width: 40)
 
@@ -466,7 +475,7 @@ struct TranscriptEditorView: View {
             .controlSize(.small)
 
             Text(formatTimestamp(playback.duration))
-                .font(.system(size: 12, design: .monospaced))
+                .font(.clioMonoSmall)
                 .foregroundStyle(.secondary)
                 .frame(width: 40)
 
@@ -508,7 +517,7 @@ struct TranscriptEditorView: View {
                 .fill(colorForSpeaker(speaker))
                 .frame(width: 8, height: 8)
             Text(shortSpeakerLabel(speaker))
-                .font(.system(size: 10, weight: .medium))
+                .font(.clioLabel)
                 .foregroundStyle(.secondary)
         }
         .frame(width: 36, alignment: .leading)
@@ -522,13 +531,13 @@ struct TranscriptEditorView: View {
                 Image(systemName: "checkmark.seal.fill")
                     .foregroundStyle(AppColors.success)
                 Text("Gjennomgått og godkjent \(date.formatted(date: .abbreviated, time: .omitted))")
-                    .font(.system(size: 12))
+                    .font(.clioCaption)
                     .foregroundStyle(.secondary)
             } else {
                 Image(systemName: "exclamationmark.circle")
                     .foregroundStyle(AppColors.warning)
                 Text("Gjennomgå den avidentifiserte teksten og bekreft at den er klar for deling.")
-                    .font(.system(size: 12))
+                    .font(.clioCaption)
                     .foregroundStyle(.secondary)
             }
 
@@ -561,7 +570,27 @@ struct TranscriptEditorView: View {
 
     // MARK: - Anonymization
 
+    /// Resets all in-memory anonymization state. Called when the underlying
+    /// transcription is replaced so the editor never shows stale redactions.
+    private func resetAnonymizationState() {
+        anonymizationTask?.cancel()
+        anonymizationTask = nil
+        anonymizationState = .idle
+        showAnonymized = false
+        anonymizationResult = nil
+        segmentAnonymizedTexts = [:]
+        flaggedReview = []
+        researcherConfirmedAt = nil
+    }
+
     private func loadExistingState() {
+        // Reset first so a sidecar downgrade (e.g. re-transcription clearing
+        // anonymization) is always reflected even when called on an open view.
+        anonymizationState = .idle
+        researcherConfirmedAt = nil
+        anonymizationResult = nil
+        segmentAnonymizedTexts = [:]
+
         do {
             if let meta = try RecordingStore.shared.load(id: recordingId),
                meta.anonymization.status == .done,
