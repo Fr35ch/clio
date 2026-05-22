@@ -35,18 +35,39 @@ enum PillVariant {
 /// pointing-hand hover cursor automatically.
 struct PillButtonStyle: ButtonStyle {
     let variant: PillVariant
+    @State private var isHovering = false
 
     func makeBody(configuration: Configuration) -> some View {
-        let opacity: Double = configuration.isPressed ? 0.7 : 1.0
+        let pressed = configuration.isPressed
         return configuration.label
             .font(variant == .primary ? AppFont.pillPrimary : AppFont.pillLabel)
             .foregroundStyle(foreground)
             .frame(width: AppSize.pillWidth, height: AppSize.pillHeight)
-            .background(Capsule().fill(fill))
+            .background(Capsule().fill(hoverFill))
             .overlay(stroke)
             .contentShape(Capsule())
-            .opacity(opacity)
-            .hoverCursor()
+            .scaleEffect(pressed ? 0.96 : isHovering ? 1.03 : 1.0)
+            .brightness(isHovering && !pressed ? 0.08 : 0)
+            .animation(.easeInOut(duration: 0.12), value: isHovering)
+            .animation(.easeInOut(duration: 0.08), value: pressed)
+            .onContinuousHover { phase in
+                switch phase {
+                case .active:
+                    isHovering = true
+                    DispatchQueue.main.async { NSCursor.pointingHand.set() }
+                case .ended:
+                    isHovering = false
+                    DispatchQueue.main.async { NSCursor.arrow.set() }
+                }
+            }
+    }
+
+    private var hoverFill: Color {
+        switch variant {
+        case .primary:   return isHovering ? AppColors.accent.opacity(0.88) : AppColors.accent
+        case .secondary: return isHovering ? AppColors.neutralSurfaceStrong.opacity(0.7) : AppColors.neutralSurfaceStrong
+        case .running:   return AppColors.accentTint
+        }
     }
 
     private var foreground: Color {
@@ -54,14 +75,6 @@ struct PillButtonStyle: ButtonStyle {
         case .primary:   return .white
         case .secondary: return .secondary
         case .running:   return .primary
-        }
-    }
-
-    private var fill: Color {
-        switch variant {
-        case .primary:   return AppColors.accent
-        case .secondary: return AppColors.neutralSurfaceStrong
-        case .running:   return AppColors.accentTint
         }
     }
 

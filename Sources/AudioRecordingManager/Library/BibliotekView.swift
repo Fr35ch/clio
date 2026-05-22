@@ -221,84 +221,26 @@ struct BibliotekView: View {
     }
 
     private func rowView(_ bundle: RecordingStatusBundle) -> some View {
-        let isSelected = selectedRecording?.id == bundle.id
-
-        return HStack(spacing: 0) {
-            // Play button (column 1)
-            Button {
-                playPreview(bundle)
-            } label: {
-                Image(systemName: playIcon(for: bundle))
-                    .font(AppFont.iconRow)
-                    .foregroundStyle(AppColors.accent)
-                    .frame(width: 32, height: 32)
-            }
-            .buttonStyle(.plain)
-            .help("Spill av")
-            .hoverCursor()
-
-            Text(bundle.displayName)
-                .font(AppFont.tableCell)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            if !isCompact {
-                Text(formatDuration(bundle.durationSeconds))
-                    .font(AppFont.tableMonoCell)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .frame(width: 70, alignment: .leading)
-            }
-
-            Text(formatDate(bundle.createdAt))
-                .font(AppFont.tableMetaCell)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .frame(width: 130, alignment: .center)
-
-            transcribeActionButton(for: bundle)
-                .frame(width: 150, alignment: .leading)
-
-            if !isCompact {
-                StatusChipView(chip: bundle.avident).frame(width: 110, alignment: .leading)
-                StatusChipView(chip: bundle.analyse).frame(width: 100, alignment: .leading)
-                StatusChipView(chip: bundle.teams).frame(width: 70, alignment: .leading)
-            }
-            Text(bundle.slettes.label)
-                .font(AppFont.tableMetaCell)
-                .foregroundStyle(StatusChipView.foreground(bundle.slettes.tone))
-                .frame(width: 70, alignment: .center)
-        }
-        .padding(.horizontal, AppSpacing.lg)
-        .padding(.vertical, 6)
-        .background(
-            isSelected
-                ? AppColors.accent.opacity(0.12)
-                : Color.clear
-        )
-        .contentShape(Rectangle())
-        .onTapGesture(count: 2) {
-            guard bundle.isTranscribed else { return }
-            openWindow(id: "transcript-editor", value: bundle.id)
-        }
-        .onTapGesture {
-            selectedRecording = recordingsManager.recordings.first { $0.id == bundle.id }
-        }
-        .hoverCursor()
-        .help(bundle.isTranscribed ? "Dobbeltklikk for å åpne i editor" : bundle.displayName)
-        .contextMenu {
-            Button(role: .destructive) {
+        BibliotekRow(
+            bundle: bundle,
+            isSelected: selectedRecording?.id == bundle.id,
+            isCompact: isCompact,
+            audioPlayer: audioPlayer,
+            onSelect: {
+                selectedRecording = recordingsManager.recordings.first { $0.id == bundle.id }
+            },
+            onDoubleClick: {
+                guard bundle.isTranscribed else { return }
+                openWindow(id: "transcript-editor", value: bundle.id)
+            },
+            onDelete: {
                 if let item = recordingsManager.recordings.first(where: { $0.id == bundle.id }) {
                     recordingsManager.deleteRecording(item)
-                    if selectedRecording?.id == bundle.id {
-                        selectedRecording = nil
-                    }
+                    if selectedRecording?.id == bundle.id { selectedRecording = nil }
                 }
-            } label: {
-                Label("Slett opptak", systemImage: "trash")
-            }
-        }
+            },
+            transcribeButton: { transcribeActionButton(for: bundle) }
+        )
     }
 
     // MARK: - Transcription action button
@@ -316,7 +258,6 @@ struct BibliotekView: View {
     @ViewBuilder
     private func transcribeActionButton(for bundle: RecordingStatusBundle) -> some View {
         let isRunning = transcriptionRunner.inFlight.contains(bundle.id)
-        let p = transcriptionRunner.progress[bundle.id] ?? 0
 
         if isRunning {
             RunningPill(
@@ -398,20 +339,117 @@ struct BibliotekView: View {
         }
     }
 
-    // MARK: - Helpers
+}
 
-    private func playIcon(for bundle: RecordingStatusBundle) -> String {
+// MARK: - Bibliotek Row
+
+private struct BibliotekRow<TranscribeButton: View>: View {
+    let bundle: RecordingStatusBundle
+    let isSelected: Bool
+    let isCompact: Bool
+    @ObservedObject var audioPlayer: AudioPlayer
+    let onSelect: () -> Void
+    let onDoubleClick: () -> Void
+    let onDelete: () -> Void
+    @ViewBuilder let transcribeButton: () -> TranscribeButton
+
+    @State private var isHovered = false
+    @State private var isPlayHovered = false
+
+    private var playIconName: String {
         let url = StorageLayout.audioURL(id: bundle.id)
         let isCurrent = audioPlayer.currentPlayingURL == url
         return (isCurrent && audioPlayer.isPlaying) ? "pause.circle.fill" : "play.circle.fill"
     }
 
-    private func playPreview(_ bundle: RecordingStatusBundle) {
+    private func togglePlay() {
         let url = StorageLayout.audioURL(id: bundle.id)
         if audioPlayer.currentPlayingURL == url {
             audioPlayer.togglePlayPause()
         } else {
             audioPlayer.play(url: url)
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            // Play button
+            Button { togglePlay() } label: {
+                Image(systemName: playIconName)
+                    .font(AppFont.iconRow)
+                    .foregroundStyle(isPlayHovered ? AppColors.accent : AppColors.accent.opacity(0.7))
+                    .scaleEffect(isPlayHovered ? 1.12 : 1.0)
+                    .animation(.easeInOut(duration: 0.12), value: isPlayHovered)
+                    .frame(width: 32, height: 32)
+            }
+            .buttonStyle(.plain)
+            .help("Spill av")
+            .onContinuousHover { phase in
+                switch phase {
+                case .active:
+                    isPlayHovered = true
+                    DispatchQueue.main.async { NSCursor.pointingHand.set() }
+                case .ended:
+                    isPlayHovered = false
+                    DispatchQueue.main.async { NSCursor.arrow.set() }
+                }
+            }
+
+            Text(bundle.displayName)
+                .font(AppFont.tableCell)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if !isCompact {
+                Text(formatDuration(bundle.durationSeconds))
+                    .font(AppFont.tableMonoCell)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .frame(width: 70, alignment: .leading)
+            }
+
+            Text(formatDate(bundle.createdAt))
+                .font(AppFont.tableMetaCell)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .frame(width: 130, alignment: .center)
+
+            transcribeButton()
+                .frame(width: 150, alignment: .leading)
+
+            if !isCompact {
+                StatusChipView(chip: bundle.avident).frame(width: 110, alignment: .leading)
+                StatusChipView(chip: bundle.analyse).frame(width: 100, alignment: .leading)
+                StatusChipView(chip: bundle.teams).frame(width: 70, alignment: .leading)
+            }
+            Text(bundle.slettes.label)
+                .font(AppFont.tableMetaCell)
+                .foregroundStyle(StatusChipView.foreground(bundle.slettes.tone))
+                .frame(width: 70, alignment: .center)
+        }
+        .padding(.horizontal, AppSpacing.lg)
+        .padding(.vertical, 6)
+        .background {
+            if isSelected {
+                AppColors.accent.opacity(0.12)
+            } else if isHovered {
+                AppColors.accent.opacity(0.06)
+            }
+        }
+        .animation(.easeInOut(duration: 0.12), value: isHovered)
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) { onDoubleClick() }
+        .onTapGesture { onSelect() }
+        .onHover { hovering in
+            isHovered = hovering
+            if !hovering { DispatchQueue.main.async { NSCursor.arrow.set() } }
+        }
+        .help(bundle.isTranscribed ? "Dobbeltklikk for å åpne i editor" : bundle.displayName)
+        .contextMenu {
+            Button(role: .destructive) { onDelete() } label: {
+                Label("Slett opptak", systemImage: "trash")
+            }
         }
     }
 
@@ -421,10 +459,9 @@ struct BibliotekView: View {
         let hours = total / 3600
         let mins = (total % 3600) / 60
         let secs = total % 60
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, mins, secs)
-        }
-        return String(format: "%d:%02d", mins, secs)
+        return hours > 0
+            ? String(format: "%d:%02d:%02d", hours, mins, secs)
+            : String(format: "%d:%02d", mins, secs)
     }
 
     private func formatDate(_ date: Date) -> String {

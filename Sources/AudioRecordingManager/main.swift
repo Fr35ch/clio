@@ -1,6 +1,7 @@
 import AVFAudio
 import AVFoundation
 import Accelerate
+import CoreAudio
 import CoreMedia
 import DiskArbitration
 import Foundation
@@ -16,33 +17,19 @@ import SwiftUI
 // MARK: - App Entry Point
 struct VirginProjectApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @StateObject private var startupCoordinator = StartupCoordinator()
 
     var body: some Scene {
+        // Default WindowGroup — SwiftUI auto-opens this on launch.
+        // AppDelegate immediately hides it, shows the chromeless splash,
+        // then fades this window back in after startup completes.
         WindowGroup {
-            ZStack {
-                MainView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                if !startupCoordinator.isComplete {
-                    SplashView(coordinator: startupCoordinator)
-                        .zIndex(1000)
-                        .transition(.opacity)
-                }
-            }
-            .tint(AppColors.accent)
-            .task {
-                await startupCoordinator.runStartupSequence()
-            }
-            // No `.toolbar { ... }` here — adding any toolbar item
-            // (even zero-size) makes NSToolbar render a visible
-            // affordance next to the traffic lights that we couldn't
-            // suppress via `displayMode = .iconOnly`,
-            // `allowsUserCustomization = false`, or
-            // `.toolbar(removing: .sidebarToggle)`. Dropping the trigger
-            // entirely removes the button at the cost of the unified
-            // toolbar style — see `Design/WindowChrome.swift`.
+            MainView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .tint(AppColors.accent)
         }
         .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1200, height: 800)
+
         .commands {
             CommandGroup(replacing: .newItem) {}
             CommandGroup(after: .help) {
@@ -62,7 +49,6 @@ struct VirginProjectApp: App {
                 .keyboardShortcut(",", modifiers: .command)
             }
         }
-        .defaultSize(width: 1200, height: 800)
 
         // Secondary scene: transcript editor opens here as its own macOS
         // window, keyed by recording id. SwiftUI dedupes by `value:` so
@@ -79,12 +65,22 @@ struct VirginProjectApp: App {
 }
 
 // MARK: - App Delegate for Launch Configuration
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Held strongly so the notification observer survives.
     private var toolbarObserver: NSObjectProtocol?
 
+    private let splashController   = SplashWindowController()
+    private let startupCoordinator = StartupCoordinator()
+    private var mainWindow: NSWindow?
+    private var splashShown = false   // fix 4 — guard against multiple splash windows
+
+    func applicationWillFinishLaunching(_ notification: Notification) {}
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        guard !splashShown else { return }   // fix 4
+        splashShown = true
         print("✅ App delegate did finish launching")
 
         // Register default values so UserDefaults.standard.integer(forKey:)
@@ -116,6 +112,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
 
+        // Store and hide the SwiftUI main window — it will be faded in
+        // by revealMainWindow() after the splash completes.
+        mainWindow = mainWindows().first
+        mainWindow?.orderOut(nil)
+
+        // Show the chromeless splash and kick off startup checks.
+        splashController.onDismiss = { [weak self] in self?.revealMainWindow() }
+        splashController.show(coordinator: startupCoordinator)
+
+        // Kick off the startup sequence (drives the splash status line).
+        Task { await startupCoordinator.runStartupSequence() }
+
         // Auto-install no-transcribe in the background if not already present
         Task {
             await TranscriptionService.shared.setupIfNeeded()
@@ -142,32 +150,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil,
             queue: .main
         ) { notification in
-            guard let window = notification.object as? NSWindow,
-                  let toolbar = window.toolbar else { return }
-            toolbar.allowsUserCustomization = false
-            toolbar.autosavesConfiguration = false
-            toolbar.displayMode = .iconOnly
+            guard let window = notification.object as? NSWindow else { return }
 
-            // Diagnostic + corrective: log every toolbar item we see
-            // so we can target precisely if the heuristic below
-            // doesn't match, then remove anything that looks like a
-            // sidebar toggle. Apple keeps these identifiers private
-            // ("com.apple.SwiftUI.…" style) so we match heuristically
-            // on the substring rather than hard-coding a constant.
-            let items = toolbar.items
-            if !items.isEmpty {
-                let ids = items.map { $0.itemIdentifier.rawValue }.joined(separator: ", ")
-                print("ARM toolbar items for window \(window.title.isEmpty ? "<untitled>" : window.title): \(ids)")
-            }
-            for index in stride(from: items.count - 1, through: 0, by: -1) {
-                let id = items[index].itemIdentifier.rawValue
-                if id.localizedCaseInsensitiveContains("togglesidebar")
-                    || id.localizedCaseInsensitiveContains("sidebartoggle")
-                    || id.localizedCaseInsensitiveContains("sidebartracking")
-                    || id.localizedCaseInsensitiveContains("toggle sidebar")
-                {
-                    toolbar.removeItem(at: index)
-                    print("ARM: removed toolbar item \(id)")
+            // SwiftUI adds toolbar items asynchronously after the window
+            // becomes key, so deferring to the next run-loop pass ensures
+            // the sidebar-toggle item exists before we try to remove it.
+            // Without this delay the cleanup runs on first launch before
+            // the items are populated, leaving the button visible until
+            // the next activation cycle.
+            DispatchQueue.main.async {
+                guard let toolbar = window.toolbar else { return }
+                toolbar.allowsUserCustomization = false
+                toolbar.autosavesConfiguration = false
+                toolbar.displayMode = .iconOnly
+
+                // Diagnostic + corrective: log every toolbar item we see
+                // so we can target precisely if the heuristic below
+                // doesn't match, then remove anything that looks like a
+                // sidebar toggle. Apple keeps these identifiers private
+                // ("com.apple.SwiftUI.…" style) so we match heuristically
+                // on the substring rather than hard-coding a constant.
+                let items = toolbar.items
+                if !items.isEmpty {
+                    let ids = items.map { $0.itemIdentifier.rawValue }.joined(separator: ", ")
+                    print("ARM toolbar items for window \(window.title.isEmpty ? "<untitled>" : window.title): \(ids)")
+                }
+                for index in stride(from: items.count - 1, through: 0, by: -1) {
+                    let id = items[index].itemIdentifier.rawValue
+                    if id.localizedCaseInsensitiveContains("togglesidebar")
+                        || id.localizedCaseInsensitiveContains("sidebartoggle")
+                        || id.localizedCaseInsensitiveContains("sidebartracking")
+                        || id.localizedCaseInsensitiveContains("toggle sidebar")
+                    {
+                        toolbar.removeItem(at: index)
+                        print("ARM: removed toolbar item \(id)")
+                    }
                 }
             }
         }
@@ -182,6 +199,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             sender.windows.first?.makeKeyAndOrderFront(nil)
         }
         return true
+    }
+
+    private func revealMainWindow() {
+        guard let win = mainWindow else { return }
+        win.alphaValue = 0
+        win.makeKeyAndOrderFront(nil)
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.30
+            win.animator().alphaValue = 1
+        }
+    }
+
+    private func mainWindows() -> [NSWindow] {
+        // Fix 3 — filter by identity, not by window level (level can be reset by system)
+        NSApp.windows.filter { $0 !== splashController.window && !($0 is NSPanel) }
     }
 }
 
@@ -324,7 +356,7 @@ struct RecordButton: View {
                             .fill(AppColors.destructive)
                             .frame(width: 56, height: 56)
                             .cornerRadius(AppRadius.small)
-                        Text("Stop")
+                        Text("Stopp")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(AppColors.destructive)
                             .textCase(.uppercase)
@@ -332,7 +364,7 @@ struct RecordButton: View {
                     }
                 } else if isVerified {
                     // Start Recording button with glass effect
-                    Text("Start Recording")
+                    Text("Start Opptak")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(.white)
                         .tracking(0.5)
@@ -347,7 +379,7 @@ struct RecordButton: View {
                         ProgressView()
                             .scaleEffect(0.7)
                             .colorScheme(.dark)
-                        Text("Verifying Microphone")
+                        Text("Verifiserer mikrofon")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.7))
                             .tracking(0.5)
@@ -386,7 +418,7 @@ struct RecordButton: View {
                         .cornerRadius(AppRadius.medium)
                 }
                 .buttonStyle(.plain)
-                .help("Audio Input Settings")
+                .help("Lydinnstillinger")
                 .popover(isPresented: $showAudioSourceMenu, arrowEdge: .bottom) {
                     AudioSourceSelector()
                 }
@@ -396,64 +428,139 @@ struct RecordButton: View {
 }
 
 // MARK: - Audio Source Selector
+
+private struct AudioDevice: Identifiable {
+    let id: AudioDeviceID
+    let name: String
+}
+
+/// Only physical/hardware input devices. Excludes virtual, aggregate, AirPlay,
+/// network, and Continuity Camera (AVB) sources.
+private let physicalTransportTypes: Set<UInt32> = [
+    kAudioDeviceTransportTypeBuiltIn,
+    kAudioDeviceTransportTypeUSB,
+    kAudioDeviceTransportTypeFireWire,
+    kAudioDeviceTransportTypeBluetooth,
+    kAudioDeviceTransportTypeBluetoothLE,
+    kAudioDeviceTransportTypeThunderbolt,
+    kAudioDeviceTransportTypePCI,
+    kAudioDeviceTransportTypeHDMI,
+    kAudioDeviceTransportTypeDisplayPort,
+]
+
 struct AudioSourceSelector: View {
-    @State private var audioDevices: [String] = []
-    @State private var selectedDevice: String = "Default"
+    @State private var audioDevices: [AudioDevice] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Audio Input Source")
+            Text("Lydkilde")
                 .font(.system(size: 14, weight: .semibold))
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
 
             Divider()
 
-            // List available audio devices
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(
-                    audioDevices.isEmpty ? ["Default", "Built-in Microphone"] : audioDevices,
-                    id: \.self
-                ) { device in
-                    Button(action: {
-                        selectedDevice = device
-                        // TODO: Set audio input device
-                    }) {
-                        HStack {
-                            Text(device)
-                                .font(.system(size: 13))
-                            Spacer()
-                            if selectedDevice == device {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(.blue)
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .background(selectedDevice == device ? Color.blue.opacity(0.1) : Color.clear)
+                let devices = audioDevices.isEmpty ? [AudioDevice(id: 0, name: "Innebygd mikrofon")] : audioDevices
+                ForEach(devices) { device in
+                    AudioDeviceRow(device: device, recorder: AudioRecorder.shared)
                 }
             }
 
             Divider()
 
-            Text("Change audio input device")
+            Text("Kun fysiske lydinngangsenheter vises")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
         }
         .frame(width: 250)
-        .onAppear {
-            loadAudioDevices()
+        .onAppear { loadAudioDevices() }
+    }
+}
+
+private struct AudioDeviceRow: View {
+    let device: AudioDevice
+    @ObservedObject var recorder: AudioRecorder  // holds for re-render only
+
+    var body: some View {
+        let isSelected = AudioRecorder.shared.selectedInputDeviceID == device.id
+        Button(action: { AudioRecorder.shared.setInputDevice(device.id) }) {
+            HStack {
+                Text(device.name)
+                    .font(.system(size: 13))
+                Spacer()
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(.blue)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .background(isSelected ? Color.blue.opacity(0.1) : Color.clear)
+    }
+}
+
+// Methods below belong to AudioSourceSelector (extracted here to avoid
+// compiler type-check timeout on the body expression).
+extension AudioSourceSelector {
+    func loadAudioDevices() {
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var dataSize: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &dataSize) == noErr else { return }
+
+        let count = Int(dataSize) / MemoryLayout<AudioDeviceID>.size
+        var ids = [AudioDeviceID](repeating: 0, count: count)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &dataSize, &ids) == noErr else { return }
+
+        var result: [AudioDevice] = []
+        for id in ids {
+            guard hasInputStream(id), isPhysicalDevice(id), let name = deviceName(id) else { continue }
+            result.append(AudioDevice(id: id, name: name))
+        }
+        audioDevices = result
     }
 
-    func loadAudioDevices() {
-        // TODO: Get actual audio devices from AVAudioSession/CoreAudio
-        audioDevices = ["Default", "Built-in Microphone", "External Microphone"]
+    private func hasInputStream(_ deviceID: AudioDeviceID) -> Bool {
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyStreams,
+            mScope: kAudioDevicePropertyScopeInput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var size: UInt32 = 0
+        return AudioObjectGetPropertyDataSize(deviceID, &addr, 0, nil, &size) == noErr && size > 0
+    }
+
+    private func isPhysicalDevice(_ deviceID: AudioDeviceID) -> Bool {
+        var transport: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyTransportType,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        guard AudioObjectGetPropertyData(deviceID, &addr, 0, nil, &size, &transport) == noErr else { return false }
+        return physicalTransportTypes.contains(transport)
+    }
+
+    private func deviceName(_ deviceID: AudioDeviceID) -> String? {
+        var nameRef: CFString = "" as CFString
+        var size = UInt32(MemoryLayout<CFString>.size)
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyDeviceNameCFString,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        guard AudioObjectGetPropertyData(deviceID, &addr, 0, nil, &size, &nameRef) == noErr else { return nil }
+        return nameRef as String
     }
 }
 
@@ -955,16 +1062,13 @@ struct NavPanel: View {
 
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
-            logoBlock
-            Divider().padding(.horizontal, 6)
-
             VStack(spacing: 4) {
                 navItem(tab: .record, label: "Ta opp lyd", icon: "mic.fill")
                 navItem(tab: .recordings, label: "Bibliotek", icon: "books.vertical.fill")
                 navItem(tab: .analyse, label: "Analyser", icon: "brain.head.profile")
             }
             .padding(.horizontal, 6)
-            .padding(.top, 12)
+            .padding(.top, 20)
 
             Spacer()
 
@@ -972,14 +1076,6 @@ struct NavPanel: View {
             footerBlock
         }
         .background(Color(nsColor: .controlBackgroundColor))
-    }
-
-    private var logoBlock: some View {
-        AudioWaveformIcon()
-            .frame(width: 32, height: 32)
-            .padding(.top, 12)
-            .padding(.bottom, 16)
-            .frame(maxWidth: .infinity)
     }
 
     private var footerBlock: some View {

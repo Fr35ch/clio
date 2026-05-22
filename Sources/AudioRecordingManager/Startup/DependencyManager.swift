@@ -42,6 +42,8 @@ class DependencyManager: ObservableObject {
                     try await self.runCheck(check)
                 }
                 checkResults[check] = .passed
+                // Minimum dwell so each status message is readable on screen.
+                try? await Task.sleep(nanoseconds: 800_000_000)  // 800ms per step
             } catch {
                 checkResults[check] = .failed(error.localizedDescription)
                 return  // stop on first failure
@@ -146,7 +148,7 @@ class DependencyManager: ObservableObject {
             try? FileManager.default.removeItem(at: test)
 
         case .allClear:
-            try await Task.sleep(nanoseconds: 200_000_000)  // small pause for visual effect
+            try await Task.sleep(nanoseconds: 1_000_000_000)  // 1s pause before "Klar"
         }
     }
 
@@ -178,13 +180,13 @@ class DependencyManager: ObservableObject {
 
     func statusText(for check: DependencyCheck) -> String {
         switch check {
-        case .pythonVenv: return "Verifiserer Python-miljø…"
-        case .transcribeVenv: return "Sjekker no-transcribe…"
-        case .whisperModel: return "Verifiserer NB-Whisper-modell…"
-        case .ollamaRunning: return "Sjekker Ollama-tjeneste…"
-        case .llmModelLoaded: return "Verifiserer LLM-modell…"
-        case .auditLog: return "Verifiserer lagringsmiljø…"
-        case .allClear: return "Alt klart"
+        case .pythonVenv:      return "Ser etter Python-miljø…"
+        case .transcribeVenv:  return "Sjekker transkripsjonspakke…"
+        case .whisperModel:    return "Ser etter Whisper-modell…"
+        case .ollamaRunning:   return "Starter Ollama…"
+        case .llmModelLoaded:  return "Laster språkmodell…"
+        case .auditLog:        return "Klargjør revisjonsdatabase…"
+        case .allClear:        return "Klar"
         }
     }
 
