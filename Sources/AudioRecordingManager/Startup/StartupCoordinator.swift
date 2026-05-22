@@ -26,7 +26,7 @@ class StartupCoordinator: ObservableObject {
         for (i, req) in requirements.enumerated() {
             completedCheckIndex = i
             statusMessage = "Sjekker \(req.name)…"
-            try? await Task.sleep(nanoseconds: 120_000_000)  // 120ms per check for visual effect
+            try? await Task.sleep(nanoseconds: 900_000_000)  // 900ms per check
             if !req.passed {
                 SystemRequirementChecker.showFatalAlert(for: req)
                 return
@@ -46,7 +46,7 @@ class StartupCoordinator: ObservableObject {
 
         // Phase 3: Complete
         phase = .complete
-        statusMessage = "Audio Recording Manager er klar"
+        statusMessage = "Klar"
         try? await Task.sleep(nanoseconds: 3_000_000_000)  // 1s for bars to settle + 2s display
         isComplete = true
     }
@@ -57,7 +57,7 @@ class StartupCoordinator: ObservableObject {
         await dependencyManager.retryFrom(failed)
         if dependencyManager.firstFailedCheck == nil {
             phase = .complete
-            statusMessage = "Audio Recording Manager er klar"
+            statusMessage = "Klar"
             try? await Task.sleep(nanoseconds: 3_000_000_000)  // 1s for bars to settle + 2s display
             isComplete = true
         }

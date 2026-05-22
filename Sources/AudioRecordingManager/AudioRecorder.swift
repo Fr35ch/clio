@@ -1,6 +1,7 @@
 import AVFAudio
 import AVFoundation
 import Accelerate
+import CoreAudio
 import Foundation
 
 // MARK: - Speech Activity Detector (VAD)
@@ -232,6 +233,10 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
 
     @Published var isMonitoring = false
 
+    /// The CoreAudio device ID that should be used for recording and monitoring.
+    /// Set via ``setInputDevice(_:)``. Persisted across launches by device UID.
+    @Published var selectedInputDeviceID: AudioDeviceID?
+
     /// Ring buffer of amplitude samples for the waveform timeline, ordered oldest-first.
     /// Capped at `maxHistoryLength` entries (~50 s at 20 Hz). Each entry has a stable `id`
     /// so `ScrollingWaveformView` can match bars correctly as the buffer scrolls.
@@ -274,13 +279,88 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
         vad.onSpeechStateChanged = { [weak self] active in
             self?.isSpeechActive = active
         }
+        restorePersistedInputDevice()
         print("✅ Audio recorder initialized")
     }
 
-    // MARK: - Audio Monitoring (for visualization before recording)
+    // MARK: - Input Device Selection
+
+    /// Switches the CoreAudio system default input to `deviceID` so that
+    /// the next `AVAudioRecorder` session picks it up automatically.
+    func setInputDevice(_ deviceID: AudioDeviceID) {
+        var id = deviceID
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        let status = AudioObjectSetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &addr, 0, nil,
+            UInt32(MemoryLayout<AudioDeviceID>.size), &id
+        )
+        guard status == noErr else {
+            print("❌ Could not set input device: \(status)")
+            return
+        }
+        selectedInputDeviceID = deviceID
+        if let uid = deviceUID(for: deviceID) {
+            UserDefaults.standard.set(uid, forKey: "preferredInputDeviceUID")
+        }
+        print("🎤 Input device set to ID \(deviceID)")
+    }
+
+    private func applySelectedInputDevice() {
+        guard let id = selectedInputDeviceID else { return }
+        var deviceID = id
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        AudioObjectSetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &addr, 0, nil,
+            UInt32(MemoryLayout<AudioDeviceID>.size), &deviceID
+        )
+    }
+
+    private func restorePersistedInputDevice() {
+        guard let savedUID = UserDefaults.standard.string(forKey: "preferredInputDeviceUID"),
+              let deviceID = findDevice(byUID: savedUID) else { return }
+        selectedInputDeviceID = deviceID
+    }
+
+    private func deviceUID(for deviceID: AudioDeviceID) -> String? {
+        var uidRef: CFString = "" as CFString
+        var size = UInt32(MemoryLayout<CFString>.size)
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyDeviceUID,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        guard AudioObjectGetPropertyData(deviceID, &addr, 0, nil, &size, &uidRef) == noErr else { return nil }
+        return uidRef as String
+    }
+
+    private func findDevice(byUID uid: String) -> AudioDeviceID? {
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var dataSize: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &dataSize) == noErr else { return nil }
+        let count = Int(dataSize) / MemoryLayout<AudioDeviceID>.size
+        var ids = [AudioDeviceID](repeating: 0, count: count)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &dataSize, &ids) == noErr else { return nil }
+        return ids.first { deviceUID(for: $0) == uid }
+    }
 
     func startMonitoring() {
         guard !isMonitoring else { return }
+
+        applySelectedInputDevice()
 
         // Always start with a clean slate so a previous recording's waveform
         // doesn't carry into the next session's monitoring phase.
@@ -415,6 +495,8 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
         if isMonitoring {
             stopMonitoring(clearHistory: true)
         }
+
+        applySelectedInputDevice()
 
         // Create a new recording in RecordingStore and record to its audio path.
         do {
