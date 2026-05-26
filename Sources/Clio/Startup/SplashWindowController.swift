@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import WebKit
 
 @MainActor
 final class SplashWindowController {
@@ -11,15 +12,25 @@ final class SplashWindowController {
         let w = makeWindow()
         let container = RoundedContainerView(frame: NSRect(x: 0, y: 0, width: 680, height: 420))
 
-        let imageView = NSImageView(frame: container.bounds)
+        // WKWebView renders the SVG reliably — NSImage cannot handle
+        // gradientUnits="userSpaceOnUse" at large coordinate spaces.
         if let url = Bundle.main.url(forResource: "SplashBackground", withExtension: "svg"),
-           let image = NSImage(contentsOf: url) {
-            imageView.image = image
+           let svgData = try? Data(contentsOf: url),
+           let svgString = String(data: svgData, encoding: .utf8) {
+            let config = WKWebViewConfiguration()
+            config.suppressesIncrementalRendering = true
+            let webView = WKWebView(frame: container.bounds, configuration: config)
+            webView.autoresizingMask = [.width, .height]
+            let html = """
+            <html><head><style>
+            * { margin: 0; padding: 0; }
+            html, body { width: 100%; height: 100%; overflow: hidden; background: #8347F0; }
+            svg { width: 100%; height: 100%; display: block; }
+            </style></head><body>\(svgString)</body></html>
+            """
+            webView.loadHTMLString(html, baseURL: nil)
+            container.addSubview(webView)
         }
-        imageView.imageScaling     = .scaleAxesIndependently
-        imageView.imageAlignment   = .alignCenter
-        imageView.autoresizingMask = [.width, .height]
-        container.addSubview(imageView)
 
         let host = NSHostingView(rootView:
             SplashView(coordinator: coordinator) { [weak self] in self?.dismiss() }
