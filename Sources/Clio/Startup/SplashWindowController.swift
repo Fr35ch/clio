@@ -19,6 +19,7 @@ final class SplashWindowController {
         config.suppressesIncrementalRendering = true
         let webView = WKWebView(frame: container.bounds, configuration: config)
         webView.autoresizingMask = [.width, .height]
+        webView.setValue(false, forKey: "drawsBackground")  // transparent WKWebView background
         let svgString = SplashBackground.svg
         let html = """
         <html><head><style>
@@ -35,6 +36,8 @@ final class SplashWindowController {
         )
         host.frame             = container.bounds
         host.autoresizingMask  = [.width, .height]
+        host.wantsLayer        = true
+        host.layer?.backgroundColor = .clear  // prevent default opaque NSHostingView background
         container.addSubview(host)
 
         w.contentView = container
