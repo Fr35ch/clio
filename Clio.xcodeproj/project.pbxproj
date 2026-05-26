@@ -147,8 +147,8 @@
 		B3E4DB16C7F2DBCBAAD577EB /* TranscriptEditorWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptEditorWindow.swift; sourceTree = "<group>"; };
 		BEDC6AD3601EADA5387EAEC1 /* DefaultAvidentExceptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultAvidentExceptions.swift; sourceTree = "<group>"; };
 		C63560298DEC2D58FE5A1E9C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		AA11BB22CC33DD44EE550001 /* SplashBackground.svg */ = {isa = PBXFileReference; lastKnownFileType = image.svg; path = "Resources/Assets.xcassets/Splash.imageset/SplashBackground.svg"; sourceTree = "<group>"; };
-		BB00CC11DD22EE33FF440000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Resources/Assets.xcassets; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE550001 /* SplashBackground.svg */ = {isa = PBXFileReference; lastKnownFileType = image.svg; name = SplashBackground.svg; path = "Resources/Assets.xcassets/Splash.imageset/SplashBackground.svg"; sourceTree = "<group>"; };
+		BB00CC11DD22EE33FF440000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = Resources/Assets.xcassets; sourceTree = "<group>"; };
 		D768BD447F094B7EEEF3703D /* RecordingMeta.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingMeta.swift; sourceTree = "<group>"; };
 		D938E21935718834F5E99700 /* SystemRequirement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemRequirement.swift; sourceTree = "<group>"; };
 		DAF675F106EE14770236A384 /* AnalysisDetailColumn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisDetailColumn.swift; sourceTree = "<group>"; };
