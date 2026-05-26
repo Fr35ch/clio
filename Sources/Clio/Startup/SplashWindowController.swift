@@ -20,6 +20,16 @@ final class SplashWindowController {
         let webView = WKWebView(frame: container.bounds, configuration: config)
         webView.autoresizingMask = [.width, .height]
         webView.setValue(false, forKey: "drawsBackground")  // transparent WKWebView background
+        // WKWebView on macOS is backed by an NSScrollView. Disable scrolling and
+        // zero out content insets so the SVG fills the frame without any offset.
+        if let scrollView = webView.enclosingScrollView {
+            scrollView.hasHorizontalScroller = false
+            scrollView.hasVerticalScroller   = false
+            scrollView.horizontalScrollElasticity = .none
+            scrollView.verticalScrollElasticity   = .none
+            scrollView.contentInsets = .zero
+            scrollView.automaticallyAdjustsContentInsets = false
+        }
         let svgString = SplashBackground.svg
         let html = """
         <html><head><style>
@@ -37,7 +47,7 @@ final class SplashWindowController {
         host.frame             = container.bounds
         host.autoresizingMask  = [.width, .height]
         host.wantsLayer        = true
-        host.layer?.backgroundColor = .clear  // prevent default opaque NSHostingView background
+        host.layer?.backgroundColor = NSColor.clear.cgColor
         container.addSubview(host)
 
         w.contentView = container
