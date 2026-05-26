@@ -212,3 +212,14 @@ Upload must never be blocked by anonymization status. This is a deliberate compl
 
 ### `StorageLayout` avoids Desktop paths deliberately
 `Sources/Clio/Storage/StorageLayout.swift` contains no Desktop path references. This is intentional. Do not add any.
+
+
+---
+
+## 8. Documentation index
+
+All project documentation is indexed in [`docs/README.md`](docs/README.md). That file lists every doc, its purpose, and when it was last verified against the codebase.
+
+**Before editing any doc:** check `docs/README.md` to understand its scope.
+**After making architectural changes:** update the relevant doc and bump its verification date in `docs/README.md`.
+**For staleness checks:** run the `document-reviewer` agent (`/document-reviewer`).
