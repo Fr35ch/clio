@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned (Phase 0 — file management pivot)
-
 Architectural redesign of file storage, egress, and machine handoff. Decision captured in [ADR-1014](docs/decisions/adr/ADR-1014-file-storage-architecture-pivot.md); spec revised in [docs/FILE_MANAGEMENT_AND_TEAMS_SYNC.md](docs/FILE_MANAGEMENT_AND_TEAMS_SYNC.md); build order in [docs/prd/file-management-teams-sync/PHASE_0_TASKS.md](docs/prd/file-management-teams-sync/PHASE_0_TASKS.md). Intended for the next major release (2.0.0) because it changes storage location and removes Desktop-write paths.
 
 - **Storage moves off the Desktop.** Audio, transcripts, and audit log relocate to `~/Library/Application Support/AudioRecordingManager/`. MDM-excluded from the roaming profile sync so files stay local to the library machine.
@@ -32,6 +30,48 @@ Architectural redesign of file storage, egress, and machine handoff. Decision ca
 - Azure AD / Entra ID app registration with Graph scopes `Files.ReadWrite`, `Sites.ReadWrite.All`, `User.Read` — long lead time, blocks Phase 1.
 - MDM sync exclusion for `~/Library/Application Support/AudioRecordingManager/` — load-bearing assumption for Phase 0 security posture.
 - FileVault mandate on library machines — confirmed required; awaiting IT policy confirmation.
+
+---
+
+## [1.4.1] - 2026-05-22
+
+### Added
+
+- **Chromeless SVG splash screen** — Clio now opens with a full-opacity, borderless NSWindow splash
+  displaying the approved brand graphic (`SplashBackground.svg`). The splash is driven entirely by
+  the existing `StartupCoordinator` / `DependencyManager` startup sequence; no new startup logic
+  was introduced.
+  - Animated loading dots (`. → .. → ...`) cycle at 450 ms while startup checks run
+  - Single crossfading status line in Norwegian updates live through all 12 startup steps
+  - Version number (`v1.4.1`) shown bottom-right in monospaced type
+  - Window has no title bar, traffic lights, or resize handle; rounded corners with macOS drop shadow
+
+### Changed
+
+- **Startup dwell times increased** for readability: system checks 900 ms (was 400 ms), dependency
+  steps 800 ms (was 350 ms), `allClear` pause 1 s (was 600 ms)
+- **Nav panel** — removed legacy ARM waveform logo from the top of the left-side navigation panel;
+  menu items moved up to fill the space
+- **Library hover states** — `BibliotekRow` now shows a subtle accent-tinted highlight on hover
+  (6 % opacity); play button icon scales up 12 % and brightens on pointer entry
+- **Pill buttons hover states** — `PillButtonStyle` ("Åpne", "Transkriber") now scales to 1.03× on
+  hover with a brightness boost (+8 %), and 0.96× scale on press; 120 ms easing throughout
+- **Final splash status message** changed from "Audio Recording Manager er klar" to "Klar"
+
+### Fixed
+
+- **SVG full opacity** — removed `mask-type:alpha` from `SplashBackground.svg`; macOS was
+  interpreting the purple gradient luminance as alpha, causing the image to appear washed out
+- **Window opacity on launch** — added `animationBehavior = .none`, `alphaValue = 1.0`, and
+  `isRestorable = false` to the splash `NSWindow` to prevent macOS's default fade-in animation
+  and session-restoration ghosting
+- **Multiple splash windows** — `splashShown` guard in `AppDelegate` prevents duplicate splash
+  windows from stacking on hot reload
+- **`mainWindows()` filter** — now uses identity comparison (`$0 !== splashController.window`)
+  instead of unreliable `.level == .normal` check
+- **`AudioSourceSelector` compiler timeout** — extracted `AudioDeviceRow` struct to break up a
+  `@ViewBuilder` closure that caused `the compiler is unable to type-check this expression` on SPM
+  builds
 
 ---
 
