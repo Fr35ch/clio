@@ -1,10 +1,202 @@
-# no-anonymizer v2: Evidensbasert anonymisering
+# no-anonymizer: Implementasjonsreferanse
 
-**Status:** Implementert i no-anonymizer v2.0
+**Status:** v0.5.0 implementert
 **Repo:** github.com/Fr35ch/no-anonymizer
-**Konsument:** Clio (macOS)
+**Konsument:** Clio (macOS) via subprocess bridge (`Resources/anonymize_bridge.py`)
 
-> Dette dokumentet var opprinnelig en implementasjonsspec. no-anonymizer v2.0 er fullstendig implementert. Dokumentet fungerer nå som referansedokumentasjon for arkitekturen.
+> Dette dokumentet beskriver den faktiske implementasjonen. Det opprinnelige dokumentet beskrev en planlagt v2-arkitektur som aldri ble realisert som beskrevet — den faktiske implementasjonen er annerledes, men oppnår de samme målene med en enklere tilnærming.
+
+---
+
+## 1. Kontekst
+
+`no-anonymizer` er et Python-bibliotek som anonymiserer transkripsjoner av brukerintervjuer for NAV. Det kalles som subprosess fra Clio (Swift/macOS) via `Foundation.Process`, og kommuniserer via temp-filer med JSON-output.
+
+**SpaCy er ikke i bruk.** NER-laget bruker NbAiLab/nb-bert-base-ner via HuggingFace `transformers`. CAPS-normalisering kjøres som preprosessering for å unngå falske positive på all-caps-tekst.
+
+---
+
+## 2. Arkitektur
+
+Pipeline i `anonymizer.anonymize()`:
+
+```
+0. normalize_text()         — ALL-CAPS ord (4+ tegn) → Title Case
+1. regex_patterns.detect()  — telefon, e-post, fødselsnummer, D-nummer, postboks
+2. ssb_names.detect()       — SSB-navneliste (fornavn + etternavn, case-insensitive)
+3. bert_ner.detect()        — NbAiLab/nb-bert-base-ner (PER→[NAVN], LOC/GPE→[STED], ORG telles men redigeres ikke)
+4. steder.detect()          — Kartverket stedsnavn
+5. address_lookup.detect()  — Kartverket API-verifisering av adresser
+6. _merge_spans()           — deduplisering og overlapp-løsning etter prioritet
+7. ambiguity.filter_ambiguous() — kontekstuell filter for tvetydige norske navn
+8. _apply_exceptions()      — unntak fra unntak.txt
+9. _build_result()          — erstatt spans og bygg output
+```
+
+### Prioritetsrekkefølge (overlapp)
+
+```
+0: regex (telefon, e-post, fnr, D-nummer) — høyest
+1: SSB-navn, adresser, Kartverket-steder
+2: NER (ORG, STED)                        — lavest
+```
+
+Innen samme prioritetsnivå vinner lengste match.
+
+---
+
+## 3. Deteksjonslag
+
+### regex_patterns
+
+Strukturert PII med regex:
+- Telefonnummer (norske formater: +47, 0047, bare 8-siffer)
+- E-postadresser
+- Fødselsnummer (11 siffer, første siffer 0-3)
+- D-nummer (11 siffer, første siffer 4-7)
+- Postboks-adresser
+
+Ingen sjekksum-validering — bevisst valg for å over-redigere fremfor å under-redigere.
+
+### ssb_names
+
+- Laster `data/ssb_fornavn.txt` og `data/ssb_etternavn.txt`
+- Case-insensitive matching (norsk `casefold()`)
+- Håndterer bindestreksnavn: `Olav-Martin` rediges hvis *noen* del er et kjent navn
+
+### bert_ner
+
+- Modell: `NbAiLab/nb-bert-base-ner` (~450 MB, lastes fra HuggingFace ved første kjøring)
+- `aggregation_strategy="simple"`
+- Mapping: `PER → [NAVN]`, `LOC/GPE → [STED]`, `ORG → telles, ikke redigert`
+- Lange inputs chunkes ved setningsgrenser (maks 480 BERT-tokens per chunk, pga 512-token limit i checkpointet)
+- Returnerer `score` per entitet (brukes av ambiguity-filteret)
+
+### ambiguity.filter_ambiguous
+
+Kontekstuell filter for tvetydige norske fornavn som også er vanlige ord (Vår, Jo, Dag, Per, Mai, Bjørn, Tor, Liv, Hans, ...).
+
+**`name_strictness`-parameter:**
+- `strict` — hopp over filteret (historisk atferd, alle treff rediges)
+- `balanced` (standard) — regler nedenfor
+- `loose` — krever sterkere støtte
+
+**Regler i `balanced`-modus:**
+1. Ikke kapitalisert i kildeteksten → FJERN span
+2. Setningsstart → kapitaliseringen er uinformativ; behold kun ved:
+   a. Kapitalisert SSB-listenabo (forrige/neste token), eller
+   b. Navn-introduserende forgjenger (hr., fru, hei, snakket med...), eller
+   c. Rapporteringsverb-etterfølger (sa, spurte, svarte...)
+3. BERT-score ≥ 0.95 → BEHOLD uansett
+4. Ellers → BEHOLD (mid-setnings-kapitalisering er sterk indikasjon)
+
+### address_lookup
+
+Verifiserer NER STED-spans som inneholder siffer mot Kartverket-API. Kan skrus av med `use_address_lookup=False`.
+
+### steder
+
+Kartverket stedsnavn fra `data/kartverket_steder.txt`.
+
+---
+
+## 4. Datafiler
+
+```
+data/
+├── ssb_fornavn.txt         — ett navn per linje, UTF-8
+├── ssb_etternavn.txt       — ett navn per linje, UTF-8
+├── kartverket_steder.txt   — norske stedsnavn
+src/no_anonymizer/patterns/
+├── ambiguous_names.txt     — tvetydige tokens (Vår, Jo, Per, ...)
+└── unntak.txt              — globale unntak (falske positive som alltid beholdes)
+```
+
+---
+
+## 5. Filstruktur
+
+```
+src/no_anonymizer/
+├── anonymizer.py           — pipeline-orkestrator
+├── exceptions.py           — unntak-lastning og matching
+├── models.py               — Redaction, AnonymizationResult dataklasser
+├── preprocessor.py         — CAPS-normalisering
+├── text_context.py         — setningsgrense-detektor, kontekst-hjelpere
+├── layers/
+│   ├── address_lookup.py   — Kartverket API
+│   ├── ambiguity.py        — kontekstuell filter for tvetydige navn
+│   ├── bert_ner.py         — NbAiLab BERT NER
+│   ├── regex_patterns.py   — strukturert PII
+│   ├── ssb_names.py        — SSB-navneliste
+│   └── steder.py           — Kartverket stedsnavn
+└── updater/
+    └── ssb_updater.py      — oppdater SSB-datafiler fra ssb.no
+```
+
+---
+
+## 6. JSON-output-kontrakt mot Clio
+
+```json
+{
+  "anonymized_text": "...",
+  "redactions": [
+    {
+      "original_position": 142,
+      "length": 5,
+      "category": "NAVN",
+      "replacement": "[NAVN]",
+      "score": 0.99
+    }
+  ],
+  "stats": { "NAVN": 3, "TELEFON": 1 },
+  "processing_time_ms": 1240.5,
+  "address_lookups_performed": 2,
+  "network_available": true
+}
+```
+
+Clio (`AnonymizationResult` i Swift) håndterer også valgfrie v2-felter (`flagged_for_review`, `statistics`, `audit_log_path`, `version`) for fremtidig kompatibilitet, men disse emitteres ikke av den nåværende Python-implementasjonen.
+
+---
+
+## 7. Installasjon og kjøring
+
+```bash
+# Installer med NER-avhengigheter
+pip install "no-anonymizer[ner]"
+
+# Eller i dev-modus
+cd ~/Github/no-anonymizer
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[ner,dev]"
+
+# Clio bruker .venv automatisk hvis den finnes på:
+# ~/Github/no-anonymizer/.venv/bin/python3
+```
+
+---
+
+## 8. Tester
+
+```bash
+pytest -m "not slow"   # raske enhetstester
+pytest                 # alle tester inkl. integrasjonstester
+```
+
+Testene dekker regex-mønstre, SSB-oppslag, ambiguity-filter, adresseoppslag, og full pipeline.
+
+---
+
+## 9. Etter denne versjonen (ikke i scope)
+
+- Tre-veis beslutningsoutput (redact/flag/keep) til Clio UI
+- Pseudonymisering med konsistent mapping
+- Cross-token resonnering (konsistent håndtering av samme navn nevnt flere ganger)
+- Utvidet entitetstype (datoer, beløp som indirekte identifikatorer)
+
 
 ---
 
