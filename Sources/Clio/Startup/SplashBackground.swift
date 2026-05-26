@@ -1,6 +1,7 @@
 // Auto-generated — do not edit. Source: Resources/Assets.xcassets/Splash.imageset/SplashBackground.svg
 // Inlined to avoid bundle resource lookup failures during splash rendering.
 enum SplashBackground {
+    // swiftlint:disable indentation_width
     static let svg: String = #"""
 <svg width="5505" height="3722" viewBox="0 0 5505 3722" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g>
@@ -46,5 +47,6 @@ enum SplashBackground {
 </linearGradient>
 </defs>
 </svg>
-    """#
+"""#
+    // swiftlint:enable indentation_width
 }
