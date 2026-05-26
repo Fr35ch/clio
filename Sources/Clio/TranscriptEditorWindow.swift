@@ -79,27 +79,59 @@ struct TranscriptEditorWindow: View {
             return
         }
 
+        // 1. In-memory cache (current session)
+        if let cached = TranscriptionCache.shared.result(for: audioURL.path) {
+            loadState = .ready(cached, audioURL, displayName)
+            return
+        }
+
+        // 2. Legacy JSON on disk (written by saveTranscriptJSON after transcription/diarization)
+        // TODO(ADR-1014 Phase 0D): migrate to StorageLayout-based path once Phase 0 D2 is complete.
         let support = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)
             .first!
-        // TODO(ADR-1014 Phase 0D): This path is legacy — pre-Phase-0 layout.
-        // Should be StorageLayout.transcriptURL(id: recordingId) once D2 is complete.
         let jsonURL = support.appendingPathComponent(
             "AudioRecordingManager/transcripts/\(recordingId.uuidString).json"
         )
 
-        guard let data = try? Data(contentsOf: jsonURL) else {
-            loadState = .missingJSON(displayName)
-            return
-        }
-
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        guard let result = try? decoder.decode(TranscriptionResult.self, from: data) else {
-            loadState = .missingJSON(displayName)
+        if let data = try? Data(contentsOf: jsonURL),
+           let result = try? decoder.decode(TranscriptionResult.self, from: data) {
+            loadState = .ready(result, audioURL, displayName)
             return
         }
 
-        loadState = .ready(result, audioURL, displayName)
+        // 3. Plain-text fallback: reconstruct from transcript.txt (recordings transcribed before
+        //    JSON persistence was added). Segments are split on blank lines; no timing or speaker data.
+        let txtURL = StorageLayout.transcriptURL(id: recordingId)
+        if let text = try? String(contentsOf: txtURL, encoding: .utf8), !text.isEmpty {
+            let paragraphs = text
+                .components(separatedBy: "\n\n")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            let segments = paragraphs.enumerated().map { i, para in
+                TranscriptionSegment(
+                    id: i, start: 0, end: 0,
+                    text: para, speaker: "SPEAKER_0",
+                    confidence: 1.0, words: []
+                )
+            }
+            let result = TranscriptionResult(
+                version: "1.0", model: "unknown", language: "no",
+                durationSeconds: 0, numSpeakers: 1,
+                segments: segments,
+                metadata: TranscriptionResultMetadata(
+                    inputFile: audioURL.lastPathComponent,
+                    processingTimeSeconds: 0,
+                    modelVariant: "unknown", computeType: "unknown", device: "unknown",
+                    diarizationRun: false
+                )
+            )
+            loadState = .ready(result, audioURL, displayName)
+            return
+        }
+
+        loadState = .missingJSON(displayName)
     }
 }
