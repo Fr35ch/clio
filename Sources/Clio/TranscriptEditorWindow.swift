@@ -30,8 +30,8 @@ struct TranscriptEditorWindow: View {
 
             case let .missingJSON(displayName):
                 fallback(
-                    title: "Ingen ord-tidsstempler",
-                    message: "Denne transkripsjonen mangler ord-nivå tidsstempler. Kjør transkripsjon på nytt for å bruke editoren.",
+                    title: "Transkripsjon ikke funnet",
+                    message: "Ingen transkripsjon funnet for dette opptaket. Kjør transkripsjon på nytt for å bruke editoren.",
                     displayName: displayName
                 )
 
@@ -82,6 +82,8 @@ struct TranscriptEditorWindow: View {
         let support = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)
             .first!
+        // TODO(ADR-1014 Phase 0D): This path is legacy — pre-Phase-0 layout.
+        // Should be StorageLayout.transcriptURL(id: recordingId) once D2 is complete.
         let jsonURL = support.appendingPathComponent(
             "AudioRecordingManager/transcripts/\(recordingId.uuidString).json"
         )
