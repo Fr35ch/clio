@@ -3,7 +3,7 @@
 macOS-app for opptak, transkripsjon, talerutskilling og analyse av brukerintervjuer.
 Utviklet for NAV Arbeids- og velferdsdirektoratet.
 
-**Versjon**: 1.4.0 · **Krever**: macOS 14 Sonoma · Apple Silicon · 16 GB RAM · 30 GB ledig disk
+**Versjon**: 1.4.1 · **Krever**: macOS 14 Sonoma · Apple Silicon · 16 GB RAM · 30 GB ledig disk
 
 ---
 
