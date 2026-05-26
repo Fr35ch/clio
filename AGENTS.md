@@ -50,15 +50,9 @@ All Python invocations use `Foundation.Process`. Pattern: stderr parsed live via
 - **Ollama** — local LLM runtime, optional
 - **Microsoft Graph (Entra ID)** — Phase 1 upload; requires Azure AD registration with `Files.ReadWrite`, `Sites.ReadWrite.All`, `User.Read` scopes
 
-### File storage — mid-pivot
-The codebase is mid-way through a storage architecture pivot (ADR-1014). Both layouts are active:
+### File storage
+All storage uses the Phase 0 layout under `~/Library/Application Support/Clio/`. Desktop storage (`~/Desktop/lydfiler/`, `~/Desktop/tekstfiler/`) has been removed from the live codebase — references remain only in `LegacyStorageScanner` (migration) and comments. See ADR-1014.
 
-**Legacy (Desktop, being removed):**
-- Audio: `~/Desktop/lydfiler/<timestamp>.m4a`
-- Transcripts: `~/Desktop/tekstfiler/<stem>.txt`
-- Linked by filename stem (brittle on rename)
-
-**Phase 0 target (`~/Library/Application Support/Clio/`):**
 ```
 recordings/<uuid>/
     audio.m4a
@@ -70,6 +64,12 @@ state/
     app.json
 ```
 All path construction goes through `StorageLayout` (enum, `Sources/Clio/Storage/StorageLayout.swift`). CRUD goes through `RecordingStore`. Do not bypass either.
+
+**Remaining Phase 0 work (see `docs/prd/file-management-teams-sync/PHASE_0_TASKS.md`):**
+- D2: `TranscriptionService` not yet writing to the recording folder — still uses a legacy `AudioRecordingManager/transcripts/` path
+- D5/D6: Some `URL(fileURLWithPath: recording.path)` sites and `AudioFileManager` class still exist in `main.swift`
+- E1–E3: Desktop-egress UI actions not yet removed
+- 0F: 30-day expiry implemented but disabled pending migration strategy
 
 ---
 
