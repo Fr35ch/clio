@@ -49,6 +49,7 @@
 		80E2D493917DE2F4ED036BC6 /* StorageLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3446604405B6754884CBEE54 /* StorageLayout.swift */; };
 		8A08187DF0D956FADD0ADE35 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = C63560298DEC2D58FE5A1E9C /* README.md */; };
 		BB00CC11DD22EE33FF440011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB00CC11DD22EE33FF440000 /* Assets.xcassets */; };
+		BB00CC11DD22EE33FF440022 /* SplashBackground.svg in Resources */ = {isa = PBXBuildFile; fileRef = BB00CC11DD22EE33FF440033 /* SplashBackground.svg */; };
 		9158371CF5EB69A1BF2EB9BE /* AnalysisStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 062B55D4B8931B8384DE765F /* AnalysisStore.swift */; };
 		91C1E436D90C1B19C0205B3F /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C7566B03272F645096D2C74 /* DesignTokens.swift */; };
 		93422B4933C289275F063EE9 /* AudioLevelVisualization.swift in Sources */ = {isa = PBXBuildFile; fileRef = E056E09D9198F48C6D484127 /* AudioLevelVisualization.swift */; };
@@ -147,6 +148,7 @@
 		BEDC6AD3601EADA5387EAEC1 /* DefaultAvidentExceptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultAvidentExceptions.swift; sourceTree = "<group>"; };
 		C63560298DEC2D58FE5A1E9C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		BB00CC11DD22EE33FF440000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Resources/Assets.xcassets; sourceTree = "<group>"; };
+		BB00CC11DD22EE33FF440033 /* SplashBackground.svg */ = {isa = PBXFileReference; lastKnownFileType = image.svg; path = "Resources/Assets.xcassets/Splash.imageset/SplashBackground.svg"; sourceTree = "<group>"; };
 		D768BD447F094B7EEEF3703D /* RecordingMeta.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingMeta.swift; sourceTree = "<group>"; };
 		D938E21935718834F5E99700 /* SystemRequirement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemRequirement.swift; sourceTree = "<group>"; };
 		DAF675F106EE14770236A384 /* AnalysisDetailColumn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisDetailColumn.swift; sourceTree = "<group>"; };
@@ -405,6 +407,7 @@
 			files = (
 				8A08187DF0D956FADD0ADE35 /* README.md in Resources */,
 				BB00CC11DD22EE33FF440011 /* Assets.xcassets in Resources */,
+				BB00CC11DD22EE33FF440022 /* SplashBackground.svg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

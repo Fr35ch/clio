@@ -12,7 +12,10 @@ final class SplashWindowController {
         let container = RoundedContainerView(frame: NSRect(x: 0, y: 0, width: 680, height: 420))
 
         let imageView = NSImageView(frame: container.bounds)
-        imageView.image            = NSImage(named: "Splash")
+        if let url = Bundle.main.url(forResource: "SplashBackground", withExtension: "svg"),
+           let image = NSImage(contentsOf: url) {
+            imageView.image = image
+        }
         imageView.imageScaling     = .scaleAxesIndependently
         imageView.imageAlignment   = .alignCenter
         imageView.autoresizingMask = [.width, .height]
