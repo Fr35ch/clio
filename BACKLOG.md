@@ -1,135 +1,61 @@
 # Product Backlog
 
-This document tracks planned features, ongoing investigations, and future work for the Virgin Project - Audio Recording Manager.
-
-**Last Updated:** 2026-04-14
-**Project Manager:** Claude Code
-
-## PM Guidelines
-
-**Model Usage:**
-- PM tasks (documentation, backlog updates, changelog edits): Use **Haiku model** to reduce token costs
-- Technical implementation tasks: Use appropriate model based on complexity
-- Complex investigations or architecture decisions: Use Sonnet/Opus as needed
+**Prosjekt:** Clio
+**Sist oppdatert:** 2026-05-26
 
 ---
 
-## Current Sprint
+## Aktiv sprint
 
-### 🟢 ACTIVE — File Management Architecture Pivot (Phase 0)
+### 🔄 File Management Architecture Pivot — Phase 0
 
-**Epic:** File Management & Teams Sync (revised)
-**Priority:** High
-**Status:** Planned and scoped — ready to build
-**Decision:** [ADR-1014](docs/decisions/adr/ADR-1014-file-storage-architecture-pivot.md)
+**Epic:** File Management & Teams Sync
+**Beslutning:** [ADR-1014](docs/decisions/adr/ADR-1014-file-storage-architecture-pivot.md)
 **Spec:** [docs/FILE_MANAGEMENT_AND_TEAMS_SYNC.md](docs/FILE_MANAGEMENT_AND_TEAMS_SYNC.md)
-**Stories:** [docs/prd/file-management-teams-sync/USER_STORIES.md](docs/prd/file-management-teams-sync/USER_STORIES.md)
-**Tasks:** [docs/prd/file-management-teams-sync/PHASE_0_TASKS.md](docs/prd/file-management-teams-sync/PHASE_0_TASKS.md)
+**Oppgaveliste:** [docs/prd/file-management-teams-sync/PHASE_0_TASKS.md](docs/prd/file-management-teams-sync/PHASE_0_TASKS.md)
 
-Moves storage off the Desktop and into `~/Library/Application Support/`, switches to UUID-named recording folders with sidecar metadata, relocates the audit log, and introduces the Return Machine wipe flow. Phase 1 (Graph API upload to Teams/SharePoint) follows, blocked on Azure AD app registration.
+Lagring flyttes fra Desktop til `~/Library/Application Support/Clio/` med UUID-navngitte opptaksmapper og metadata-sidecars. Audit-logg er allerede på plass. Phase 1 (Graph API-opplasting til Teams/SharePoint) er blokkert av Azure AD-registrering.
 
-**Parallel external-dependency tracks (kicked off 2026-04-14):**
-- MDM sync exclusion for `~/Library/Application Support/AudioRecordingManager/` — mac-fleet admin
-- FileVault mandate confirmation on library machines — NAV IT
-- Azure AD / Entra ID app registration — NAV IT (long lead time, blocks Phase 1)
+**Gjenstående oppgaver (se PHASE_0_TASKS.md for detaljer):**
+- ❌ **D2** TranscriptionService skriver transkripsjon til opptaksmappen og oppdaterer sidecar
+- ❌ **D5** Alle `URL(fileURLWithPath: recording.path)` erstattes med `StorageLayout`-kall
+- ❌ **D6** `AudioFileManager`-klassen slettes
+- ❌ **E1–E3** Desktop-egress fjernes (`.desktopDirectory`, Reveal in Finder, NSSharingService)
+- ❌ **0F** 30-dagers lokal oppbevaring med advarsler og automatisk sletting
 
-**Parallel research track:**
-- Researcher discovery interviews — product owner conducting. Blocks Phase 2 (project concept, destination picker UX). See interview guide prepared in the planning conversation.
-
----
-
-## Planned Features
-
-### Phase 4: Network Controls Enhancement
-
-**Status:** Backlog
-
-#### Features
-- [ ] Upload progress tracking
-- [ ] Network enable/disable automation improvements
-- [ ] Better visual feedback for network operations
-- [ ] Upload verification
+**Ekstern avhengighet:**
+- MDM-synkutelukkelse av `~/Library/Application Support/Clio/` — blokkerer ship
+- Azure AD / Entra ID app-registrering — NAV IT (lang leveringstid, blokkerer Phase 1)
 
 ---
 
-### Phase 5: File Verification & Security
+## Phase 1 — Opplasting via Graph API
 
-**Status:** Backlog
+**Status:** Backlog — blokkert av Azure AD-registrering
+**Avhengig av:** Phase 0 ferdig + MDM-utelukkelse bekreftet
 
-#### Features
-- [ ] Audio file integrity verification
-- [ ] Audit logging for file operations
-- [ ] Secure file deletion options
-- [ ] Backup management
-
----
-
-### Phase 6: UI/UX Design Review & Redesign
-
-**Status:** Backlog
-**Priority:** Medium
-
-#### Objective
-Review and redesign all UI components to align with NAV Design System (Aksel) for improved consistency, accessibility, and user experience.
-
-#### Features
-- [ ] Audit current UI components and design patterns
-- [ ] Review NAV Design System documentation at nav.aksel.no
-- [ ] Identify components that can be aligned with NAV design patterns
-- [ ] Create UI component inventory
-- [ ] Design mockups aligned with NAV design principles
-- [ ] Implement redesigned components
-- [ ] Update color scheme and typography to match NAV standards
-- [ ] Improve accessibility (WCAG compliance)
-- [ ] Test with researchers for usability
-
-#### Resources
-- NAV Design System: https://aksel.nav.no
-- Current UI: SwiftUI-based macOS application
-
-#### Benefits
-- Improved visual consistency
-- Better accessibility
-- Professional, polished appearance
-- Alignment with Norwegian design standards
-- Enhanced user experience for researchers
+- Direkte opplasting til Teams/SharePoint via Microsoft Graph API
+- Per-artefakt automatisk opplasting når opptaket er i stabil tilstand
+- Prosjektkonsept i UI (mappestruktur på Teams per prosjekt)
+- Destinasjonsvelger — avventer brukerintervjuer (produkteier)
 
 ---
 
-## Research Needed
+## Phase 2 — Forskerarbeidsflyt (avventer discovery)
 
-### Jojo Transcribe Audio Format Support
-- [ ] Test WAV file support
-- [ ] Test M4A file support
-- [ ] Test AIFF file support
-- [ ] Test MP3 file support
-- [ ] Document optimal format for transcription quality
+**Status:** Backlog — avventer brukerintervjuer
+**Avhengig av:** Phase 1 ferdig + intervjufunn fra produkteier
 
----
-
-## Technical Debt
-
-None currently tracked.
+Omfang ikke fastsatt. Kandidater:
+- Prosjektoversikt og arkivfunksjonalitet
+- Eksportformater (RTF, DOCX)
+- Forbedret anonymiserings-UX
 
 ---
 
-## Ideas / Future Considerations
+## Teknisk gjeld
 
-- Integration with other transcription services
-- Cloud backup options (with network controls)
-- Multi-language support
-- Voice command controls
-- Batch transcription queue management
+- `main.swift` er fortsatt svært stor — inkrementell oppsplitting pågår
+- `AudioRecordingManager.xcodeproj` finnes fortsatt i repoet — bør ryddes når branchen merges
+- `RecordingExpiryManager` er implementert men bevisst deaktivert (ingen migrasjonsstrategi for eksisterende opptak ennå)
 
----
-
-## Notes
-
-**File Locations:**
-- Audio storage: `~/Desktop/lydfiler`
-- Jojo Transcribe: `/Applications/Jojo.app`
-
-**Security Requirements:**
-- Network isolation must be maintained during normal operation
-- All file operations should work offline
-- Administrator privileges required for network controls
