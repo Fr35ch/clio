@@ -17,25 +17,12 @@ import SwiftUI
 // MARK: - App Entry Point
 struct VirginProjectApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @StateObject private var startupCoordinator = StartupCoordinator()
 
     var body: some Scene {
+        // Default WindowGroup — SwiftUI auto-opens this on launch.
+        // AppDelegate immediately hides it, shows the chromeless splash,
+        // then fades this window back in after startup completes.
         WindowGroup {
-            SplashBootstrapWindow(startupCoordinator: startupCoordinator)
-            .tint(AppColors.accent)
-            // No `.toolbar { ... }` here — adding any toolbar item
-            // (even zero-size) makes NSToolbar render a visible
-            // affordance next to the traffic lights that we couldn't
-            // suppress via `displayMode = .iconOnly`,
-            // `allowsUserCustomization = false`, or
-            // `.toolbar(removing: .sidebarToggle)`. Dropping the trigger
-            // entirely removes the button at the cost of the unified
-            // toolbar style — see `Design/WindowChrome.swift`.
-        }
-        .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 920, height: 600)
-
-        WindowGroup(id: "main") {
             MainView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .tint(AppColors.accent)
@@ -77,37 +64,23 @@ struct VirginProjectApp: App {
     }
 }
 
-private struct SplashBootstrapWindow: View {
-    @ObservedObject var startupCoordinator: StartupCoordinator
-    @Environment(\.openWindow) private var openWindow
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var didStart = false
-    @State private var didTransitionToMain = false
-
-    var body: some View {
-        SplashView(coordinator: startupCoordinator)
-            .task {
-                guard !didStart else { return }
-                didStart = true
-                await startupCoordinator.runStartupSequence()
-            }
-            .onChange(of: startupCoordinator.isComplete) { _, isComplete in
-                guard isComplete, !didTransitionToMain else { return }
-                didTransitionToMain = true
-                openWindow(id: "main")
-                dismiss()
-            }
-    }
-}
-
 // MARK: - App Delegate for Launch Configuration
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Held strongly so the notification observer survives.
     private var toolbarObserver: NSObjectProtocol?
 
+    private let splashController   = SplashWindowController()
+    private let startupCoordinator = StartupCoordinator()
+    private var mainWindow: NSWindow?
+    private var splashShown = false   // fix 4 — guard against multiple splash windows
+
+    func applicationWillFinishLaunching(_ notification: Notification) {}
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        guard !splashShown else { return }   // fix 4
+        splashShown = true
         print("✅ App delegate did finish launching")
 
         // Register default values so UserDefaults.standard.integer(forKey:)
@@ -139,6 +112,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
 
+        // Store and hide the SwiftUI main window — it will be faded in
+        // by revealMainWindow() after the splash completes.
+        mainWindow = mainWindows().first
+        mainWindow?.orderOut(nil)
+
+        // Show the chromeless splash and kick off startup checks.
+        splashController.onDismiss = { [weak self] in self?.revealMainWindow() }
+        splashController.show(coordinator: startupCoordinator)
+
+        // Kick off the startup sequence (drives the splash status line).
+        Task { await startupCoordinator.runStartupSequence() }
+
         // Auto-install no-transcribe in the background if not already present
         Task {
             await TranscriptionService.shared.setupIfNeeded()
@@ -165,32 +150,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil,
             queue: .main
         ) { notification in
-            guard let window = notification.object as? NSWindow,
-                  let toolbar = window.toolbar else { return }
-            toolbar.allowsUserCustomization = false
-            toolbar.autosavesConfiguration = false
-            toolbar.displayMode = .iconOnly
+            guard let window = notification.object as? NSWindow else { return }
 
-            // Diagnostic + corrective: log every toolbar item we see
-            // so we can target precisely if the heuristic below
-            // doesn't match, then remove anything that looks like a
-            // sidebar toggle. Apple keeps these identifiers private
-            // ("com.apple.SwiftUI.…" style) so we match heuristically
-            // on the substring rather than hard-coding a constant.
-            let items = toolbar.items
-            if !items.isEmpty {
-                let ids = items.map { $0.itemIdentifier.rawValue }.joined(separator: ", ")
-                print("ARM toolbar items for window \(window.title.isEmpty ? "<untitled>" : window.title): \(ids)")
-            }
-            for index in stride(from: items.count - 1, through: 0, by: -1) {
-                let id = items[index].itemIdentifier.rawValue
-                if id.localizedCaseInsensitiveContains("togglesidebar")
-                    || id.localizedCaseInsensitiveContains("sidebartoggle")
-                    || id.localizedCaseInsensitiveContains("sidebartracking")
-                    || id.localizedCaseInsensitiveContains("toggle sidebar")
-                {
-                    toolbar.removeItem(at: index)
-                    print("ARM: removed toolbar item \(id)")
+            // SwiftUI adds toolbar items asynchronously after the window
+            // becomes key, so deferring to the next run-loop pass ensures
+            // the sidebar-toggle item exists before we try to remove it.
+            // Without this delay the cleanup runs on first launch before
+            // the items are populated, leaving the button visible until
+            // the next activation cycle.
+            DispatchQueue.main.async {
+                guard let toolbar = window.toolbar else { return }
+                toolbar.allowsUserCustomization = false
+                toolbar.autosavesConfiguration = false
+                toolbar.displayMode = .iconOnly
+
+                // Diagnostic + corrective: log every toolbar item we see
+                // so we can target precisely if the heuristic below
+                // doesn't match, then remove anything that looks like a
+                // sidebar toggle. Apple keeps these identifiers private
+                // ("com.apple.SwiftUI.…" style) so we match heuristically
+                // on the substring rather than hard-coding a constant.
+                let items = toolbar.items
+                if !items.isEmpty {
+                    let ids = items.map { $0.itemIdentifier.rawValue }.joined(separator: ", ")
+                    print("ARM toolbar items for window \(window.title.isEmpty ? "<untitled>" : window.title): \(ids)")
+                }
+                for index in stride(from: items.count - 1, through: 0, by: -1) {
+                    let id = items[index].itemIdentifier.rawValue
+                    if id.localizedCaseInsensitiveContains("togglesidebar")
+                        || id.localizedCaseInsensitiveContains("sidebartoggle")
+                        || id.localizedCaseInsensitiveContains("sidebartracking")
+                        || id.localizedCaseInsensitiveContains("toggle sidebar")
+                    {
+                        toolbar.removeItem(at: index)
+                        print("ARM: removed toolbar item \(id)")
+                    }
                 }
             }
         }
@@ -206,7 +200,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         return true
     }
+
+    private func revealMainWindow() {
+        guard let win = mainWindow else { return }
+        win.alphaValue = 0
+        win.makeKeyAndOrderFront(nil)
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.30
+            win.animator().alphaValue = 1
+        }
+    }
+
+    private func mainWindows() -> [NSWindow] {
+        // Fix 3 — filter by identity, not by window level (level can be reset by system)
+        NSApp.windows.filter { $0 !== splashController.window && !($0 is NSPanel) }
+    }
 }
+
+// AudioFileManager deleted — all storage now goes through RecordingStore.
+// See ADR-1014 and Phase 0 tasks D5/D6.
 
 
 
@@ -437,7 +449,6 @@ private let physicalTransportTypes: Set<UInt32> = [
 ]
 
 struct AudioSourceSelector: View {
-    @ObservedObject private var recorder = AudioRecorder.shared
     @State private var audioDevices: [AudioDevice] = []
 
     var body: some View {
@@ -450,25 +461,9 @@ struct AudioSourceSelector: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(audioDevices.isEmpty ? [AudioDevice(id: 0, name: "Innebygd mikrofon")] : audioDevices) { device in
-                    Button(action: {
-                        recorder.setInputDevice(device.id)
-                    }) {
-                        HStack {
-                            Text(device.name)
-                                .font(.system(size: 13))
-                            Spacer()
-                            if recorder.selectedInputDeviceID == device.id {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(.blue)
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .background(recorder.selectedInputDeviceID == device.id ? Color.blue.opacity(0.1) : Color.clear)
+                let devices = audioDevices.isEmpty ? [AudioDevice(id: 0, name: "Innebygd mikrofon")] : audioDevices
+                ForEach(devices) { device in
+                    AudioDeviceRow(device: device, recorder: AudioRecorder.shared)
                 }
             }
 
@@ -481,12 +476,39 @@ struct AudioSourceSelector: View {
                 .padding(.bottom, 12)
         }
         .frame(width: 250)
-        .onAppear {
-            loadAudioDevices()
-        }
+        .onAppear { loadAudioDevices() }
     }
+}
 
-    private func loadAudioDevices() {
+private struct AudioDeviceRow: View {
+    let device: AudioDevice
+    @ObservedObject var recorder: AudioRecorder  // holds for re-render only
+
+    var body: some View {
+        let isSelected = AudioRecorder.shared.selectedInputDeviceID == device.id
+        Button(action: { AudioRecorder.shared.setInputDevice(device.id) }) {
+            HStack {
+                Text(device.name)
+                    .font(.system(size: 13))
+                Spacer()
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(.blue)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(isSelected ? Color.blue.opacity(0.1) : Color.clear)
+    }
+}
+
+// Methods below belong to AudioSourceSelector (extracted here to avoid
+// compiler type-check timeout on the body expression).
+extension AudioSourceSelector {
+    func loadAudioDevices() {
         var addr = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDevices,
             mScope: kAudioObjectPropertyScopeGlobal,
@@ -1040,16 +1062,13 @@ struct NavPanel: View {
 
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
-            logoBlock
-            Divider().padding(.horizontal, 6)
-
             VStack(spacing: 4) {
                 navItem(tab: .record, label: "Ta opp lyd", icon: "mic.fill")
                 navItem(tab: .recordings, label: "Bibliotek", icon: "books.vertical.fill")
                 navItem(tab: .analyse, label: "Analyser", icon: "brain.head.profile")
             }
             .padding(.horizontal, 6)
-            .padding(.top, 12)
+            .padding(.top, 20)
 
             Spacer()
 
@@ -1057,14 +1076,6 @@ struct NavPanel: View {
             footerBlock
         }
         .background(Color(nsColor: .controlBackgroundColor))
-    }
-
-    private var logoBlock: some View {
-        AudioWaveformIcon()
-            .frame(width: 32, height: 32)
-            .padding(.top, 12)
-            .padding(.bottom, 16)
-            .frame(maxWidth: .infinity)
     }
 
     private var footerBlock: some View {
