@@ -14,23 +14,21 @@ final class SplashWindowController {
 
         // WKWebView renders the SVG reliably — NSImage cannot handle
         // gradientUnits="userSpaceOnUse" at large coordinate spaces.
-        if let url = Bundle.main.url(forResource: "SplashBackground", withExtension: "svg"),
-           let svgData = try? Data(contentsOf: url),
-           let svgString = String(data: svgData, encoding: .utf8) {
-            let config = WKWebViewConfiguration()
-            config.suppressesIncrementalRendering = true
-            let webView = WKWebView(frame: container.bounds, configuration: config)
-            webView.autoresizingMask = [.width, .height]
-            let html = """
-            <html><head><style>
-            * { margin: 0; padding: 0; }
-            html, body { width: 100%; height: 100%; overflow: hidden; background: #8347F0; }
-            svg { width: 100%; height: 100%; display: block; }
-            </style></head><body>\(svgString)</body></html>
-            """
-            webView.loadHTMLString(html, baseURL: nil)
-            container.addSubview(webView)
-        }
+        // SVG is inlined as a literal so rendering is never bundle-dependent.
+        let config = WKWebViewConfiguration()
+        config.suppressesIncrementalRendering = true
+        let webView = WKWebView(frame: container.bounds, configuration: config)
+        webView.autoresizingMask = [.width, .height]
+        let svgString = SplashBackground.svg
+        let html = """
+        <html><head><style>
+        * { margin: 0; padding: 0; }
+        html, body { width: 100%; height: 100%; overflow: hidden; background: #8347F0; }
+        svg { width: 100%; height: 100%; display: block; }
+        </style></head><body>\(svgString)</body></html>
+        """
+        webView.loadHTMLString(html, baseURL: nil)
+        container.addSubview(webView)
 
         let host = NSHostingView(rootView:
             SplashView(coordinator: coordinator) { [weak self] in self?.dismiss() }

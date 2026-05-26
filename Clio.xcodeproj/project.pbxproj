@@ -50,6 +50,7 @@
 		8A08187DF0D956FADD0ADE35 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = C63560298DEC2D58FE5A1E9C /* README.md */; };
 		BB00CC11DD22EE33FF440011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB00CC11DD22EE33FF440000 /* Assets.xcassets */; };
 		BB00CC11DD22EE33FF440022 /* SplashBackground.svg in Resources */ = {isa = PBXBuildFile; fileRef = BB00CC11DD22EE33FF440033 /* SplashBackground.svg */; };
+		BB00CC11DD22EE33FF440044 /* SplashBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00CC11DD22EE33FF440055 /* SplashBackground.swift */; };
 		9158371CF5EB69A1BF2EB9BE /* AnalysisStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 062B55D4B8931B8384DE765F /* AnalysisStore.swift */; };
 		91C1E436D90C1B19C0205B3F /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C7566B03272F645096D2C74 /* DesignTokens.swift */; };
 		93422B4933C289275F063EE9 /* AudioLevelVisualization.swift in Sources */ = {isa = PBXBuildFile; fileRef = E056E09D9198F48C6D484127 /* AudioLevelVisualization.swift */; };
@@ -149,6 +150,7 @@
 		C63560298DEC2D58FE5A1E9C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		BB00CC11DD22EE33FF440000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Resources/Assets.xcassets; sourceTree = "<group>"; };
 		BB00CC11DD22EE33FF440033 /* SplashBackground.svg */ = {isa = PBXFileReference; lastKnownFileType = image.svg; path = "Resources/Assets.xcassets/Splash.imageset/SplashBackground.svg"; sourceTree = "<group>"; };
+		BB00CC11DD22EE33FF440055 /* SplashBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashBackground.swift; sourceTree = "<group>"; };
 		D768BD447F094B7EEEF3703D /* RecordingMeta.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingMeta.swift; sourceTree = "<group>"; };
 		D938E21935718834F5E99700 /* SystemRequirement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemRequirement.swift; sourceTree = "<group>"; };
 		DAF675F106EE14770236A384 /* AnalysisDetailColumn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisDetailColumn.swift; sourceTree = "<group>"; };
@@ -273,6 +275,7 @@
 			isa = PBXGroup;
 			children = (
 				2E3B184AB414FBCEE5CB44BA /* DependencyManager.swift */,
+				BB00CC11DD22EE33FF440055 /* SplashBackground.swift */,
 				4B143A0F5F273E0CE14BFFDA /* SplashView.swift */,
 				295DAF8A4A6CE458A450CCD6 /* SplashWindowController.swift */,
 				EFCD87B06F113EFD53A5D5BC /* StartupCoordinator.swift */,
@@ -467,6 +470,7 @@
 				DBB9D5F015C91E23DDEC09F0 /* RecordingsManager.swift in Sources */,
 				7F1E0E59E9EABCDCB2A42EC3 /* SpeakerAlignment.swift in Sources */,
 				7290B3BC2CF642B115ECEA64 /* SplashView.swift in Sources */,
+				BB00CC11DD22EE33FF440044 /* SplashBackground.swift in Sources */,
 				C3628B8658F1A561F1E5D5CA /* SplashWindowController.swift in Sources */,
 				D5C9F0C071A8EF0B84AF7194 /* StartupCoordinator.swift in Sources */,
 				713A585B40502E8430283C53 /* StatusChipView.swift in Sources */,
@@ -550,7 +554,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.4.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -609,7 +613,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.4.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
