@@ -1,8 +1,10 @@
 # no-anonymizer v2: Evidensbasert anonymisering
 
-**Prompt for Claude Code i `no-anonymizer`-repoet**
+**Status:** Implementert i no-anonymizer v2.0
 **Repo:** github.com/Fr35ch/no-anonymizer
-**Konsument:** ARM (Clio), Nav
+**Konsument:** Clio (macOS)
+
+> Dette dokumentet var opprinnelig en implementasjonsspec. no-anonymizer v2.0 er fullstendig implementert. Dokumentet fungerer nå som referansedokumentasjon for arkitekturen.
 
 ---
 

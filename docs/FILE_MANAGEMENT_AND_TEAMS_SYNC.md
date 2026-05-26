@@ -1,15 +1,15 @@
 # File Management & Teams Sync
 
 **Date:** 2026-04-14 (revised from draft of same date)
-**Status:** Draft — Phase 0 scoped and ready to build
+**Status:** Phase 0 partially implemented — see [PHASE_0_TASKS.md](prd/file-management-teams-sync/PHASE_0_TASKS.md) for remaining work
 **Supersedes:** Earlier draft of this document (pre-2026-04-14) that relied on Desktop storage + manual OneDrive folder-picker upload.
-**Related:** [ADR-1014](decisions/adr/ADR-1014-file-storage-architecture-pivot.md), [USER_STORIES.md](prd/file-management-teams-sync/USER_STORIES.md), [PHASE_0_TASKS.md](prd/file-management-teams-sync/PHASE_0_TASKS.md), [SPEC.md](../SPEC.md), [BACKLOG.md](../BACKLOG.md)
+**Related:** [ADR-1014](decisions/adr/ADR-1014-file-storage-architecture-pivot.md), [USER_STORIES.md](prd/file-management-teams-sync/USER_STORIES.md), [PHASE_0_TASKS.md](prd/file-management-teams-sync/PHASE_0_TASKS.md), [BACKLOG.md](../BACKLOG.md)
 
 ---
 
 ## Overview
 
-This spec defines the end-to-end file lifecycle for ARM recordings and transcripts: where they live on disk, how they are identified, how they are uploaded to Microsoft Teams / SharePoint.
+This spec defines the end-to-end file lifecycle for Clio recordings and transcripts: where they live on disk, how they are identified, how they are uploaded to Microsoft Teams / SharePoint.
 
 The earlier version of this spec assumed Desktop storage + a user-driven OneDrive folder-picker upload. That model had several problems documented in [ADR-1014](decisions/adr/ADR-1014-file-storage-architecture-pivot.md). This revision supersedes it.
 

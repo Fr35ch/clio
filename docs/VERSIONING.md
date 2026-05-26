@@ -35,13 +35,16 @@ Ask yourself these questions:
 
 ## Version Files
 
-The version is tracked in these locations:
+The version is tracked in these locations — **all three must be kept in sync**:
 
 | File | Purpose |
 |------|---------|
 | `VERSION` | Single source of truth for current version |
-| `Info.plist` | macOS app bundle version (CFBundleShortVersionString) |
+| `Info.plist` | macOS app bundle version (`CFBundleShortVersionString`) |
+| `Clio.xcodeproj/project.pbxproj` | `MARKETING_VERSION` build setting (overrides `Info.plist` at build time) |
 | `CHANGELOG.md` | Human-readable history of changes |
+
+> ⚠️ `MARKETING_VERSION` in `project.pbxproj` takes precedence over `Info.plist` at Xcode build time. The release script updates `VERSION` and `Info.plist` — verify `MARKETING_VERSION` is also updated. It appears in two places (Debug and Release configurations).
 
 ## Release Script
 
@@ -82,6 +85,8 @@ Options:
 7. **Creates** git commit with all changes
 8. **Creates** annotated git tag (e.g., `v1.2.3`)
 9. **Optionally creates** GitHub release
+
+> ⚠️ The script does not currently update `MARKETING_VERSION` in `project.pbxproj`. After running the script, verify that `MARKETING_VERSION` in both Debug and Release build configurations matches the new version.
 
 ### Example Workflow
 
