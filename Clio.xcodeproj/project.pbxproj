@@ -48,6 +48,7 @@
 		7F1E0E59E9EABCDCB2A42EC3 /* SpeakerAlignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CCF68B04B237C98F3509C43 /* SpeakerAlignment.swift */; };
 		80E2D493917DE2F4ED036BC6 /* StorageLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3446604405B6754884CBEE54 /* StorageLayout.swift */; };
 		8A08187DF0D956FADD0ADE35 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = C63560298DEC2D58FE5A1E9C /* README.md */; };
+		AA11BB22CC33DD44EE550002 /* SplashBackground.svg in Resources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE550001 /* SplashBackground.svg */; };
 		BB00CC11DD22EE33FF440011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB00CC11DD22EE33FF440000 /* Assets.xcassets */; };
 		9158371CF5EB69A1BF2EB9BE /* AnalysisStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 062B55D4B8931B8384DE765F /* AnalysisStore.swift */; };
 		91C1E436D90C1B19C0205B3F /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C7566B03272F645096D2C74 /* DesignTokens.swift */; };
@@ -146,6 +147,7 @@
 		B3E4DB16C7F2DBCBAAD577EB /* TranscriptEditorWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptEditorWindow.swift; sourceTree = "<group>"; };
 		BEDC6AD3601EADA5387EAEC1 /* DefaultAvidentExceptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultAvidentExceptions.swift; sourceTree = "<group>"; };
 		C63560298DEC2D58FE5A1E9C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE550001 /* SplashBackground.svg */ = {isa = PBXFileReference; lastKnownFileType = image.svg; path = "Resources/Assets.xcassets/Splash.imageset/SplashBackground.svg"; sourceTree = "<group>"; };
 		BB00CC11DD22EE33FF440000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Resources/Assets.xcassets; sourceTree = "<group>"; };
 		D768BD447F094B7EEEF3703D /* RecordingMeta.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingMeta.swift; sourceTree = "<group>"; };
 		D938E21935718834F5E99700 /* SystemRequirement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemRequirement.swift; sourceTree = "<group>"; };
@@ -310,6 +312,7 @@
 			isa = PBXGroup;
 			children = (
 				BB00CC11DD22EE33FF440000 /* Assets.xcassets */,
+				AA11BB22CC33DD44EE550001 /* SplashBackground.svg */,
 				6D7D78B28D5E604A4EE21EE9 /* Clio */,
 				528AC45447AA2C0FE8E14001 /* Products */,
 			);
@@ -405,6 +408,7 @@
 			files = (
 				8A08187DF0D956FADD0ADE35 /* README.md in Resources */,
 				BB00CC11DD22EE33FF440011 /* Assets.xcassets in Resources */,
+				AA11BB22CC33DD44EE550002 /* SplashBackground.svg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
