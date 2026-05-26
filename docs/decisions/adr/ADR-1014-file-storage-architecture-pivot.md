@@ -14,7 +14,7 @@ ARM currently stores all research data on the user's Desktop:
 - Transcripts: `~/Desktop/tekstfiler/<timestamp>.txt`
 - Audit log: hidden dotfile inside the audio folder (`.audit_log.jsonl`)
 
-Audio and transcripts are linked by **filename stem**, which breaks if a user renames a file in Finder. Egress to Teams/OneDrive today uses a manual "open Finder to the folder, let the user drag into the OneDrive-synced folder" flow via `uploadToTeams()` in [main.swift](../../../Sources/AudioRecordingManager/main.swift).
+Audio and transcripts are linked by **filename stem**, which breaks if a user renames a file in Finder. Egress to Teams/OneDrive today uses a manual "open Finder to the folder, let the user drag into the OneDrive-synced folder" flow via `uploadToTeams()` in [main.swift](../../../Sources/Clio/main.swift).
 
 ### Problem Statement
 
@@ -42,7 +42,7 @@ Three distinct problems converge on the same redesign:
 - Raw (un-anonymized) material will exist on OneDrive for up to 30 days — this is sanctioned, not a leak to prevent.
 
 **Assumptions (load-bearing — must be confirmed before Phase 0F ships):**
-- MDM (Jamf/Mosyle/similar) can exclude `~/Library/Application Support/AudioRecordingManager/` from the roaming profile sync. Confirmed by the mac-fleet owner. **If this assumption fails, this ADR must be revisited.**
+- MDM (Jamf/Mosyle/similar) can exclude `~/Library/Application Support/Clio/` from the roaming profile sync. Confirmed by the mac-fleet owner. **If this assumption fails, this ADR must be revisited.**
 - FileVault is actually mandated, not merely planned.
 - Azure AD / Entra ID app registration with the required Graph scopes (`Files.ReadWrite`, `Sites.ReadWrite.All`, `User.Read`) will be granted.
 
@@ -55,7 +55,7 @@ We pivot the file-storage architecture along four axes:
 All ARM data moves from `~/Desktop/{lydfiler,tekstfiler}/` to:
 
 ```
-~/Library/Application Support/AudioRecordingManager/
+~/Library/Application Support/Clio/
   recordings/<uuid>/audio.m4a
   recordings/<uuid>/transcript.txt
   recordings/<uuid>/meta.json

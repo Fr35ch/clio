@@ -38,31 +38,31 @@ Swift macOS apps built with SwiftUI have testability challenges:
 
 Split Swift code into **two modules**:
 
-1. **AudioRecordingManagerLib** - Testable business logic library
-2. **AudioRecordingManager** - Main app with UI (not unit tested)
+1. **ClioLib** - Testable business logic library
+2. **Clio** - Main app with UI (not unit tested)
 
 ### Implementation Details
 
 **Package.swift Structure:**
 ```swift
 let package = Package(
-    name: "AudioRecordingManager",
+    name: "Clio",
     platforms: [.macOS(.v14)],
     products: [
         .library(
-            name: "AudioRecordingManagerLib",
-            targets: ["AudioRecordingManagerLib"]
+            name: "ClioLib",
+            targets: ["ClioLib"]
         ),
     ],
     targets: [
         .target(
-            name: "AudioRecordingManagerLib",
-            path: "Sources/AudioRecordingManagerLib"
+            name: "ClioLib",
+            path: "Sources/ClioLib"
         ),
         .testTarget(
-            name: "AudioRecordingManagerTests",
-            dependencies: ["AudioRecordingManagerLib"],
-            path: "tests/AudioRecordingManagerTests"
+            name: "ClioTests",
+            dependencies: ["ClioLib"],
+            path: "tests/ClioTests"
         ),
     ]
 )
@@ -71,14 +71,14 @@ let package = Package(
 **Directory Structure:**
 ```
 Sources/
-├── AudioRecordingManager/      # Main app (UI, AppDelegate)
+├── Clio/      # Main app (UI, AppDelegate)
 │   ├── main.swift
 │   └── SVGImageView.swift
-└── AudioRecordingManagerLib/   # Testable library
-    └── AudioRecordingManagerLib.swift
+└── ClioLib/   # Testable library
+    └── ClioLib.swift
 
 tests/
-└── AudioRecordingManagerTests/
+└── ClioTests/
     └── SmokeTests.swift
 ```
 
@@ -91,7 +91,7 @@ tests/
 
 **Test Import:**
 ```swift
-@testable import AudioRecordingManagerLib
+@testable import ClioLib
 
 class SmokeTests: XCTestCase {
     func testLibraryImports() {
@@ -177,8 +177,8 @@ func testDurationFormattingHandlesHours() {
 ## References
 
 - `Package.swift` - Package definition
-- `Sources/AudioRecordingManagerLib/` - Library code
-- `tests/AudioRecordingManagerTests/` - Test suite
+- `Sources/ClioLib/` - Library code
+- `tests/ClioTests/` - Test suite
 - `docs/TESTING.md` - Testing workflow documentation
 
 ## Revision History
@@ -188,4 +188,4 @@ func testDurationFormattingHandlesHours() {
 ---
 
 **Template Version**: 1.1.0
-**Project**: Agentive Starter Kit / Audio Recording Manager
+**Project**: Agentive Starter Kit / Clio

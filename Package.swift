@@ -4,15 +4,15 @@
 import PackageDescription
 
 let package = Package(
-    name: "AudioRecordingManager",
+    name: "Clio",
     platforms: [
         .macOS(.v14)  // macOS 14 (Sonoma) minimum, Sequoia compatible
     ],
     products: [
         // Executable app
         .executable(
-            name: "AudioRecordingManager",
-            targets: ["AudioRecordingManager"]
+            name: "Clio",
+            targets: ["Clio"]
         ),
     ],
     dependencies: [
@@ -28,11 +28,11 @@ let package = Package(
     targets: [
         // Executable app target (combines all sources)
         .executableTarget(
-            name: "AudioRecordingManager",
+            name: "Clio",
             dependencies: [
                 .product(name: "FluidAudio", package: "FluidAudio"),
             ],
-            path: "Sources/AudioRecordingManager"
+            path: "Sources/Clio"
         ),
     ]
 )

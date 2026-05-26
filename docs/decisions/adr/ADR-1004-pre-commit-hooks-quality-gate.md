@@ -194,4 +194,4 @@ def test_fast_unit_test():
 ---
 
 **Template Version**: 1.1.0
-**Project**: Agentive Starter Kit / Audio Recording Manager
+**Project**: Agentive Starter Kit / Clio

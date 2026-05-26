@@ -49,7 +49,7 @@ Integrate **Serena MCP** for semantic code navigation, achieving 70-98% token sa
 
 **Project Configuration (.serena/project.yml):**
 ```yaml
-name: Audio Recording Manager
+name: Clio
 languages:
   - swift
   - python
@@ -89,12 +89,12 @@ mcp__serena__find_symbol(
 # Find all usages (100% precision)
 mcp__serena__find_referencing_symbols(
     name_path="NetworkManager/disableAllConnections",
-    relative_path="Sources/AudioRecordingManager/main.swift"
+    relative_path="Sources/Clio/main.swift"
 )
 
 # File overview without reading entire file
 mcp__serena__get_symbols_overview(
-    relative_path="Sources/AudioRecordingManager/main.swift"
+    relative_path="Sources/Clio/main.swift"
 )
 ```
 
@@ -209,4 +209,4 @@ Total: ~1,000 tokens (96% savings)
 ---
 
 **Template Version**: 1.1.0
-**Project**: Agentive Starter Kit / Audio Recording Manager
+**Project**: Agentive Starter Kit / Clio

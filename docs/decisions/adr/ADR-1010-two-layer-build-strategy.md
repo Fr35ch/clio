@@ -49,23 +49,23 @@ Implement **two-layer build strategy**:
 import PackageDescription
 
 let package = Package(
-    name: "AudioRecordingManager",
+    name: "Clio",
     platforms: [.macOS(.v14)],
     products: [
         .library(
-            name: "AudioRecordingManagerLib",
-            targets: ["AudioRecordingManagerLib"]
+            name: "ClioLib",
+            targets: ["ClioLib"]
         ),
     ],
     targets: [
         .target(
-            name: "AudioRecordingManagerLib",
-            path: "Sources/AudioRecordingManagerLib"
+            name: "ClioLib",
+            path: "Sources/ClioLib"
         ),
         .testTarget(
-            name: "AudioRecordingManagerTests",
-            dependencies: ["AudioRecordingManagerLib"],
-            path: "tests/AudioRecordingManagerTests"
+            name: "ClioTests",
+            dependencies: ["ClioLib"],
+            path: "tests/ClioTests"
         ),
     ]
 )
@@ -76,7 +76,7 @@ let package = Package(
 #!/bin/bash
 set -e
 
-APP_NAME="AudioRecordingManager"
+APP_NAME="Clio"
 BUILD_DIR="build"
 APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"
 
@@ -90,7 +90,7 @@ XCODE_SDK="/Applications/Xcode.app/.../MacOSX.sdk"
 if [ -d "$XCODE_SDK" ]; then
     swiftc \
         -o "$APP_BUNDLE/Contents/MacOS/$APP_NAME" \
-        Sources/AudioRecordingManager/*.swift \
+        Sources/Clio/*.swift \
         -parse-as-library \
         -target arm64-apple-macos15.0 \
         -framework SwiftUI \
@@ -100,7 +100,7 @@ else
     # Fallback to Command Line Tools
     swiftc \
         -o "$APP_BUNDLE/Contents/MacOS/$APP_NAME" \
-        Sources/AudioRecordingManager/*.swift \
+        Sources/Clio/*.swift \
         ...
 fi
 
@@ -129,7 +129,7 @@ jobs:
         run: ./build.sh
 
       - name: Verify app launches
-        run: open build/AudioRecordingManager.app
+        run: open build/Clio.app
 ```
 
 **Directory Structure:**
@@ -138,10 +138,10 @@ jobs:
 ├── build.sh                # App bundling
 ├── Info.plist              # App metadata
 ├── Sources/
-│   ├── AudioRecordingManager/     # Main app
-│   └── AudioRecordingManagerLib/  # Testable library
+│   ├── Clio/     # Main app
+│   └── ClioLib/  # Testable library
 ├── tests/
-│   └── AudioRecordingManagerTests/
+│   └── ClioTests/
 ├── Assets/                 # App assets
 └── Resources/              # Additional resources
 ```
@@ -226,4 +226,4 @@ jobs:
 ---
 
 **Template Version**: 1.1.0
-**Project**: Agentive Starter Kit / Audio Recording Manager
+**Project**: Agentive Starter Kit / Clio

@@ -9,30 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Architectural redesign of file storage, egress, and machine handoff. Decision captured in [ADR-1014](docs/decisions/adr/ADR-1014-file-storage-architecture-pivot.md); spec revised in [docs/FILE_MANAGEMENT_AND_TEAMS_SYNC.md](docs/FILE_MANAGEMENT_AND_TEAMS_SYNC.md); build order in [docs/prd/file-management-teams-sync/PHASE_0_TASKS.md](docs/prd/file-management-teams-sync/PHASE_0_TASKS.md). Intended for the next major release (2.0.0) because it changes storage location and removes Desktop-write paths.
 
----
-
-## [1.4.1] - 2026-05-22
-
-### Added
-- **Chromeless splash screen** — borderless `NSWindow` splash driven by the existing `StartupCoordinator` / `DependencyManager` startup sequence. Displays a full-opacity SVG background with no macOS title bar, traffic lights, or resize handle. Drop shadow follows the rounded-rect mask automatically.
-- **Animated loading dots** — status text pulses `. → .. → ...` at 450 ms intervals during startup; stops when "Klar" is reached or on failure.
-- **Version badge on splash** — `v1.4.1` shown bottom-right, sourced from `CFBundleShortVersionString`.
-
-### Changed
-- **Startup dwell times slowed** — system-check pause 400 ms → 900 ms; dependency-step pause 350 ms → 800 ms; `allClear` pause 600 ms → 1 s. Gives users time to read each status message.
-- **Removed ARM waveform logo** from the top of the nav panel; menu items moved flush to the top of the sidebar.
-- **Library list rows** now highlight on hover (accent colour at 6 % opacity) with a smooth 120 ms fade. Play button scales up 12 % and brightens on hover.
-- **Pill buttons (`Åpne`, `Transkriber`)** gain hover scale (1.03×) and brightness boost (+8 %), plus press scale (0.96×), all with pointing-hand cursor.
-
-### Fixed
-- **SVG opacity** — removed `mask-type:alpha` from `SplashBackground.svg`. macOS's SVG renderer was interpreting the purple gradient's luminance as alpha, causing the splash to appear washed out. Removing the mask lets all content render at 100 % opacity; corner clipping is handled by the `RoundedContainerView` layer mask.
-- **Window fade-in** — set `animationBehavior = .none` and `alphaValue = 1.0` on the splash `NSWindow` to prevent macOS from fading it in from near-zero opacity on launch.
-- **Window restoration** — `isRestorable = false` prevents macOS session restoration from showing a ghost splash at wrong alpha on next launch.
-- **Duplicate splash windows** — `splashShown` guard in `applicationDidFinishLaunching` prevents stacked splash windows during hot reloads.
-- **`mainWindows()` filter** — replaced unreliable `$0.level == .normal` filter with identity-based `$0 !== splashController.window`, preventing the splash from being included in the main-window fade-in.
-- **`AudioSourceSelector` type-check timeout** — extracted device row into `AudioDeviceRow` struct to resolve Swift compiler type-inference timeout on the `ForEach` + `Button` + conditional `Image` body.
-
-- **Storage moves off the Desktop.** Audio, transcripts, and audit log relocate to `~/Library/Application Support/AudioRecordingManager/`. MDM-excluded from the roaming profile sync so files stay local to the library machine.
+- **Storage moves off the Desktop.** Audio, transcripts, and audit log relocate to `~/Library/Application Support/Clio/`. MDM-excluded from the roaming profile sync so files stay local to the library machine.
 - **UUID-named recording folders** replace the filename-stem coupling between audio and transcript. Metadata moves into a per-recording `meta.json` sidecar with explicit state fields.
 - **Audit log relocated** from the hidden dotfile `.audit_log.jsonl` inside the audio folder to the new data root with monthly rotation.
 - **Return Machine flow** introduced as the only path that deletes local data. Pre-check, friction gate (typed phrase), zero-overwrite secure delete, receipt written to `~/Documents/` as external audit trail.
@@ -51,8 +28,50 @@ Architectural redesign of file storage, egress, and machine handoff. Decision ca
 ### External dependencies kicked off (not yet confirmed)
 
 - Azure AD / Entra ID app registration with Graph scopes `Files.ReadWrite`, `Sites.ReadWrite.All`, `User.Read` — long lead time, blocks Phase 1.
-- MDM sync exclusion for `~/Library/Application Support/AudioRecordingManager/` — load-bearing assumption for Phase 0 security posture.
+- MDM sync exclusion for `~/Library/Application Support/Clio/` — load-bearing assumption for Phase 0 security posture.
 - FileVault mandate on library machines — confirmed required; awaiting IT policy confirmation.
+
+---
+
+## [1.4.1] - 2026-05-22
+
+### Added
+
+- **Chromeless SVG splash screen** — Clio now opens with a full-opacity, borderless NSWindow splash
+  displaying the approved brand graphic (`SplashBackground.svg`). The splash is driven entirely by
+  the existing `StartupCoordinator` / `DependencyManager` startup sequence; no new startup logic
+  was introduced.
+  - Animated loading dots (`. → .. → ...`) cycle at 450 ms while startup checks run
+  - Single crossfading status line in Norwegian updates live through all 12 startup steps
+  - Version number (`v1.4.1`) shown bottom-right in monospaced type
+  - Window has no title bar, traffic lights, or resize handle; rounded corners with macOS drop shadow
+
+### Changed
+
+- **Startup dwell times increased** for readability: system checks 900 ms (was 400 ms), dependency
+  steps 800 ms (was 350 ms), `allClear` pause 1 s (was 600 ms)
+- **Nav panel** — removed legacy ARM waveform logo from the top of the left-side navigation panel;
+  menu items moved up to fill the space
+- **Library hover states** — `BibliotekRow` now shows a subtle accent-tinted highlight on hover
+  (6 % opacity); play button icon scales up 12 % and brightens on pointer entry
+- **Pill buttons hover states** — `PillButtonStyle` ("Åpne", "Transkriber") now scales to 1.03× on
+  hover with a brightness boost (+8 %), and 0.96× scale on press; 120 ms easing throughout
+- **Final splash status message** changed from "Audio Recording Manager er klar" to "Klar"
+
+### Fixed
+
+- **SVG full opacity** — removed `mask-type:alpha` from `SplashBackground.svg`; macOS was
+  interpreting the purple gradient luminance as alpha, causing the image to appear washed out
+- **Window opacity on launch** — added `animationBehavior = .none`, `alphaValue = 1.0`, and
+  `isRestorable = false` to the splash `NSWindow` to prevent macOS's default fade-in animation
+  and session-restoration ghosting
+- **Multiple splash windows** — `splashShown` guard in `AppDelegate` prevents duplicate splash
+  windows from stacking on hot reload
+- **`mainWindows()` filter** — now uses identity comparison (`$0 !== splashController.window`)
+  instead of unreliable `.level == .normal` check
+- **`AudioSourceSelector` compiler timeout** — extracted `AudioDeviceRow` struct to break up a
+  `@ViewBuilder` closure that caused `the compiler is unable to type-check this expression` on SPM
+  builds
 
 ---
 

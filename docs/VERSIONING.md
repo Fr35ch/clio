@@ -1,6 +1,6 @@
 # Versioning Guide
 
-This document describes the versioning system for Audio Recording Manager (ARM).
+This document describes the versioning system for Clio (ARM).
 
 ## Semantic Versioning
 

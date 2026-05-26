@@ -7,7 +7,7 @@
 This is a working document, not a spec. It's where prompts get tested, edited, and refined against real interview material before the changes are folded back into the bundled templates in `PromptTemplateLibrary.swift`.
 
 > **Where things live:**
-> - **Bundled templates** ship inline in [`PromptTemplateLibrary.swift`](../../../Sources/AudioRecordingManager/Analysis/PromptTemplateLibrary.swift). These are the read-only defaults researchers see in the composer dropdown.
+> - **Bundled templates** ship inline in [`PromptTemplateLibrary.swift`](../../../Sources/Clio/Analysis/PromptTemplateLibrary.swift). These are the read-only defaults researchers see in the composer dropdown.
 > - **Template specs** at [`templates/*.md`](templates/) document each bundled template's intent, expected output, and revision history. Update these when a bundled template ships a new version.
 > - **Research note** at [`PROMPT_RESEARCH.md`](PROMPT_RESEARCH.md) captures the literature foundation and the shared prompt skeleton.
 > - **This document** is the *iteration scratchpad* — drafts, test runs, observations, next-to-try lists. Edit freely.

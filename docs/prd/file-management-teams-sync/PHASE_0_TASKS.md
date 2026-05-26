@@ -14,7 +14,7 @@
 Phase 0 delivers the storage pivot end-to-end, **except** the actual Graph/Teams upload (Phase 1).
 
 **In scope:**
-- New storage layout under `~/Library/Application Support/AudioRecordingManager/`
+- New storage layout under `~/Library/Application Support/Clio/`
 - UUID-named recording folders with metadata sidecars
 - Audit log with typed events and monthly rotation
 - One-shot migration from legacy Desktop folders
@@ -74,7 +74,7 @@ All four tasks complete.
 
 All six tasks complete.
 
-- ✅ **B1** Writes to `~/Library/Application Support/AudioRecordingManager/audit/audit-YYYY-MM.jsonl`
+- ✅ **B1** Writes to `~/Library/Application Support/Clio/audit/audit-YYYY-MM.jsonl`
 - ✅ **B2** `AuditEvent` + `AuditValue` types; typed `AuditEventType` enum
 - ✅ **B3** Monthly rotation
 - ✅ **B4** Removed stale Return Machine event cases (`returnMachineStarted`, `returnMachineCompleted`, `wipeReceiptWritten`) from `AuditEventType`
@@ -139,7 +139,7 @@ All infrastructure complete.
 
 ### F1. `RecordingExpiryManager`
 
-- **File:** new `Sources/AudioRecordingManager/Storage/RecordingExpiryManager.swift`
+- **File:** new `Sources/Clio/Storage/RecordingExpiryManager.swift`
 - **API:**
   - `checkAndExpire()` — runs on every app launch; iterates `RecordingStore.loadAll()`, deletes any recording where `createdAt + 30 days ≤ now`, emits `recordingExpired` audit event per deletion
   - `expiryDate(for:) -> Date` — `createdAt + 30 days`
@@ -159,7 +159,7 @@ All infrastructure complete.
 
 ### F3. `ExpiryWarningBanner` view component
 
-- **File:** new `Sources/AudioRecordingManager/ExpiryWarningBanner.swift`
+- **File:** new `Sources/Clio/ExpiryWarningBanner.swift`
 - **Behaviour:**
   - Shown inline in the recording list row and in `RecordingDetailView` when `warningState != .none`
   - Day 23–28: «Opptaket slettes automatisk om X dager» — standard warning style

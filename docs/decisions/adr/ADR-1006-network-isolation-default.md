@@ -10,7 +10,7 @@
 
 ### Problem Statement
 
-Audio Recording Manager handles sensitive research data that must be protected:
+Clio handles sensitive research data that must be protected:
 - Interview recordings may contain confidential information
 - Accidental cloud sync could expose private data
 - Network-enabled apps default to "connected" state
@@ -165,7 +165,7 @@ Button("Enable Network for Upload") {
 
 ## References
 
-- `Sources/AudioRecordingManager/main.swift` - NetworkManager class (lines 124-226)
+- `Sources/Clio/main.swift` - NetworkManager class (lines 124-226)
 - macOS networksetup documentation
 - [blueutil](https://github.com/toy/blueutil) - Bluetooth CLI tool
 
@@ -176,4 +176,4 @@ Button("Enable Network for Upload") {
 ---
 
 **Template Version**: 1.1.0
-**Project**: Agentive Starter Kit / Audio Recording Manager
+**Project**: Agentive Starter Kit / Clio

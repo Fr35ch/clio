@@ -108,7 +108,7 @@ Two technical measures sit outside the prompt itself:
 
 1. **Quote-verification pass.** After the LLM returns, ARM scans the result for `"`-quoted strings of ≥ 8 words and substring-checks each against the source transcript(s). Quotes that don't match are flagged in the result view (Phase B5) with a "ikke verifisert" warning, not silently displayed. Implementation lives next to the result loader, not in the prompt.
 
-2. **Transcript hashing.** Each `AnalysisSource` carries the SHA-256 of the transcript at run time (see `Sources/AudioRecordingManager/Analysis/TranscriptHash.swift`). If the researcher edits a transcript later, the result view shows a stale banner — the analysis was performed against a previous version. This won't catch LLM hallucinations against the version it saw, but it does guarantee the researcher knows when a previously-validated result is no longer attached to the current text.
+2. **Transcript hashing.** Each `AnalysisSource` carries the SHA-256 of the transcript at run time (see `Sources/Clio/Analysis/TranscriptHash.swift`). If the researcher edits a transcript later, the result view shows a stale banner — the analysis was performed against a previous version. This won't catch LLM hallucinations against the version it saw, but it does guarantee the researcher knows when a previously-validated result is no longer attached to the current text.
 
 ## 7. Validation plan
 

@@ -21,7 +21,7 @@ Read [CLAUDE.md](../../../CLAUDE.md) first. This document assumes familiarity wi
 
 ## Why this view needs a redesign
 
-The current `RecordingDetailView` (see [`RecordingDetailView.swift`](../../../Sources/AudioRecordingManager/RecordingDetailView.swift)) has accumulated several problems:
+The current `RecordingDetailView` (see [`RecordingDetailView.swift`](../../../Sources/Clio/RecordingDetailView.swift)) has accumulated several problems:
 
 **1. Duplicate transcription UI (the main problem).** When transcription completes, the researcher can tap «Vis segmenter», which opens `transcriptionResultSheet` — a bespoke modal sheet showing a read-only `TranscriptionResultView`. This is a completely different UI from the `TranscriptEditorView` that opens when the researcher selects the same transcript from the Transkripsjoner tab. Two different surfaces for the same data creates confusion, forces double maintenance, and gives researchers a worse experience (the modal is read-only; the editor supports editing, playback sync, and anonymization).
 

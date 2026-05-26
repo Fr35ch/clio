@@ -6,7 +6,7 @@ This file gives future Claude sessions the context they need to be useful on thi
 
 **Audio Recording Manager (ARM)** — a macOS SwiftUI app for NAV (Norwegian Labour and Welfare Administration) researchers. Records user interviews, transcribes them (local NB-Whisper), optionally anonymizes and analyses, and uploads the results to Microsoft Teams/SharePoint.
 
-- **Language/stack:** Swift 5.9+, SwiftUI, AVFoundation. Xcode project (`AudioRecordingManager.xcodeproj`) with a Swift Package manifest (`Package.swift`) for ergonomics. Python helpers for transcription / anonymization / LLM work are invoked via `Process`.
+- **Language/stack:** Swift 5.9+, SwiftUI, AVFoundation. Xcode project (`Clio.xcodeproj`) with a Swift Package manifest (`Package.swift`) for ergonomics. Python helpers for transcription / anonymization / LLM work are invoked via `Process`.
 - **Target:** macOS 14 Sonoma minimum, Apple Silicon, 16 GB RAM, 30 GB disk.
 - **UI language:** Norwegian (Bokmål). User-facing copy should be Norwegian unless otherwise specified.
 - **Design system:** Liquid Glass (native macOS materials). See ADR-1007 (NAV Aksel was superseded). Use `AppColors`, `AppSpacing`, `AppRadius` — not NAVColors/NAVSpacing.
@@ -16,7 +16,7 @@ This file gives future Claude sessions the context they need to be useful on thi
 
 Researchers interviewing NAV service recipients and employees. Interview content is **highly sensitive personal data**. The product is installed on **researchers' own NAV-issued machines**. This drives most architectural decisions:
 
-- Files live under `~/Library/Application Support/AudioRecordingManager/` — excluded from roaming profile sync via MDM, never on the Desktop
+- Files live under `~/Library/Application Support/Clio/` — excluded from roaming profile sync via MDM, never on the Desktop
 - Local recordings are **automatically deleted after 30 days** from creation, with warnings at day 23 and day 29
 - Anonymization runs inside ARM (AnonymizationSectionView in the transcript editor) before upload
 - Data uploads to **backup-excluded private Teams channels** per the NAV routine for temporary storage of insight data (ref. PVK 25/35628)
@@ -28,12 +28,12 @@ Researchers interviewing NAV service recipients and employees. Interview content
 
 **Today's code** still stores files on the Desktop at `~/Desktop/lydfiler/` (audio) and `~/Desktop/tekstfiler/` (transcripts), linked by filename stem. The audit log is a hidden dotfile inside the audio folder.
 
-**Target (Phase 0, planned)** moves all data to `~/Library/Application Support/AudioRecordingManager/` with UUID-named per-recording folders containing audio + transcript + metadata sidecar. MDM excludes this path from roaming profile sync. Egress moves from manual-drag-into-Teams to direct Graph API upload (Phase 1). Local files are automatically deleted after 30 days.
+**Target (Phase 0, planned)** moves all data to `~/Library/Application Support/Clio/` with UUID-named per-recording folders containing audio + transcript + metadata sidecar. MDM excludes this path from roaming profile sync. Egress moves from manual-drag-into-Teams to direct Graph API upload (Phase 1). Local files are automatically deleted after 30 days.
 
 If you are asked to add features that interact with file storage, **check which world the task belongs to**:
 
 - If the code you're touching still uses `~/Desktop/lydfiler/`, the pivot hasn't landed yet — work within the old layout and minimise new coupling so the pivot stays tractable.
-- If the code is under `Sources/AudioRecordingManager/Storage/` (new), the pivot has begun — use `RecordingStore` APIs, not direct path construction.
+- If the code is under `Sources/Clio/Storage/` (new), the pivot has begun — use `RecordingStore` APIs, not direct path construction.
 - Do not add new code paths that write to Desktop. The Desktop is being eliminated as a storage location.
 
 Key documents for file management:
@@ -44,7 +44,7 @@ Key documents for file management:
 
 ## Codebase orientation
 
-All Swift sources live under `Sources/AudioRecordingManager/`. The file `main.swift` is very large and contains much of the app; it is being incrementally broken up. Other notable files:
+All Swift sources live under `Sources/Clio/`. The file `main.swift` is very large and contains much of the app; it is being incrementally broken up. Other notable files:
 
 | File | Purpose |
 |------|---------|
@@ -53,7 +53,7 @@ All Swift sources live under `Sources/AudioRecordingManager/`. The file `main.sw
 | `TranscriptionService.swift` | Invokes Python NB-Whisper bridge via `Process`. |
 | `TranscriptManager.swift` | Surfaces `RecordingStore` transcripts as `[TranscriptItem]`. |
 | `AnonymizationService.swift` | Invokes `no-anonymizer` Python library. |
-| `AuditLogger.swift` | Append-only JSONL audit log under `~/Library/Application Support/AudioRecordingManager/audit/`. |
+| `AuditLogger.swift` | Append-only JSONL audit log under `~/Library/Application Support/Clio/audit/`. |
 | `Startup/*` | Splash screen, hardware checks, dependency verification. |
 | `Storage/*` | Phase 0 storage layer: `RecordingStore`, `StorageLayout`, metadata sidecars, migration from legacy Desktop folders. |
 | `Design/*` | **Protected design surface** — colours, spacing, radii, button styles, window chrome reference. See `Design/README.md` before editing. |
@@ -61,7 +61,7 @@ All Swift sources live under `Sources/AudioRecordingManager/`. The file `main.sw
 
 ## Design surface — protected boundary
 
-`Sources/AudioRecordingManager/Design/` is the single source of truth for visual style:
+`Sources/Clio/Design/` is the single source of truth for visual style:
 
 - `DesignTokens.swift` — `AppColors`, `AppSpacing`, `AppRadius`
 - `GlassStyles.swift` — `GlassButtonStyle`, `HoverButtonStyle`, `glassEffectIfAvailable`
@@ -78,7 +78,7 @@ All Swift sources live under `Sources/AudioRecordingManager/`. The file `main.sw
    - `.toolbarBackground(.hidden, for: .windowToolbar)`
    - `.navigationTitle("")` added solely to suppress chrome
    - Direct `NSWindow` manipulation (`titlebarAppearsTransparent`, `fullSizeContentView`, `titleVisibility`, `styleMask`) in `AppDelegate`
-4. **`VirginProjectApp.body` chrome modifiers and `Design/WindowChrome.swift` must stay in sync.** The `.windowStyle()` / `.windowToolbarStyle()` modifiers must live on the `Scene` (can't be packaged into a `ViewModifier`), but `WindowChrome.swift` documents their canonical shape.
+4. **`ClioApp.body` chrome modifiers and `Design/WindowChrome.swift` must stay in sync.** The `.windowStyle()` / `.windowToolbarStyle()` modifiers must live on the `Scene` (can't be packaged into a `ViewModifier`), but `WindowChrome.swift` documents their canonical shape.
 5. **If a design change is genuinely needed, ask the user first.** Don't edit `Design/` speculatively.
 
 ## External dependencies and services
