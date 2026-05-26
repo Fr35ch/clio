@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import WebKit
 
 @MainActor
 final class SplashWindowController {
@@ -12,42 +11,18 @@ final class SplashWindowController {
         let w = makeWindow()
         let container = RoundedContainerView(frame: NSRect(x: 0, y: 0, width: 680, height: 420))
 
-        // WKWebView renders the SVG reliably — NSImage cannot handle
-        // gradientUnits="userSpaceOnUse" at large coordinate spaces.
-        // SVG is inlined as a literal so rendering is never bundle-dependent.
-        let config = WKWebViewConfiguration()
-        config.suppressesIncrementalRendering = true
-        let webView = WKWebView(frame: container.bounds, configuration: config)
-        webView.autoresizingMask = [.width, .height]
-        webView.setValue(false, forKey: "drawsBackground")  // transparent WKWebView background
-        // WKWebView on macOS is backed by an NSScrollView. Disable scrolling and
-        // zero out content insets so the SVG fills the frame without any offset.
-        if let scrollView = webView.enclosingScrollView {
-            scrollView.hasHorizontalScroller = false
-            scrollView.hasVerticalScroller   = false
-            scrollView.horizontalScrollElasticity = .none
-            scrollView.verticalScrollElasticity   = .none
-            scrollView.contentInsets = .zero
-            scrollView.automaticallyAdjustsContentInsets = false
-        }
-        let svgString = SplashBackground.svg
-        let html = """
-        <html><head><style>
-        * { margin: 0; padding: 0; }
-        html, body { width: 100%; height: 100%; overflow: hidden; background: #8347F0; }
-        svg { width: 100%; height: 100%; display: block; }
-        </style></head><body>\(svgString)</body></html>
-        """
-        webView.loadHTMLString(html, baseURL: nil)
-        container.addSubview(webView)
+        let imageView = NSImageView(frame: container.bounds)
+        imageView.image            = NSImage(named: "Splash")
+        imageView.imageScaling     = .scaleAxesIndependently
+        imageView.imageAlignment   = .alignCenter
+        imageView.autoresizingMask = [.width, .height]
+        container.addSubview(imageView)
 
         let host = NSHostingView(rootView:
             SplashView(coordinator: coordinator) { [weak self] in self?.dismiss() }
         )
         host.frame             = container.bounds
         host.autoresizingMask  = [.width, .height]
-        host.wantsLayer        = true
-        host.layer?.backgroundColor = NSColor.clear.cgColor
         container.addSubview(host)
 
         w.contentView = container
