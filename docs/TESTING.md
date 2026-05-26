@@ -1,6 +1,6 @@
-# Testing Guide - Audio Recording Manager
+# Testing Guide - Clio
 
-This guide covers the testing infrastructure for the Audio Recording Manager macOS application.
+This guide covers the testing infrastructure for the Clio macOS application.
 
 ## Quick Start
 
@@ -40,15 +40,15 @@ SKIP=swiftlint git commit -m "message"
 ## Project Structure
 
 ```
-AudioRecordingManager/
+Clio/
 ├── Sources/
-│   ├── AudioRecordingManager/    # Main app (build.sh)
+│   ├── Clio/    # Main app (build.sh)
 │   │   ├── main.swift            # App entry point + UI
 │   │   └── SVGImageView.swift    # SVG rendering
-│   └── AudioRecordingManagerLib/ # Testable library
-│       └── AudioRecordingManagerLib.swift
+│   └── ClioLib/ # Testable library
+│       └── ClioLib.swift
 ├── Tests/
-│   └── AudioRecordingManagerTests/
+│   └── ClioTests/
 │       └── SmokeTests.swift      # Basic tests
 ├── Package.swift                 # Swift Package Manager
 ├── build.sh                      # App bundle builder
@@ -66,7 +66,7 @@ AudioRecordingManager/
 2. **build.sh** (for full app):
    ```bash
    ./build.sh    # Creates .app bundle with all frameworks
-   open build/AudioRecordingManager.app
+   open build/Clio.app
    ```
 
 ## TDD Workflow (Red-Green-Refactor)
@@ -100,10 +100,10 @@ Clean up the code while ensuring all tests still pass.
 
 ### Test File Location
 
-Place tests in `Tests/AudioRecordingManagerTests/`:
+Place tests in `Tests/ClioTests/`:
 
 ```
-Tests/AudioRecordingManagerTests/
+Tests/ClioTests/
 ├── SmokeTests.swift           # Infrastructure tests
 ├── AudioFileUtilsTests.swift  # Unit tests for utilities
 └── IntegrationTests.swift     # Integration tests
@@ -281,8 +281,8 @@ pre-commit autoupdate
 
 ## Adding New Tests
 
-1. Create test file in `Tests/AudioRecordingManagerTests/`
-2. Import the module: `@testable import AudioRecordingManagerLib`
+1. Create test file in `Tests/ClioTests/`
+2. Import the module: `@testable import ClioLib`
 3. Write tests following AAA pattern
 4. Run `swift test` to verify
 5. Commit with passing tests

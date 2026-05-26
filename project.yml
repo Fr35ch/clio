@@ -1,6 +1,11 @@
-name: AudioRecordingManager
-projectName: AudioRecordingManager
-bundleIdPrefix: com.audiorecordingmanager
+name: Clio
+projectName: Clio
+bundleIdPrefix: no.nav
+
+packages:
+  FluidAudio:
+    url: https://github.com/FluidInference/FluidAudio.git
+    from: 0.12.4
 
 settings:
   SWIFT_VERSION: "5.9"
@@ -9,25 +14,28 @@ settings:
   MACOSX_DEPLOYMENT_TARGET: "14.0"
 
 targets:
-  AudioRecordingManager:
+  Clio:
     type: application
     platform: macOS
     sources:
-      - path: Sources/AudioRecordingManager
+      - path: Sources/Clio
+    dependencies:
+      - package: FluidAudio
+        product: FluidAudio
     settings:
-      PRODUCT_NAME: AudioRecordingManager
-      EXECUTABLE_NAME: AudioRecordingManager
-      PRODUCT_BUNDLE_IDENTIFIER: com.audiorecordingmanager.app
+      PRODUCT_NAME: Clio
+      EXECUTABLE_NAME: Clio
+      PRODUCT_BUNDLE_IDENTIFIER: no.nav.clio
       INFOPLIST_FILE: Info.plist
       CODE_SIGN_IDENTITY: "-"
       CODE_SIGN_STYLE: Automatic
       PROVISIONING_PROFILE_SPECIFIER: ""
 
 schemes:
-  AudioRecordingManager:
+  Clio:
     build:
       targets:
-        AudioRecordingManager: all
+        Clio: all
     run:
       config: Debug
     archive:

@@ -2,7 +2,7 @@
 
 **Prompt for Claude Code i `no-anonymizer`-repoet**
 **Repo:** github.com/Fr35ch/no-anonymizer
-**Konsument:** ARM (Audio Recording Manager), Nav
+**Konsument:** ARM (Clio), Nav
 
 ---
 

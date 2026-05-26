@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Architectural redesign of file storage, egress, and machine handoff. Decision captured in [ADR-1014](docs/decisions/adr/ADR-1014-file-storage-architecture-pivot.md); spec revised in [docs/FILE_MANAGEMENT_AND_TEAMS_SYNC.md](docs/FILE_MANAGEMENT_AND_TEAMS_SYNC.md); build order in [docs/prd/file-management-teams-sync/PHASE_0_TASKS.md](docs/prd/file-management-teams-sync/PHASE_0_TASKS.md). Intended for the next major release (2.0.0) because it changes storage location and removes Desktop-write paths.
 
-- **Storage moves off the Desktop.** Audio, transcripts, and audit log relocate to `~/Library/Application Support/AudioRecordingManager/`. MDM-excluded from the roaming profile sync so files stay local to the library machine.
+- **Storage moves off the Desktop.** Audio, transcripts, and audit log relocate to `~/Library/Application Support/Clio/`. MDM-excluded from the roaming profile sync so files stay local to the library machine.
 - **UUID-named recording folders** replace the filename-stem coupling between audio and transcript. Metadata moves into a per-recording `meta.json` sidecar with explicit state fields.
 - **Audit log relocated** from the hidden dotfile `.audit_log.jsonl` inside the audio folder to the new data root with monthly rotation.
 - **Return Machine flow** introduced as the only path that deletes local data. Pre-check, friction gate (typed phrase), zero-overwrite secure delete, receipt written to `~/Documents/` as external audit trail.
@@ -28,7 +28,7 @@ Architectural redesign of file storage, egress, and machine handoff. Decision ca
 ### External dependencies kicked off (not yet confirmed)
 
 - Azure AD / Entra ID app registration with Graph scopes `Files.ReadWrite`, `Sites.ReadWrite.All`, `User.Read` — long lead time, blocks Phase 1.
-- MDM sync exclusion for `~/Library/Application Support/AudioRecordingManager/` — load-bearing assumption for Phase 0 security posture.
+- MDM sync exclusion for `~/Library/Application Support/Clio/` — load-bearing assumption for Phase 0 security posture.
 - FileVault mandate on library machines — confirmed required; awaiting IT policy confirmation.
 
 ---

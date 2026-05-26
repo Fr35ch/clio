@@ -82,7 +82,7 @@ Selvkontroll før du svarer:
 
 ## Output schema
 
-Maps to `AnalysisResult` (`Sources/AudioRecordingManager/AnalysisResult.swift`):
+Maps to `AnalysisResult` (`Sources/Clio/AnalysisResult.swift`):
 
 | Section in prompt | `AnalysisResult` field | Cardinality |
 |-------------------|------------------------|-------------|

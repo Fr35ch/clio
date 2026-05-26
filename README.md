@@ -1,4 +1,4 @@
-# Audio Recording Manager
+# Clio
 
 macOS-app for opptak, transkripsjon, talerutskilling og analyse av brukerintervjuer.
 Utviklet for NAV Arbeids- og velferdsdirektoratet.
@@ -34,7 +34,7 @@ Klon og åpne prosjektet:
 
 ```bash
 git clone <repo-url> ~/Github/ARM-xcode
-open ~/Github/ARM-xcode/AudioRecordingManager.xcodeproj
+open ~/Github/ARM-xcode/Clio.xcodeproj
 ```
 
 Trykk **⌘B** for å bygge. Trykk **⌘R** for å kjøre.
@@ -75,8 +75,8 @@ git clone https://github.com/Fr35ch/no-transcribe.git ~/Github/no-transcribe
 Det virtuelle miljøet med avhengigheter opprettes automatisk av appen. For manuell installasjon:
 
 ```bash
-python3.12 -m venv ~/Library/Application\ Support/AudioRecordingManager/no-transcribe-venv
-source ~/Library/Application\ Support/AudioRecordingManager/no-transcribe-venv/bin/activate
+python3.12 -m venv ~/Library/Application\ Support/Clio/no-transcribe-venv
+source ~/Library/Application\ Support/Clio/no-transcribe-venv/bin/activate
 pip install torch torchaudio transformers numpy requests
 ```
 
@@ -184,7 +184,7 @@ BERT-modellen (~500 MB) lastes automatisk ned fra HuggingFace ved første bruk.
 ## Lagring
 
 ```
-~/Library/Application Support/AudioRecordingManager/
+~/Library/Application Support/Clio/
 ├── recordings/             # Opptak — én UUID-mappe per intervju
 │   └── <uuid>/
 │       ├── audio.m4a       # Lydfil

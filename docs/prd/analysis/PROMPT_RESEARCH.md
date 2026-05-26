@@ -134,7 +134,7 @@ Three technical measures sit outside the prompt itself:
 
 2. **Audio-anchored verification.** Because quotes are anchored with `[mm:ss]` timestamps, the B5 "verify this quote" affordance can scrub the underlying audio to that moment. Quote authenticity is verifiable against ground truth (audio), not only against transcript text. This is the strongest available defence against hallucinated quotes that happen to substring-match an unrelated part of the transcript.
 
-3. **Transcript hashing.** Each `AnalysisSource` carries the SHA-256 of the transcript at run time (see `Sources/AudioRecordingManager/Analysis/TranscriptHash.swift`). If the researcher edits a transcript later, the result view shows a stale banner — the analysis was performed against a previous version. This won't catch LLM hallucinations against the version it saw, but it does guarantee the researcher knows when a previously-validated result is no longer attached to the current text.
+3. **Transcript hashing.** Each `AnalysisSource` carries the SHA-256 of the transcript at run time (see `Sources/Clio/Analysis/TranscriptHash.swift`). If the researcher edits a transcript later, the result view shows a stale banner — the analysis was performed against a previous version. This won't catch LLM hallucinations against the version it saw, but it does guarantee the researcher knows when a previously-validated result is no longer attached to the current text.
 
 ## 7. Validation plan
 

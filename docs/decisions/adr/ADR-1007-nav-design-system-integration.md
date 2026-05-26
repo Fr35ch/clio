@@ -197,7 +197,7 @@ struct RecordingCard: View {
 
 ## References
 
-- `Sources/AudioRecordingManager/main.swift` - NAVColors, NAVSpacing, NAVRadius definitions
+- `Sources/Clio/main.swift` - NAVColors, NAVSpacing, NAVRadius definitions
 - [Aksel Design System](https://aksel.nav.no/) - Source design system
 - [NAV Aksel GitHub](https://github.com/navikt/aksel) - Reference implementation
 
@@ -208,4 +208,4 @@ struct RecordingCard: View {
 ---
 
 **Template Version**: 1.1.0
-**Project**: Agentive Starter Kit / Audio Recording Manager
+**Project**: Agentive Starter Kit / Clio

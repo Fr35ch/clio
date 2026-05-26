@@ -28,7 +28,7 @@ These stories are buildable today and do not depend on researcher interviews, Az
 **so that** sensitive interview material is not exposed via Finder, Spotlight, or screen sharing.
 
 #### Acceptance Criteria
-- [ ] New recordings are written under `~/Library/Application Support/AudioRecordingManager/recordings/<uuid>/`
+- [ ] New recordings are written under `~/Library/Application Support/Clio/recordings/<uuid>/`
 - [ ] Transcripts for new recordings land in the same per-recording folder
 - [ ] `~/Desktop/lydfiler/` and `~/Desktop/tekstfiler/` are not created for new recordings
 - [ ] No new code path writes audio or transcripts to `.desktopDirectory`
@@ -76,7 +76,7 @@ These stories are buildable today and do not depend on researcher interviews, Az
 **so that** I (or NAV) can verify what happened to the data after the fact.
 
 #### Acceptance Criteria
-- [ ] Audit log lives at `~/Library/Application Support/AudioRecordingManager/audit/audit-YYYY-MM.jsonl`
+- [ ] Audit log lives at `~/Library/Application Support/Clio/audit/audit-YYYY-MM.jsonl`
 - [ ] Events are append-only JSONL with timestamp, actor, event type, structured payload
 - [ ] Events logged in Phase 0: `recordingCreated`, `recordingFinalized`, `transcriptCompleted`, `transcriptFailed`, `recordingExpiryWarning`, `recordingExpired`, `migrationCompleted`
 - [ ] Log rotates monthly (new file on first write of each month)

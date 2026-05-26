@@ -21,11 +21,11 @@ The earlier version of this spec assumed Desktop storage + a user-driven OneDriv
 - **Transcripts** stored at `~/Desktop/tekstfiler/<stem>.txt`
 - Audio ↔ transcript linked by **filename stem** (breaks on Finder rename)
 - **Audit log** is a hidden dotfile `.audit_log.jsonl` inside the audio folder (user-editable)
-- **Egress** via `uploadToTeams()` in [main.swift](../Sources/AudioRecordingManager/main.swift): enables network, opens Teams + Finder + OneDrive, user drags files manually
+- **Egress** via `uploadToTeams()` in [main.swift](../Sources/Clio/main.swift): enables network, opens Teams + Finder + OneDrive, user drags files manually
 
 ## Target State (this spec)
 
-- All data under `~/Library/Application Support/AudioRecordingManager/`, **excluded from roaming profile sync via MDM**
+- All data under `~/Library/Application Support/Clio/`, **excluded from roaming profile sync via MDM**
 - Each recording is a **UUID-named folder** containing audio + transcript + metadata sidecar
 - Audit log in the same data root, monthly-rotated, append-only JSONL
 - **Direct Graph API upload** to a per-project Teams/SharePoint location — no Finder dragging
@@ -37,7 +37,7 @@ The earlier version of this spec assumed Desktop storage + a user-driven OneDriv
 ## Storage Layout
 
 ```
-~/Library/Application Support/AudioRecordingManager/
+~/Library/Application Support/Clio/
   recordings/
     7f3a2b1c-.../
       audio.m4a
@@ -100,7 +100,7 @@ We rely on the OS and fleet configuration, not our own crypto:
 |-------|-----------|-------|
 | Per-user isolation | macOS user account permissions | OS |
 | At-rest encryption | FileVault (mandated by NAV IT) | NAV IT |
-| Non-replication to other NAV-issued machines | MDM excludes `~/Library/Application Support/AudioRecordingManager/` from the roaming profile sync | NAV IT (mac-fleet admin) |
+| Non-replication to other NAV-issued machines | MDM excludes `~/Library/Application Support/Clio/` from the roaming profile sync | NAV IT (mac-fleet admin) |
 | Time-bounded local retention | ARM's 30-day automatic expiry | ARM |
 
 The **MDM sync exclusion** is the single load-bearing configuration item outside ARM's source tree. If it is not in place, this entire plan's threat model fails. Confirm before Phase 0F ships.
@@ -248,7 +248,7 @@ This acknowledgement is logged as a `complianceCheckConfirmed` audit event with 
 
 ## Audit Log
 
-- **Location**: `~/Library/Application Support/AudioRecordingManager/audit/audit-YYYY-MM.jsonl`
+- **Location**: `~/Library/Application Support/Clio/audit/audit-YYYY-MM.jsonl`
 - **Format**: append-only JSONL, one event per line
 - **Rotation**: monthly (new file opened on first write of each month)
 - **Event types** (initial set): `recordingCreated`, `recordingFinalized`, `transcriptCompleted`, `transcriptFailed`, `transcriptEdited`, `transcriptAnonymized`, `transcriptAnalysed`, `anonymizationStarted`, `anonymizationDiscarded`, `complianceCheckConfirmed`, `uploadQueued`, `uploadCompleted`, `uploadFailed`, `recordingExpiryWarning`, `recordingExpired`, `migrationCompleted`
@@ -290,7 +290,7 @@ See [PHASE_0_TASKS.md](prd/file-management-teams-sync/PHASE_0_TASKS.md) for the 
 
 | Dependency | Owner | Blocks |
 |------------|-------|--------|
-| MDM sync exclusion of `~/Library/Application Support/AudioRecordingManager/` | mac-fleet admin | Phase 0 ship |
+| MDM sync exclusion of `~/Library/Application Support/Clio/` | mac-fleet admin | Phase 0 ship |
 | Azure AD / Entra ID app registration with Graph scopes (`Files.ReadWrite`, `Sites.ReadWrite.All`, `User.Read`, `ChannelMessage.Read.All` for channel age check) | NAV IT | Phase 1 (Graph API upload) |
 | Confirmation that the target private channels are already provisioned and backup-excluded for each product area | Team ResearchOps (Ståle Kjone) | Phase 1 (upload can't go live without at least one valid target channel) |
 | Answer: researcher-picked channel vs ARM uses a pre-configured channel per project? | Research ops / mac-fleet admin | Phase 2 (destination UX) |

@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADRs)
 
-This directory contains Architecture Decision Records (ADRs) documenting significant architectural and design decisions for the Agentive Starter Kit and Audio Recording Manager.
+This directory contains Architecture Decision Records (ADRs) documenting significant architectural and design decisions for the Agentive Starter Kit and Clio.
 
 ## What are ADRs?
 
@@ -74,7 +74,7 @@ ADRs use the format **`ADR-####-description.md`** where:
 - ADR-1010: Two-Layer Build Strategy
 - ADR-1012: Tool Permissions Configuration
 
-**Application (Audio Recording Manager)** - MEDIUM/LOW Priority:
+**Application (Clio)** - MEDIUM/LOW Priority:
 - ADR-1006: Network Isolation as Default
 - ADR-1007: NAV Design System Integration
 
@@ -150,4 +150,4 @@ When a decision changes:
 **Maintainer**: planner agent, feature-developer
 **Last Updated**: 2025-11-28
 **ADR Count**: 15 (2 foundation + 13 starter kit)
-**Project**: Agentive Starter Kit / Audio Recording Manager
+**Project**: Agentive Starter Kit / Clio

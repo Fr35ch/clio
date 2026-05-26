@@ -96,7 +96,7 @@
 ### Acceptance Criteria
 - [ ] Audit log entry on every anonymization attempt (success or failure)
 - [ ] Entry includes: timestamp, recording ID, action, stats (counts only, no text), processing time, outcome
-- [ ] Logged via `AuditLogger` to `~/Library/Application Support/AudioRecordingManager/audit/audit-YYYY-MM.jsonl`
+- [ ] Logged via `AuditLogger` to `~/Library/Application Support/Clio/audit/audit-YYYY-MM.jsonl`
 - [ ] Error details included for failed attempts
 - [ ] Log never contains actual transcript text (privacy)
 

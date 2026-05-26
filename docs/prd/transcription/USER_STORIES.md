@@ -17,7 +17,7 @@
 - [ ] Transcription uses no-transcribe (NB-Whisper) via subprocess
 - [ ] Default settings applied: model size, speaker count, language, verbatim mode
 - [ ] Transcript saved to metadata sidecar (`.metadata.json`) and plain text (`~/Desktop/tekstfiler/<stem>.txt`)
-- [ ] JSON result with segments saved to `~/Library/Application Support/AudioRecordingManager/transcripts/`
+- [ ] JSON result with segments saved to `~/Library/Application Support/Clio/transcripts/`
 
 ---
 
@@ -217,7 +217,7 @@
 **Added:** 2026-04-17
 **Implementation guide:** [TRANSCRIPT_EDITOR.md — AnonymizationSectionView](TRANSCRIPT_EDITOR.md#anonymizationsectionview-new)
 **Depends on:** US-T11 (transcript editor must exist), US-T1 (transcription output)
-**Related:** [AnonymizationService.swift](../../../Sources/AudioRecordingManager/AnonymizationService.swift)
+**Related:** [AnonymizationService.swift](../../../Sources/Clio/AnonymizationService.swift)
 
 **As a** brukerinnsiktsarbeider,
 **ønsker jeg** å anonymisere transkripsjonen direkte fra transkripsjonseditoren etter at jeg er ferdig med å redigere,
