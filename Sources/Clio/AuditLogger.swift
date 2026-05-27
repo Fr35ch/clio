@@ -104,6 +104,7 @@ enum AuditEventType: String {
     case anonymizationStarted
     case anonymizationDiscarded
     case anonymizationConfirmedByResearcher
+    case anonymizationConfirmationRevoked
     case anonymizationClearedOnRetranscription
     case complianceCheckConfirmed
     case uploadQueued
@@ -251,6 +252,12 @@ class AuditLogger {
         log(.anonymizationConfirmedByResearcher, payload: [
             "recordingId": .string(recordingId.uuidString),
             "armToolUsed": .bool(armToolUsed)
+        ])
+    }
+
+    func logAnonymizationConfirmationRevoked(recordingId: UUID) {
+        log(.anonymizationConfirmationRevoked, payload: [
+            "recordingId": .string(recordingId.uuidString)
         ])
     }
 

@@ -14,6 +14,7 @@ struct AvidentifiseringBekreftSection: View {
     let onMetaChanged: (RecordingMeta) -> Void
 
     @State private var showSignOffAlert = false
+    @State private var showRevokeAlert = false
 
     private var isConfirmed: Bool {
         recording.anonymization.researcherConfirmedAt != nil
@@ -48,6 +49,18 @@ struct AvidentifiseringBekreftSection: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            Spacer()
+            Button("Trekk tilbake") {
+                showRevokeAlert = true
+            }
+            .buttonStyle(PillButtonStyle(variant: .secondary))
+            .font(.system(size: 11))
+        }
+        .alert("Trekk tilbake bekreftelse?", isPresented: $showRevokeAlert) {
+            Button("Trekk tilbake", role: .destructive) { revokeSignOff() }
+            Button("Avbryt", role: .cancel) {}
+        } message: {
+            Text("Bekreftelsen på avidentifisering fjernes. Opptaket kan ikke lastes opp til Teams før det bekreftes på nytt.")
         }
     }
 
@@ -118,6 +131,13 @@ struct AvidentifiseringBekreftSection: View {
             recordingId: recording.id,
             armToolUsed: recording.anonymization.status == .done
         )
+        onMetaChanged(updated)
+    }
+
+    private func revokeSignOff() {
+        var updated = recording
+        updated.anonymization.researcherConfirmedAt = nil
+        AuditLogger.shared.logAnonymizationConfirmationRevoked(recordingId: recording.id)
         onMetaChanged(updated)
     }
 }
