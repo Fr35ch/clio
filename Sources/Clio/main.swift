@@ -2161,6 +2161,11 @@ struct RecordingNameDialog: View {
     let onSave: () -> Void
     let onDiscard: () -> Void
     @FocusState private var isTextFieldFocused: Bool
+    @State private var showNameWarningAlert = false
+
+    private var nameDetected: Bool {
+        NameDetector.shared.containsName(in: recordingName)
+    }
 
     var body: some View {
         VStack(spacing: 22) {
@@ -2170,37 +2175,46 @@ struct RecordingNameDialog: View {
                     .font(.system(size: 44, weight: .light))
                     .foregroundStyle(AppColors.accent)
 
-                Text("Name Your Recording")
+                Text("Gi opptaket et navn")
                     .font(.system(size: 18, weight: .semibold))
 
-                Text("Duration: \(formatDuration(duration))")
+                Text("Varighet: \(formatDuration(duration))")
                     .font(.system(size: 13, weight: .regular))
                     .foregroundStyle(.secondary)
             }
 
             // Filename input
             VStack(alignment: .leading, spacing: 6) {
-                Text("Recording name")
+                Text("Navn på opptak")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
 
-                TextField("e.g., Interview with participant", text: $recordingName)
+                TextField("f.eks. intervju-deltaker-01", text: $recordingName)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 13))
                     .focused($isTextFieldFocused)
-                    .onSubmit {
-                        onSave()
-                    }
+                    .onSubmit { trySave() }
 
-                Text("Timestamp will be added automatically")
-                    .font(.system(size: 10, weight: .regular))
-                    .foregroundStyle(.tertiary)
+                if nameDetected {
+                    HStack(spacing: 5) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(AppColors.warning)
+                            .font(.system(size: 11))
+                        Text("Vi kan ha oppdaget et personnavn i filnavnet.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(AppColors.warning)
+                    }
+                } else {
+                    Text("Tidsstempel legges til automatisk")
+                        .font(.system(size: 10, weight: .regular))
+                        .foregroundStyle(.tertiary)
+                }
             }
 
             // Preview
             if !recordingName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 HStack(spacing: 6) {
-                    Text("Preview:")
+                    Text("Forhåndsvisning:")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(.secondary)
                     Text("\(recordingName.trimmingCharacters(in: .whitespacesAndNewlines))_\(previewTimestamp()).m4a")
@@ -2220,7 +2234,7 @@ struct RecordingNameDialog: View {
                 Button(action: onDiscard) {
                     HStack(spacing: 5) {
                         Image(systemName: "trash")
-                        Text("Discard")
+                        Text("Forkast")
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
@@ -2228,10 +2242,10 @@ struct RecordingNameDialog: View {
                 .buttonStyle(.bordered)
                 .tint(.red)
 
-                Button(action: onSave) {
+                Button(action: trySave) {
                     HStack(spacing: 5) {
                         Image(systemName: "checkmark")
-                        Text("Save")
+                        Text("Lagre")
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
@@ -2243,6 +2257,20 @@ struct RecordingNameDialog: View {
         .frame(width: 400)
         .onAppear {
             isTextFieldFocused = true
+        }
+        .alert("Mulig personopplysning i filnavn", isPresented: $showNameWarningAlert) {
+            Button("Fortsett", role: .none) { onSave() }
+            Button("Endre filnavn", role: .cancel) {}
+        } message: {
+            Text("Vi tror filnavnet kan inneholde et personnavn. Vil du fortsette, eller endre filnavnet?")
+        }
+    }
+
+    private func trySave() {
+        if nameDetected {
+            showNameWarningAlert = true
+        } else {
+            onSave()
         }
     }
 

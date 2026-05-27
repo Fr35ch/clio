@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		004567DC02F555228635569B /* AvidentifiseringSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F9743F93056C08906B86DD5 /* AvidentifiseringSheet.swift */; };
 		016B08B47F6082716F4FE157 /* RTFExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 013A283DF2DD3D2E703D9CB3 /* RTFExporter.swift */; };
+		BB11CC22DD33EE44FF550004 /* NameDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB11CC22DD33EE44FF550001 /* NameDetector.swift */; };
+		BB11CC22DD33EE44FF550005 /* ssb_fornavn.txt in Resources */ = {isa = PBXBuildFile; fileRef = BB11CC22DD33EE44FF550002 /* ssb_fornavn.txt */; };
+		BB11CC22DD33EE44FF550006 /* ssb_etternavn.txt in Resources */ = {isa = PBXBuildFile; fileRef = BB11CC22DD33EE44FF550003 /* ssb_etternavn.txt */; };
 		A9B1C2D3E4F567891ABCDEF0 /* AvidentifiseringBekreftSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B1C2D3E4F567890ABCDEF0 /* AvidentifiseringBekreftSection.swift */; };
 		058EC16989E792B0E4BB0BEA /* TeamsUploadSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ACF6CDE7330324D188AFDB1 /* TeamsUploadSection.swift */; };
 		06F95C989475654B8E23FDFC /* RecordingMeta.swift in Sources */ = {isa = PBXBuildFile; fileRef = D768BD447F094B7EEEF3703D /* RecordingMeta.swift */; };
@@ -89,6 +92,9 @@
 
 /* Begin PBXFileReference section */
 		013A283DF2DD3D2E703D9CB3 /* RTFExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RTFExporter.swift; sourceTree = "<group>"; };
+		BB11CC22DD33EE44FF550001 /* NameDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NameDetector.swift; sourceTree = "<group>"; };
+		BB11CC22DD33EE44FF550002 /* ssb_fornavn.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = ssb_fornavn.txt; path = Resources/ssb_fornavn.txt; sourceTree = "<group>"; };
+		BB11CC22DD33EE44FF550003 /* ssb_etternavn.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = ssb_etternavn.txt; path = Resources/ssb_etternavn.txt; sourceTree = "<group>"; };
 		0225402D1F5D84DB36B1ABAB /* RecordingItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingItem.swift; sourceTree = "<group>"; };
 		062B55D4B8931B8384DE765F /* AnalysisStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisStore.swift; sourceTree = "<group>"; };
 		0EC7F9C0FE219DAA75AC0FD9 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
@@ -242,6 +248,7 @@
 				0225402D1F5D84DB36B1ABAB /* RecordingItem.swift */,
 				E9EE8D5882CD2DBB99E27BB8 /* RecordingsManager.swift */,
 				013A283DF2DD3D2E703D9CB3 /* RTFExporter.swift */,
+				BB11CC22DD33EE44FF550001 /* NameDetector.swift */,
 				3CCF68B04B237C98F3509C43 /* SpeakerAlignment.swift */,
 				F0B6668F23D21197B2C8CACC /* TranscriptEditorState.swift */,
 				98BFF0819DE6E76206F0903E /* TranscriptEditorView.swift */,
@@ -316,6 +323,8 @@
 			children = (
 				BB00CC11DD22EE33FF440000 /* Assets.xcassets */,
 				AA11BB22CC33DD44EE550001 /* SplashBackground.svg */,
+				BB11CC22DD33EE44FF550002 /* ssb_fornavn.txt */,
+				BB11CC22DD33EE44FF550003 /* ssb_etternavn.txt */,
 				6D7D78B28D5E604A4EE21EE9 /* Clio */,
 				528AC45447AA2C0FE8E14001 /* Products */,
 			);
@@ -412,6 +421,8 @@
 				8A08187DF0D956FADD0ADE35 /* README.md in Resources */,
 				BB00CC11DD22EE33FF440011 /* Assets.xcassets in Resources */,
 				AA11BB22CC33DD44EE550002 /* SplashBackground.svg in Resources */,
+				BB11CC22DD33EE44FF550005 /* ssb_fornavn.txt in Resources */,
+				BB11CC22DD33EE44FF550006 /* ssb_etternavn.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -462,6 +473,7 @@
 				1C1D10363F9AC1A1D626ED30 /* PromptTemplate.swift in Sources */,
 				71D2A79582B9B4CE70F8A842 /* PromptTemplateLibrary.swift in Sources */,
 				016B08B47F6082716F4FE157 /* RTFExporter.swift in Sources */,
+				BB11CC22DD33EE44FF550004 /* NameDetector.swift in Sources */,
 				0FD296B662B20927119CB0CC /* RecordingDetailView.swift in Sources */,
 				15398FA9751B16DEC921258B /* RecordingExpiryManager.swift in Sources */,
 				B94C8B054AF3D29E3631426E /* RecordingItem.swift in Sources */,
