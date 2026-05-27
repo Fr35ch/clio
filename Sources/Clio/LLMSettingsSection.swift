@@ -13,6 +13,8 @@ struct LLMSettingsSection: View {
     @State private var pullState: PullState = .idle
     @State private var pullProgress: String = ""
     @State private var modelAvailability: [String: Bool] = [:]
+    @State private var ollamaVersionOk: Bool = true
+    @State private var ollamaVersion: String = ""
 
     private var selectedModel: LLMModel {
         LLMModel.from(storedValue: llmModelRaw)
@@ -73,6 +75,29 @@ struct LLMSettingsSection: View {
                 .padding(.top, AppSpacing.xs)
             }
 
+            // MARK: Ollama version warning
+            if OllamaManager.shared.isInstalled && !ollamaVersionOk {
+                HStack(alignment: .top, spacing: AppSpacing.sm) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(AppColors.warning)
+                        .font(.callout)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Ollama \(ollamaVersion) er for gammel")
+                            .font(.callout)
+                            .fontWeight(.medium)
+                        Text("Versjon 0.5 eller nyere er nødvendig for å laste ned Borealis-modeller.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("brew upgrade ollama")
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                }
+                .padding(AppSpacing.sm)
+                .background(AppColors.warning.opacity(0.08), in: RoundedRectangle(cornerRadius: AppRadius.small))
+            }
+
             // MARK: Pull progress / result
             if case .pulling(let id) = pullState, id == selectedModel.ollamaId {
                 HStack(spacing: AppSpacing.sm) {
@@ -112,6 +137,7 @@ struct LLMSettingsSection: View {
         .padding(AppSpacing.lg)
         .task { await refreshAvailability() }
     }
+
 
     // MARK: - Model row
 
@@ -214,11 +240,17 @@ struct LLMSettingsSection: View {
     @MainActor
     private func refreshAvailability() async {
         let models = availableModels
-        let results = await Task.detached(priority: .utility) {
+        async let availability = Task.detached(priority: .utility) {
             models.reduce(into: [String: Bool]()) { dict, model in
                 dict[model.ollamaId] = OllamaManager.shared.isModelAvailable(model.ollamaId)
             }
         }.value
-        modelAvailability = results
+        async let versionCheck = Task.detached(priority: .utility) {
+            (OllamaManager.shared.installedVersion() ?? "", OllamaManager.shared.supportsHuggingFacePull())
+        }.value
+        let (avail, (version, versionOk)) = await (availability, versionCheck)
+        modelAvailability = avail
+        ollamaVersion = version
+        ollamaVersionOk = versionOk
     }
 }

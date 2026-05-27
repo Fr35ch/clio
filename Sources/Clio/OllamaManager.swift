@@ -38,6 +38,34 @@ final class OllamaManager {
     /// True if the ollama binary exists on disk.
     var isInstalled: Bool { ollamaBinaryPath != nil }
 
+    /// Returns the installed Ollama version string (e.g. "0.24.0"), or nil.
+    func installedVersion() -> String? {
+        guard let binary = ollamaBinaryPath else { return nil }
+        let process = Process()
+        process.launchPath = binary
+        process.arguments = ["--version"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        try? process.run()
+        process.waitUntilExit()
+        let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        // "ollama version is 0.24.0"
+        let parts = output.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: " ")
+        return parts.last
+    }
+
+    /// Returns true if the installed Ollama version supports hf.co/ model pulls.
+    /// Minimum known-good version is 0.5.0.
+    func supportsHuggingFacePull() -> Bool {
+        guard let version = installedVersion() else { return false }
+        let parts = version.split(separator: ".").compactMap { Int($0) }
+        guard parts.count >= 2 else { return false }
+        // 0.x where x < 5 is too old; 1.x+ is fine
+        if parts[0] > 0 { return true }
+        return parts[1] >= 5
+    }
+
     /// Start ollama serve in background. Returns immediately; Ollama takes ~2s to be ready.
     func startServer() {
         guard let binary = ollamaBinaryPath else { return }
