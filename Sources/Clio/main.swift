@@ -2376,8 +2376,8 @@ struct RecordingView: View {
                 )
             }
             .onAppear {
-                recordingsManager.loadRecordings()
-                // Start audio monitoring to show waveform visualization
+                // Audio monitoring only — recordings list stays in sync via
+                // RecordingsManager's didChangeNotification subscription.
                 recorder.startMonitoring()
                 // Reset verification status
                 microphoneVerified = false
@@ -2398,12 +2398,7 @@ struct RecordingView: View {
                 // Cancel verification timer
                 verificationTimer?.invalidate()
             }
-            .onChange(of: recorder.showSaveConfirmation) { _, showing in
-                if !showing {
-                    // Reload recordings when save confirmation disappears
-                    recordingsManager.loadRecordings()
-                }
-            }
+
             .onChange(of: recorder.frequencyBands) { _, bands in
                 // Update glow state with a smooth animation so it plays through between frames
                 // rather than restarting every 23 ms (which caused jitter with inline animation).
@@ -3036,7 +3031,7 @@ struct MainView: View {
         .onChange(of: recordingsManager.recordings) { _, _ in
             if selectedTab == .recordings { autoSelectFirst() }
         }
-        .onAppear { recordingsManager.loadRecordings() }
+        .onAppear { /* RecordingsManager loads on init and stays in sync via notifications */ }
     }
 
     @ViewBuilder
