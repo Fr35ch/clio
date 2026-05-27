@@ -110,12 +110,14 @@ final class OllamaManager {
         let stderrPipe = Pipe()
         process.standardError = stderrPipe
 
+        var lastErrorLine = ""
         stderrPipe.fileHandleForReading.readabilityHandler = { handle in
             let data = handle.availableData
             guard !data.isEmpty,
                   let line = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !line.isEmpty
             else { return }
+            lastErrorLine = line
             onProgress(line)
         }
 
@@ -124,7 +126,12 @@ final class OllamaManager {
         stderrPipe.fileHandleForReading.readabilityHandler = nil
 
         if process.terminationStatus != 0 {
-            throw PullError.pullFailed("Prosessen avsluttet med kode \(process.terminationStatus)")
+            // Give a human-readable error for known Ollama version issues.
+            if lastErrorLine.contains("realm host") || lastErrorLine.contains("does not match") {
+                throw PullError.pullFailed("Ollama er for gammel til å laste ned HuggingFace-modeller. Kjør: brew upgrade ollama")
+            }
+            let detail = lastErrorLine.isEmpty ? "Ukjent feil" : lastErrorLine
+            throw PullError.pullFailed(detail)
         }
     }
 }

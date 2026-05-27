@@ -81,15 +81,32 @@ struct LLMSettingsSection: View {
                     Text(pullProgress.isEmpty ? "Laster ned…" : pullProgress)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                        .lineLimit(3)
                 }
                 .padding(.top, AppSpacing.xs)
             }
 
-            if case .failed(let msg) = pullState {
-                Label(msg, systemImage: "exclamationmark.triangle")
+            if case .done(let id) = pullState, id == selectedModel.ollamaId {
+                Label("Modellen er klar til bruk", systemImage: "checkmark.circle.fill")
                     .font(.caption)
-                    .foregroundStyle(AppColors.warning)
+                    .foregroundStyle(AppColors.success)
+                    .padding(.top, AppSpacing.xs)
+            }
+
+            if case .failed(let msg) = pullState {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label(msg, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(AppColors.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if msg.contains("brew upgrade ollama") {
+                        Text("Åpne Terminal og kjør: brew upgrade ollama")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                }
+                .padding(.top, AppSpacing.xs)
             }
         }
         .padding(AppSpacing.lg)
