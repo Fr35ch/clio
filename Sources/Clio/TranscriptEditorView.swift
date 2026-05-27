@@ -146,10 +146,8 @@ struct TranscriptEditorView: View {
 
             Spacer()
 
-            if editor.isDirty {
-                Text("Ulagrede endringer")
-                    .font(.clioLabel)
-                    .foregroundStyle(.orange)
+            if editor.isSaving {
+                ProgressView().controlSize(.small)
             }
 
             if let err = editor.saveError {
@@ -158,20 +156,6 @@ struct TranscriptEditorView: View {
                     .foregroundStyle(.red)
                     .lineLimit(1)
             }
-
-            Button {
-                Task { await editor.save() }
-            } label: {
-                HStack(spacing: 4) {
-                    if editor.isSaving {
-                        ProgressView().controlSize(.small)
-                    }
-                    Text("Lagre endringer")
-                }
-            }
-            .disabled(!editor.isDirty || editor.isSaving)
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
         }
         .padding(.horizontal, AppSpacing.lg)
         .padding(.vertical, AppSpacing.sm)
@@ -226,8 +210,8 @@ struct TranscriptEditorView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .disabled(editor.isDirty)
-                .help(editor.isDirty ? "Lagre endringer før ny avidentifisering" : "Kjør avidentifisering på nytt")
+                .disabled(editor.isSaving)
+                .help(editor.isSaving ? "Lagrer…" : "Kjør avidentifisering på nytt")
             }
 
         case .failed(let msg):
@@ -436,6 +420,7 @@ struct TranscriptEditorView: View {
                     Button("Lagre") {
                         editor.updateSegment(id: segment.id, text: editText)
                         editingSegmentId = nil
+                        Task { await editor.save() }
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
