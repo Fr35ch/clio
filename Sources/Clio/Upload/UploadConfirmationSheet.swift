@@ -25,13 +25,12 @@ struct UploadConfirmationSheet: View {
         projects.first { $0.id == selectedProjectId }
     }
 
-    private var remoteName: String? {
-        guard let code = recording.neutralCode, !code.isEmpty else { return nil }
-        return UploadGate.remoteName(neutralCode: code, createdAt: recording.createdAt)
+    private var remoteName: String {
+        UploadGate.remoteName(displayName: recording.displayName, createdAt: recording.createdAt)
     }
 
     private var canConfirm: Bool {
-        selectedProject != nil && anonymizationConfirmed && remoteName != nil
+        selectedProject != nil && anonymizationConfirmed
     }
 
     var body: some View {
@@ -56,9 +55,7 @@ struct UploadConfirmationSheet: View {
                     projectPickerSection
 
                     // File preview
-                    if let name = remoteName {
-                        filePreviewSection(remoteName: name)
-                    }
+                    filePreviewSection(remoteName: remoteName)
 
                     // Anonymization confirmation
                     anonymizationSection
@@ -78,8 +75,8 @@ struct UploadConfirmationSheet: View {
                     .foregroundStyle(.secondary)
 
                 Button("Bekreft og last opp") {
-                    guard let project = selectedProject, let name = remoteName else { return }
-                    onConfirmed(project, name)
+                    guard let project = selectedProject else { return }
+                    onConfirmed(project, remoteName)
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!canConfirm)

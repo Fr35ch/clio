@@ -2,31 +2,20 @@
 // Clio
 //
 // Upload widget shown in RecordingDetailView's right panel after transcription.
-// Renders all precondition-blocked states, the "Last opp" action, uploading
-// progress, success, and failure states.
-//
-// Always visible; shows an informative blocked state when no transcript exists.
+// Gate: transcript must exist AND researcher must have confirmed de-identification.
+// Actual Azure AD / Graph API integration is a separate upcoming phase.
 
 import SwiftUI
 
 struct TeamsUploadSection: View {
 
     let recording: RecordingMeta
-    let projects: [ProjectConfig]
-    /// Called when the researcher assigns a project or saves a neutral code.
-    let onMetaChanged: (RecordingMeta) -> Void
-    /// Called when the compliance checklist is confirmed for a project.
-    let onProjectUpdated: (ProjectConfig) -> Void
 
     @StateObject private var uploadService = TeamsUploadService.shared
     @State private var showComingSoonAlert = false
-    @State private var showConfirmationSheet = false
-    @State private var showComplianceSheet = false
-    @State private var pendingProject: ProjectConfig?
-    @State private var neutralCodeInput: String = ""
 
     private var readiness: UploadReadiness {
-        UploadGate.evaluate(recording: recording, projects: projects)
+        UploadGate.evaluate(recording: recording)
     }
 
     var body: some View {
@@ -35,12 +24,6 @@ struct TeamsUploadSection: View {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text("Opplasting til Teams er under utvikling og vil være tilgjengelig i en kommende versjon.")
-            }
-            .sheet(isPresented: $showConfirmationSheet) {
-                confirmationSheet
-            }
-            .sheet(isPresented: $showComplianceSheet) {
-                complianceSheet
             }
     }
 
@@ -53,61 +36,23 @@ struct TeamsUploadSection: View {
             uploadingView
         } else if case .alreadyUploaded(let uploadedAt, let remoteName) = r {
             uploadedView(uploadedAt: uploadedAt, remoteName: remoteName)
-        } else if case .uploadFailed(let project, let remoteName) = r {
-            failedView(project: project, remoteName: remoteName)
-        } else if case .ready(let project, let remoteName) = r {
-            readyView(project: project, remoteName: remoteName)
+        } else if case .uploadFailed(let remoteName) = r {
+            failedView(remoteName: remoteName)
+        } else if case .ready(let remoteName) = r {
+            readyView(remoteName: remoteName)
         } else if case .blockedNoTranscript = r {
             blockedView(
                 icon: "waveform.and.mic",
                 iconColor: .secondary,
                 title: "Ingen transkripsjon",
-                message: "Transkriber opptaket for å aktivere opplasting til Teams.",
-                actionLabel: nil,
-                action: nil
+                message: "Transkriber opptaket for å aktivere opplasting til Teams."
             )
         } else if case .blockedNotConfirmed = r {
             blockedView(
                 icon: "lock.shield",
                 iconColor: AppColors.accent,
                 title: "Avidentifisering ikke bekreftet",
-                message: "Bekreft avidentifisering i seksjonen over for å aktivere opplasting.",
-                actionLabel: nil,
-                action: nil
-            )
-        } else if case .blockedNoNeutralCode = r {
-            neutralCodeInputView
-        } else if case .blockedNoProjectAssigned(let available) = r {
-            projectPickerView(available: available)
-        } else if case .blockedProjectNotFound = r {
-            blockedView(
-                icon: "exclamationmark.triangle",
-                iconColor: AppColors.warning,
-                title: "Prosjekt ikke funnet",
-                message: "Det tilknyttede prosjektet finnes ikke lenger. Tilknytt opptaket til et eksisterende prosjekt.",
-                actionLabel: nil,
-                action: nil
-            )
-        } else if case .blockedNoProjectConfig(let project) = r {
-            blockedView(
-                icon: "gear.badge.questionmark",
-                iconColor: AppColors.warning,
-                title: "Prosjektet er ikke ferdig konfigurert",
-                message: "«\(project.projectName)» mangler Teams-kanal. Gå til innstillinger for å fullføre konfigurasjonen.",
-                actionLabel: nil,
-                action: nil
-            )
-        } else if case .blockedComplianceNotConfirmed(let project) = r {
-            blockedView(
-                icon: "checkmark.shield",
-                iconColor: AppColors.accent,
-                title: "Krav ikke bekreftet",
-                message: "Du må bekrefte at kravene i NAV-rutinen er oppfylt før første opplasting for «\(project.projectName)».",
-                actionLabel: "Se krav",
-                action: {
-                    pendingProject = project
-                    showComplianceSheet = true
-                }
+                message: "Bekreft avidentifisering i seksjonen over for å aktivere opplasting."
             )
         }
     }
@@ -118,9 +63,7 @@ struct TeamsUploadSection: View {
         icon: String,
         iconColor: Color,
         title: String,
-        message: String,
-        actionLabel: String?,
-        action: (() -> Void)?
+        message: String
     ) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
@@ -135,110 +78,25 @@ struct TeamsUploadSection: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-
-                if let label = actionLabel, let action {
-                    Button(label, action: action)
-                        .buttonStyle(PillButtonStyle(variant: .secondary))
-                        .padding(.top, 4)
-                }
             }
         }
     }
 
-    private var neutralCodeInputView: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "number.circle")
-                    .font(.system(size: 18))
-                    .foregroundStyle(AppColors.warning)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Deltakerkode mangler")
-                        .font(.system(size: 13, weight: .semibold))
-                    Text("Sett en nøytral deltakerkode (f.eks. D01) for å generere et Teams-filnavn uten personopplysninger.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            HStack(spacing: 8) {
-                TextField("D01", text: $neutralCodeInput)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 80)
-                    .onAppear { neutralCodeInput = recording.neutralCode ?? "" }
-
-                Button("Lagre") {
-                    guard !neutralCodeInput.isEmpty else { return }
-                    var updated = recording
-                    updated.neutralCode = neutralCodeInput.trimmingCharacters(in: .whitespaces)
-                    onMetaChanged(updated)
-                }
-                .buttonStyle(PillButtonStyle(variant: .primary))
-                .disabled(neutralCodeInput.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-        }
-    }
-
-    private func projectPickerView(available: [ProjectConfig]) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "folder.badge.questionmark")
-                    .font(.system(size: 18))
-                    .foregroundStyle(AppColors.warning)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Velg prosjekt")
-                        .font(.system(size: 13, weight: .semibold))
-                    Text("Knytt dette opptaket til et prosjekt for å velge Teams-destinasjon.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            if available.isEmpty {
-                Text("Ingen prosjekter er konfigurert. Gå til innstillinger for å legge til et prosjekt.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(AppColors.warning)
-            } else {
-                Picker("Prosjekt", selection: Binding(
-                    get: { recording.projectId },
-                    set: { newId in
-                        var updated = recording
-                        updated.projectId = newId
-                        onMetaChanged(updated)
-                    }
-                )) {
-                    Text("Velg prosjekt…").tag(Optional<UUID>.none)
-                    ForEach(available) { project in
-                        Text(project.projectName).tag(Optional(project.id))
-                    }
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-            }
-        }
-    }
-
-    private func readyView(project: ProjectConfig, remoteName: String) -> some View {
+    private func readyView(remoteName: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(AppColors.success)
                     .font(.system(size: 14))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(project.projectName)
-                        .font(.system(size: 13, weight: .medium))
-                    if let channel = project.studyChannel {
-                        Text(channel.displayName)
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                Text("Klar for opplasting")
+                    .font(.system(size: 13, weight: .medium))
             }
+            Text(remoteName)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
 
-            Button("Last opp") {
+            Button("Last opp til Teams") {
                 showComingSoonAlert = true
             }
             .buttonStyle(PillButtonStyle(variant: .primary))
@@ -275,7 +133,7 @@ struct TeamsUploadSection: View {
         }
     }
 
-    private func failedView(project: ProjectConfig, remoteName: String) -> some View {
+    private func failedView(remoteName: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "exclamationmark.circle.fill")
@@ -292,50 +150,9 @@ struct TeamsUploadSection: View {
             }
 
             Button("Prøv igjen") {
-                Task {
-                    await uploadService.upload(
-                        recording: recording,
-                        project: project,
-                        remoteName: remoteName
-                    )
-                }
+                showComingSoonAlert = true
             }
             .buttonStyle(PillButtonStyle(variant: .primary))
-        }
-    }
-
-    // MARK: - Sheets
-
-    private var confirmationSheet: some View {
-        UploadConfirmationSheet(
-            recording: recording,
-            projects: projects.filter { $0.isConfigured && $0.isComplianceConfirmed }
-        ) { project, remoteName in
-            showConfirmationSheet = false
-            Task {
-                await uploadService.upload(
-                    recording: recording,
-                    project: project,
-                    remoteName: remoteName
-                )
-            }
-        } onCancel: {
-            showConfirmationSheet = false
-        }
-    }
-
-    private var complianceSheet: some View {
-        Group {
-            if let project = pendingProject {
-                ComplianceChecklistSheet(project: project) { updatedProject in
-                    showComplianceSheet = false
-                    pendingProject = nil
-                    onProjectUpdated(updatedProject)
-                } onCancel: {
-                    showComplianceSheet = false
-                    pendingProject = nil
-                }
-            }
         }
     }
 }

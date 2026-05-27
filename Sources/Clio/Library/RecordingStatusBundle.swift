@@ -77,8 +77,7 @@ extension RecordingStatusBundle {
     static func make(
         meta: RecordingMeta,
         analyses: [Analysis],
-        now: Date = Date(),
-        projectConfigured: Bool
+        now: Date = Date()
     ) -> RecordingStatusBundle {
         let days = daysUntilExpiry(createdAt: meta.createdAt, now: now)
 
@@ -86,10 +85,7 @@ extension RecordingStatusBundle {
         let isTranscribed = meta.transcript.status == .done
         let venterAvident = (meta.transcript.status == .done)
             && (meta.anonymization.researcherConfirmedAt == nil)
-        let klarForTeams = predicateKlarForTeams(
-            meta: meta,
-            projectConfigured: projectConfigured
-        )
+        let klarForTeams = predicateKlarForTeams(meta: meta)
         let utløperSnart = days <= utløperSnartThresholdDays
 
         return RecordingStatusBundle(
@@ -112,17 +108,10 @@ extension RecordingStatusBundle {
 
     // MARK: - Predicate helpers (single place to change definitions)
 
-    /// US-R14 "Klar for Teams" predicate — TBD per the user story. v1
-    /// definition: transcript done + avident done + neutralCode set
-    /// + project configured. Refine here without touching anything else.
-    static func predicateKlarForTeams(
-        meta: RecordingMeta,
-        projectConfigured: Bool
-    ) -> Bool {
+    /// US-R14 "Klar for Teams" predicate — transcript done + de-id confirmed.
+    static func predicateKlarForTeams(meta: RecordingMeta) -> Bool {
         guard meta.transcript.status == .done else { return false }
         guard meta.anonymization.researcherConfirmedAt != nil else { return false }
-        guard let code = meta.neutralCode, !code.isEmpty else { return false }
-        guard projectConfigured else { return false }
         return true
     }
 

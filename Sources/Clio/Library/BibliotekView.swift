@@ -35,7 +35,6 @@ struct BibliotekView: View {
 
     @State private var activeFilter: BibliotekFilter = .alle
     @State private var bundles: [RecordingStatusBundle] = []
-    @State private var projectConfigured: Bool = false
 
     @Environment(\.openWindow) private var openWindow
 
@@ -323,7 +322,6 @@ struct BibliotekView: View {
     // MARK: - Reload
 
     private func reload() {
-        projectConfigured = !AppStateStore.load().projects.filter { $0.isConfigured }.isEmpty
         let metas = RecordingStore.shared.loadAll()
         let allAnalyses = AnalysisStore.shared.loadAll()
 
@@ -333,8 +331,7 @@ struct BibliotekView: View {
             }
             return RecordingStatusBundle.make(
                 meta: meta,
-                analyses: mine,
-                projectConfigured: projectConfigured
+                analyses: mine
             )
         }
     }

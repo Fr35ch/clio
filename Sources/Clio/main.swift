@@ -1582,23 +1582,7 @@ struct RecordingPlayerNative: View {
             upload: UploadState()
         )
         Section("Opplasting til Teams") {
-            TeamsUploadSection(
-                recording: meta,
-                projects: AppStateStore.load().projects.filter { $0.isConfigured },
-                onMetaChanged: { updated in
-                    try? RecordingStore.shared.updateMeta(id: updated.id) { m in
-                        m.neutralCode = updated.neutralCode
-                        m.projectId = updated.projectId
-                    }
-                },
-                onProjectUpdated: { updatedProject in
-                    try? AppStateStore.update { state in
-                        if let idx = state.projects.firstIndex(where: { $0.id == updatedProject.id }) {
-                            state.projects[idx] = updatedProject
-                        }
-                    }
-                }
-            )
+            TeamsUploadSection(recording: meta)
         }
     }
 
