@@ -16,7 +16,7 @@ struct AuditLogViewer: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("ARM Loggvisning")
+                Text("Clio Loggvisning")
                     .font(.system(size: 15, weight: .semibold))
                 Spacer()
                 Text("\(selectedTab == 0 ? auditLines.count : changeLines.count) linjer (siste \(lineLimit))")

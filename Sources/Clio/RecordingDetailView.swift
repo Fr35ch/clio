@@ -371,7 +371,7 @@ struct RecordingDetailView: View {
                 }
                 .buttonStyle(.bordered)
                 .disabled(true)
-                .help("Taleutskilling kommer i en fremtidig versjon av ARM")
+                .help("Taleutskilling kommer i en fremtidig versjon av Clio")
             }
             .padding(16)
             .background(Color.gray.opacity(0.04))

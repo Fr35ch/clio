@@ -24,7 +24,7 @@ class SystemRequirementChecker {
             minimumValue: "arm64",
             actualValue: machineStr,
             passed: passed,
-            recommendation: passed ? nil : "ARM krever Apple Silicon (M1/M2/M3/M4). Intel Mac støttes ikke."
+            recommendation: passed ? nil : "Clio krever Apple Silicon (M1/M2/M3/M4). Intel Mac støttes ikke."
         )
     }
 
@@ -51,7 +51,7 @@ class SystemRequirementChecker {
             minimumValue: "30 GB ledig",
             actualValue: String(format: "%.0f GB ledig", gb),
             passed: passed,
-            recommendation: passed ? nil : "Frigjør diskplass. ARM og modellene krever minimum 30 GB."
+            recommendation: passed ? nil : "Frigjør diskplass. Clio og modellene krever minimum 30 GB."
         )
     }
 

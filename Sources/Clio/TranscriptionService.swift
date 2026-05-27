@@ -8,6 +8,7 @@ enum TranscriptionError: LocalizedError {
     case processFailed(String)
     case invalidOutput
     case cancelled
+    case alreadyRunning
 
     var errorDescription: String? {
         switch self {
@@ -25,6 +26,8 @@ enum TranscriptionError: LocalizedError {
             return "Uventet svar fra transkripsjonsprosessen"
         case .cancelled:
             return "Transkripsjon avbrutt"
+        case .alreadyRunning:
+            return "En transkripsjon kjører allerede. Vent til den er ferdig før du starter en ny."
         }
     }
 }
@@ -104,6 +107,8 @@ final class TranscriptionService: ObservableObject, @unchecked Sendable {
     @Published var setupError: String? = nil
     /// Human-readable description of the current setup step (e.g. pip download lines).
     @Published var setupStageDescription: String = ""
+    /// True while any transcription is in progress. Guards against concurrent calls.
+    @Published var isBusy: Bool = false
 
     private var activeProcess: Process?
 
@@ -163,7 +168,15 @@ final class TranscriptionService: ObservableObject, @unchecked Sendable {
         verbatim: Bool,
         language: String
     ) async throws -> TranscriptionResult {
-        try await withCheckedThrowingContinuation { continuation in
+        // Enforce single-transcription-at-a-time. NB-Whisper is GPU-bound;
+        // two concurrent jobs corrupt activeProcess and may deadlock.
+        guard !isBusy else {
+            throw TranscriptionError.alreadyRunning
+        }
+        DispatchQueue.main.async { self.isBusy = true }
+        defer { DispatchQueue.main.async { self.isBusy = false } }
+
+        return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
                     let result = try self.runSubprocess(

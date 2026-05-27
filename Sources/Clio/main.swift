@@ -1697,6 +1697,7 @@ struct RecordingPlayerNative: View {
                 } label: {
                     Label("Transkriber på nytt", systemImage: "arrow.counterclockwise")
                 }
+                .disabled(transcriptionService.isBusy)
             } else if let error = transcriptionError {
                 // Failed
                 Label {
@@ -1716,10 +1717,17 @@ struct RecordingPlayerNative: View {
                     } label: {
                         Label("Transkriber med NB-Whisper", systemImage: "waveform.and.mic")
                     }
+                    .disabled(transcriptionService.isBusy)
                     let model = TranscriptionModel(rawValue: defaultModelRaw) ?? .medium
-                    Text("Modell: \(model.displayName) · \(defaultSpeakers) taler\(defaultSpeakers == 1 ? "" : "e")")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if transcriptionService.isBusy {
+                        Text("En transkripsjon kjører allerede – vennligst vent.")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    } else {
+                        Text("Modell: \(model.displayName) · \(defaultSpeakers) taler\(defaultSpeakers == 1 ? "" : "e")")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 } else if transcriptionService.isSettingUp {
                     HStack(spacing: 8) {
                         ProgressView().progressViewStyle(.circular).scaleEffect(0.75)
@@ -2931,7 +2939,7 @@ struct SidebarPanelContent: View {
 
             // Footer
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                Text("Audio Recording Manager (ARM)")
+                Text("Clio – Audio Recording Manager")
                     .font(.caption)
                     .fontWeight(.semibold)
                 Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")

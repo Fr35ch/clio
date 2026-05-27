@@ -89,7 +89,7 @@ struct AvidentifiseringBekreftSection: View {
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Bekreft avidentifisering")
                             .font(.system(size: 13, weight: .semibold))
-                        Text(armToolRan ? "ARM-verktøyet er brukt" : "Manuell eller ARM")
+                        Text(armToolRan ? "Clio-verktøyet er brukt" : "Manuell eller Clio")
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                     }
@@ -97,7 +97,7 @@ struct AvidentifiseringBekreftSection: View {
 
                 Text(armToolRan
                     ? "Gjennomgå transkripsjonen og bekreft at alle personopplysninger er fjernet."
-                    : "Avidentifiser transkripsjonen med ARM-verktøyet eller manuelt, og bekreft før opplasting."
+                    : "Avidentifiser transkripsjonen med Clio-verktøyet eller manuelt, og bekreft før opplasting."
                 )
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
