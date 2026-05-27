@@ -240,12 +240,15 @@ struct TranscriptEditorView: View {
         return ScrollViewReader { proxy in
             VStack(spacing: 0) {
                 ForEach(editor.result.segments) { segment in
-                    if editingSegmentId == segment.id {
-                        editableSegmentRow(segment: segment)
-                    } else {
-                        displaySegmentRow(segment: segment, currentTime: time)
+                    VStack(spacing: 0) {
+                        if editingSegmentId == segment.id {
+                            editableSegmentRow(segment: segment)
+                        } else {
+                            displaySegmentRow(segment: segment, currentTime: time)
+                        }
+                        Divider().padding(.leading, 52)
                     }
-                    Divider().padding(.leading, 52)
+                    .id(segment.id)
                 }
             }
             .padding(.vertical, AppSpacing.sm)
@@ -319,7 +322,6 @@ struct TranscriptEditorView: View {
         .pointingHandCursor()
         .onTapGesture(count: 2) { enterEditMode(for: segment) }
         .onTapGesture(count: 1) { playback.playSegment(from: segment.start, to: segment.end) }
-        .id(segment.id)
     }
 
     /// Shared transition into edit mode — used by the Rediger button, the
@@ -439,7 +441,6 @@ struct TranscriptEditorView: View {
             AppColors.accent.opacity(0.06),
             in: RoundedRectangle(cornerRadius: AppRadius.small)
         )
-        .id(segment.id)
     }
 
     // MARK: - Audio controls
