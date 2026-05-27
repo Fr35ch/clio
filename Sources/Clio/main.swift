@@ -2730,7 +2730,7 @@ struct AboutView: View {
                         Text("Formål")
                             .font(.headline)
                         Text(
-                            "Clio er et verktøy for NAV-forskere som gjennomfører intervjuer. Det støtter opptak, lokal transkribering, avidentifisering og opplasting til Teams – alt uten å sende data til eksterne tjenester."
+                            "Clio er et verktøy for Nav-innsiktsmedarbeidere som gjennomfører intervjuer. Det støtter opptak, lokal transkribering, taleutskilling, avidentifisering, analyse og opplasting til Teams – alt uten å sende data til eksterne tjenester."
                         )
                         .font(.body)
                         .foregroundStyle(.secondary)
@@ -2746,13 +2746,19 @@ struct AboutView: View {
                         VStack(alignment: .leading, spacing: 6) {
                             FeatureRow(
                                 icon: "mic.fill",
-                                text: "Lydopptak med bølgeformvisualisering")
+                                text: "Lydopptak")
                             FeatureRow(
                                 icon: "waveform",
                                 text: "Lokal transkribering med NB-Whisper")
                             FeatureRow(
+                                icon: "person.2.wave.2",
+                                text: "Taleutskilling – identifisering av hvem som snakker")
+                            FeatureRow(
                                 icon: "person.badge.minus",
                                 text: "Avidentifisering av personopplysninger")
+                            FeatureRow(
+                                icon: "text.magnifyingglass",
+                                text: "Analyse av transkripsjonen")
                             FeatureRow(
                                 icon: "arrow.up.doc",
                                 text: "Opplasting til Teams etter bekreftet avidentifisering")
@@ -2784,7 +2790,13 @@ struct AboutView: View {
                             Text("   Rediger transkripsjonen og bekreft avidentifisering.")
                                 .foregroundStyle(.secondary)
 
-                            Text("4. Last opp til Teams")
+                            Text("4. Analyser")
+                                .fontWeight(.semibold)
+                                .padding(.top, 4)
+                            Text("   Bruk analysevertøyet til å trekke ut innsikt fra transkripsjonen.")
+                                .foregroundStyle(.secondary)
+
+                            Text("5. Last opp til Teams")
                                 .fontWeight(.semibold)
                                 .padding(.top, 4)
                             Text("   Opplasting blir tilgjengelig etter bekreftet avidentifisering.")
@@ -2813,23 +2825,6 @@ struct AboutView: View {
                     }
 
                     Divider()
-
-                    // Credits
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Takk til")
-                            .font(.headline)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Utviklet for NAV – Arbeids- og velferdsetaten")
-                                .fontWeight(.semibold)
-                            Text("• Nasjonalbiblioteket – NB-Whisper og no-transcribe")
-                            Text("• Hugging Face – no-anonymizer")
-                            Text("• FluidAudio – CoreML-diarisering")
-                            Text("• OpenAI – Whisper ASR")
-                        }
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                    }
 
                     // Footer
                     Text("© 2026 NAV. Med enerett.")
