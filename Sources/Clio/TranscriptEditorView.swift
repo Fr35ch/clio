@@ -331,7 +331,11 @@ struct TranscriptEditorView: View {
     /// a double-click; net effect is a short blip then silence + edit mode.
     private func enterEditMode(for segment: TranscriptionSegment) {
         editingSegmentId = segment.id
-        editText = segment.text
+        if showAnonymized, let anonText = segmentAnonymizedTexts[segment.id] {
+            editText = anonText
+        } else {
+            editText = segment.text
+        }
         playback.pause()
     }
 
@@ -420,8 +424,15 @@ struct TranscriptEditorView: View {
 
                 HStack(spacing: AppSpacing.sm) {
                     Button("Lagre") {
-                        editor.updateSegment(id: segment.id, text: editText)
-                        segmentAnonymizedTexts.removeValue(forKey: segment.id)
+                        if showAnonymized {
+                            // Editing anonymized view: preserve original, update display cache
+                            let trimmed = editText.trimmingCharacters(in: .whitespacesAndNewlines)
+                            segmentAnonymizedTexts[segment.id] = trimmed
+                        } else {
+                            // Editing original: update canonical text, clear anonymized cache
+                            editor.updateSegment(id: segment.id, text: editText)
+                            segmentAnonymizedTexts.removeValue(forKey: segment.id)
+                        }
                         editingSegmentId = nil
                         Task { await editor.save() }
                     }
