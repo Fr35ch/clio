@@ -19,6 +19,7 @@ targets:
     platform: macOS
     sources:
       - path: Sources/Clio
+      - path: Resources/Assets.xcassets
     dependencies:
       - package: FluidAudio
         product: FluidAudio
