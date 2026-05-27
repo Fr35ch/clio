@@ -127,22 +127,10 @@ class DependencyManager: ObservableObject {
             return  // didn't come up — not fatal
 
         case .llmModelLoaded:
+            // Just verify Ollama is reachable. Model download is done via
+            // the in-app "Hent modell" button in settings — not at startup.
             guard await isOllamaRunning() else { return }
-            let model = selectedLLMModel
-            // Check if already available locally
-            let alreadyAvailable = await Task.detached(priority: .utility) {
-                OllamaManager.shared.isModelAvailable(model.ollamaId)
-            }.value
-            if alreadyAvailable { return }
-            // Pull the model — stream progress to statusMessage
-            statusMessage = "Laster ned \(model.displayName) — dette kan ta noen minutter…"
-            try await Task.detached(priority: .utility) {
-                try OllamaManager.shared.pull(modelId: model.ollamaId) { [weak self] line in
-                    Task { @MainActor [weak self] in
-                        self?.statusMessage = line
-                    }
-                }
-            }.value
+            return
 
         case .auditLog:
             let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -191,7 +179,7 @@ class DependencyManager: ObservableObject {
         case .transcribeVenv:  return "Sjekker transkripsjonspakke…"
         case .whisperModel:    return "Ser etter Whisper-modell…"
         case .ollamaRunning:   return "Starter Ollama…"
-        case .llmModelLoaded:  return "Laster språkmodell…"
+        case .llmModelLoaded:  return "Sjekker språkmodell…"
         case .auditLog:        return "Klargjør revisjonsdatabase…"
         case .allClear:        return "Klar"
         }
