@@ -1426,6 +1426,7 @@ struct RecordingPlayerNative: View {
                     transcriptionSection
                     diarizationSection
 
+                    avidentifiseringBekreftSection
                     teamsUploadSection
 
                     Section("Fil informasjon") {
@@ -1540,6 +1541,32 @@ struct RecordingPlayerNative: View {
         let m = s / 60
         let rem = s % 60
         return rem == 0 ? "\(m) min" : "\(m) min \(rem) sek"
+    }
+
+    @ViewBuilder private var avidentifiseringBekreftSection: some View {
+        let meta = loadMeta() ?? RecordingMeta(
+            schemaVersion: RecordingMeta.currentSchemaVersion,
+            id: recording.id,
+            createdAt: recording.date,
+            displayName: recording.filename,
+            durationSeconds: recording.duration,
+            audio: AudioMeta(filename: recording.filename, status: .done),
+            transcript: TranscriptMeta(status: (TranscriptionCache.shared.hasResult(for: recording.path) || FileManager.default.fileExists(atPath: StorageLayout.transcriptURL(id: recording.id).path)) ? .done : .pending),
+            anonymization: AnonymizationMeta(),
+            upload: UploadState()
+        )
+        if meta.transcript.status == .done {
+            Section("Avidentifisering") {
+                AvidentifiseringBekreftSection(
+                    recording: meta,
+                    onMetaChanged: { updated in
+                        try? RecordingStore.shared.updateMeta(id: updated.id) { m in
+                            m.anonymization.researcherConfirmedAt = updated.anonymization.researcherConfirmedAt
+                        }
+                    }
+                )
+            }
+        }
     }
 
     @ViewBuilder private var teamsUploadSection: some View {

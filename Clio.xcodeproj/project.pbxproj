@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		004567DC02F555228635569B /* AvidentifiseringSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F9743F93056C08906B86DD5 /* AvidentifiseringSheet.swift */; };
 		016B08B47F6082716F4FE157 /* RTFExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 013A283DF2DD3D2E703D9CB3 /* RTFExporter.swift */; };
+		A9B1C2D3E4F567891ABCDEF0 /* AvidentifiseringBekreftSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B1C2D3E4F567890ABCDEF0 /* AvidentifiseringBekreftSection.swift */; };
 		058EC16989E792B0E4BB0BEA /* TeamsUploadSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ACF6CDE7330324D188AFDB1 /* TeamsUploadSection.swift */; };
 		06F95C989475654B8E23FDFC /* RecordingMeta.swift in Sources */ = {isa = PBXBuildFile; fileRef = D768BD447F094B7EEEF3703D /* RecordingMeta.swift */; };
 		0C98E65F1306C3FA64458777 /* AvidentExceptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FC4F5E2A28A5F9F8C05CC60 /* AvidentExceptionsView.swift */; };
@@ -92,6 +93,7 @@
 		062B55D4B8931B8384DE765F /* AnalysisStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisStore.swift; sourceTree = "<group>"; };
 		0EC7F9C0FE219DAA75AC0FD9 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		0FC4F5E2A28A5F9F8C05CC60 /* AvidentExceptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvidentExceptionsView.swift; sourceTree = "<group>"; };
+		A9B1C2D3E4F567890ABCDEF0 /* AvidentifiseringBekreftSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvidentifiseringBekreftSection.swift; sourceTree = "<group>"; };
 		1372C3130700AA173FC44962 /* UploadGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadGate.swift; sourceTree = "<group>"; };
 		16F068C655F17F8707229EB9 /* PillButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PillButton.swift; sourceTree = "<group>"; };
 		17BFB04179F2CE3F797E19FA /* TranscriptionSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionSettingsView.swift; sourceTree = "<group>"; };
@@ -208,6 +210,7 @@
 			isa = PBXGroup;
 			children = (
 				F1530437CF1FEEE629B38DA7 /* ComplianceChecklistSheet.swift */,
+				A9B1C2D3E4F567890ABCDEF0 /* AvidentifiseringBekreftSection.swift */,
 				4ACF6CDE7330324D188AFDB1 /* TeamsUploadSection.swift */,
 				2E0395AA5BDFD9E40B012101 /* TeamsUploadService.swift */,
 				8203F83CDAEF20C8AEA6E5ED /* UploadConfirmationSheet.swift */,
@@ -475,6 +478,7 @@
 				55C22DDDCE30FCD76E71070F /* SystemRequirement.swift in Sources */,
 				389A09DEE35085948F39D9ED /* SystemRequirementChecker.swift in Sources */,
 				058EC16989E792B0E4BB0BEA /* TeamsUploadSection.swift in Sources */,
+				A9B1C2D3E4F567891ABCDEF0 /* AvidentifiseringBekreftSection.swift in Sources */,
 				BAA0A72D0DA18702BC074BFF /* TeamsUploadService.swift in Sources */,
 				5327B917920C9F08CF05309D /* TranscriptEditorState.swift in Sources */,
 				AFF20FBBED65035A49A65FA5 /* TranscriptEditorView.swift in Sources */,
