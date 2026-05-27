@@ -107,6 +107,16 @@ enum StorageLayout {
         recordingFolder(id: id).appendingPathComponent("anonymization_result.json")
     }
 
+    /// `<recordingsRoot>/<uuid>/anonymization_overrides.json`
+    ///
+    /// Persists manual per-segment edits made in the Avidentifisert view.
+    /// Stored as `[String: String]` (segment id → edited text). Applied on top
+    /// of `segmentAnonymizedTexts` built from `anonymization_result.json` so
+    /// manual corrections survive editor restarts.
+    static func anonymizationOverridesURL(id: UUID) -> URL {
+        recordingFolder(id: id).appendingPathComponent("anonymization_overrides.json")
+    }
+
     /// `<recordingsRoot>/<uuid>/analysis.json`
     ///
     /// Legacy per-recording analysis blob from before the top-level Analyser

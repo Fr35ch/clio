@@ -425,13 +425,15 @@ struct TranscriptEditorView: View {
                 HStack(spacing: AppSpacing.sm) {
                     Button("Lagre") {
                         if showAnonymized {
-                            // Editing anonymized view: preserve original, update display cache
+                            // Editing anonymized view: update in-memory cache and persist override
                             let trimmed = editText.trimmingCharacters(in: .whitespacesAndNewlines)
                             segmentAnonymizedTexts[segment.id] = trimmed
+                            saveAnonymizationOverride(segmentId: segment.id, text: trimmed)
                         } else {
                             // Editing original: update canonical text, clear anonymized cache
                             editor.updateSegment(id: segment.id, text: editText)
                             segmentAnonymizedTexts.removeValue(forKey: segment.id)
+                            removeAnonymizationOverride(segmentId: segment.id)
                         }
                         editingSegmentId = nil
                         Task { await editor.save() }
@@ -603,6 +605,16 @@ struct TranscriptEditorView: View {
             anonymizationResult = result
             segmentAnonymizedTexts = buildSegmentAnonymizedTexts(from: result)
         }
+
+        // Apply any manually saved overrides on top of the auto-generated texts
+        if let data = try? Data(contentsOf: StorageLayout.anonymizationOverridesURL(id: recordingId)),
+           let overrides = try? JSONDecoder().decode([String: String].self, from: data) {
+            for (key, value) in overrides {
+                if let intKey = Int(key) {
+                    segmentAnonymizedTexts[intKey] = value
+                }
+            }
+        }
     }
 
     private func confirmSignOff() {
@@ -616,6 +628,30 @@ struct TranscriptEditorView: View {
                 armToolUsed: true
             )
         } catch {}
+    }
+
+    private func saveAnonymizationOverride(segmentId: Int, text: String) {
+        let url = StorageLayout.anonymizationOverridesURL(id: recordingId)
+        var overrides: [String: String] = [:]
+        if let data = try? Data(contentsOf: url),
+           let existing = try? JSONDecoder().decode([String: String].self, from: data) {
+            overrides = existing
+        }
+        overrides[String(segmentId)] = text
+        if let data = try? JSONEncoder().encode(overrides) {
+            try? data.write(to: url, options: .atomic)
+        }
+    }
+
+    private func removeAnonymizationOverride(segmentId: Int) {
+        let url = StorageLayout.anonymizationOverridesURL(id: recordingId)
+        guard let data = try? Data(contentsOf: url),
+              var overrides = try? JSONDecoder().decode([String: String].self, from: data)
+        else { return }
+        overrides.removeValue(forKey: String(segmentId))
+        if let data = try? JSONEncoder().encode(overrides) {
+            try? data.write(to: url, options: .atomic)
+        }
     }
 
     private func runAnonymization() {
