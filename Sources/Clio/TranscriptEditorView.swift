@@ -421,6 +421,7 @@ struct TranscriptEditorView: View {
                 HStack(spacing: AppSpacing.sm) {
                     Button("Lagre") {
                         editor.updateSegment(id: segment.id, text: editText)
+                        segmentAnonymizedTexts.removeValue(forKey: segment.id)
                         editingSegmentId = nil
                         Task { await editor.save() }
                     }
