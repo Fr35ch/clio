@@ -75,6 +75,21 @@ struct LLMSettingsSection: View {
                 .padding(.top, AppSpacing.xs)
             }
 
+            // MARK: Selected-but-not-ready banner
+            let isPulled = modelAvailability[selectedModel.ollamaId] ?? false
+            if !isPulled && OllamaManager.shared.isInstalled {
+                HStack(spacing: AppSpacing.sm) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .foregroundStyle(AppColors.warning)
+                    Text("«\(selectedModel.displayName)» er ikke lastet ned. Analyse fungerer ikke før modellen er hentet.")
+                        .font(.caption)
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(AppSpacing.sm)
+                .background(AppColors.warning.opacity(0.08), in: RoundedRectangle(cornerRadius: AppRadius.small))
+            }
+
             // MARK: Ollama version warning
             if OllamaManager.shared.isInstalled && !ollamaVersionOk {
                 HStack(alignment: .top, spacing: AppSpacing.sm) {
@@ -145,6 +160,7 @@ struct LLMSettingsSection: View {
     private func modelRow(_ model: LLMModel) -> some View {
         let isSelected = selectedModel == model
         let isPulled = modelAvailability[model.ollamaId] ?? false
+        let ollamaTooOld = OllamaManager.shared.isInstalled && !ollamaVersionOk
 
         HStack(alignment: .top, spacing: AppSpacing.md) {
             // Selection radio
@@ -179,9 +195,23 @@ struct LLMSettingsSection: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("RAM: \(model.estimatedRAM)")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                HStack(spacing: AppSpacing.xs) {
+                    Text("RAM: \(model.estimatedRAM)")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                    Text("·")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                    if isPulled {
+                        Label("Klar til bruk", systemImage: "checkmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(AppColors.success)
+                    } else {
+                        Label("Ikke lastet ned", systemImage: "arrow.down.circle")
+                            .font(.caption)
+                            .foregroundStyle(isSelected ? AnyShapeStyle(AppColors.warning) : AnyShapeStyle(.tertiary))
+                    }
+                }
             }
 
             Spacer()
@@ -189,25 +219,39 @@ struct LLMSettingsSection: View {
             // Pull button / status
             if OllamaManager.shared.isInstalled {
                 if case .pulling(let id) = pullState, id == model.ollamaId {
-                    ProgressView()
-                        .controlSize(.small)
+                    HStack(spacing: 6) {
+                        ProgressView().controlSize(.small)
+                        Text("Laster ned…").font(.caption).foregroundStyle(.secondary)
+                    }
                 } else if isPulled {
-                    Label("Lastet ned", systemImage: "checkmark.circle.fill")
-                        .font(.caption)
+                    Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(AppColors.success)
+                } else if ollamaTooOld {
+                    Text("Oppdater Ollama")
+                        .font(.caption)
+                        .foregroundStyle(AppColors.warning)
                 } else {
-                    Button("Hent modell") {
+                    Button("Last ned") {
                         pullModel(model)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.borderedProminent)
                     .controlSize(.small)
                 }
+            } else {
+                Text("Ollama ikke installert")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(AppSpacing.sm)
         .background(
             isSelected ? AppColors.accent.opacity(0.07) : Color.clear,
             in: RoundedRectangle(cornerRadius: AppRadius.small)
+        )
+        .overlay(
+            // Red border on selected model that isn't ready
+            RoundedRectangle(cornerRadius: AppRadius.small)
+                .strokeBorder(isSelected && !isPulled ? AppColors.warning.opacity(0.4) : Color.clear, lineWidth: 1)
         )
         .contentShape(Rectangle())
         .onTapGesture { llmModelRaw = model.rawValue }
