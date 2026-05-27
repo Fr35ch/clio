@@ -1095,7 +1095,7 @@ struct NavPanel: View {
             )
             footerIconButton(
                 icon: "info.circle",
-                helpText: "About",
+                helpText: "Om Clio",
                 action: { showAbout = true }
             )
         }
@@ -2679,7 +2679,7 @@ struct AboutView: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text("About Audio Recording Manager")
+                Text("Om Clio")
                     .font(.title)
                     .fontWeight(.bold)
                 Spacer()
@@ -2696,19 +2696,19 @@ struct AboutView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     // Version
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
+                        Text("Versjon \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
                             .font(.headline)
                             .foregroundStyle(.secondary)
 
                         Button(action: {
-                            if let url = URL(string: "https://github.com/Fr35ch/audio-recording-manager/releases") {
+                            if let url = URL(string: "https://github.com/Fr35ch/clio/releases") {
                                 NSWorkspace.shared.open(url)
                             }
                         }) {
                             HStack(spacing: 4) {
                                 Image(systemName: "arrow.up.right.square")
                                     .font(.system(size: 12))
-                                Text("View Release Notes")
+                                Text("Se endringslogg")
                                     .font(.system(size: 13))
                             }
                             .foregroundStyle(AppColors.accent)
@@ -2727,10 +2727,10 @@ struct AboutView: View {
 
                     // Purpose
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Purpose")
+                        Text("Formål")
                             .font(.headline)
                         Text(
-                            "Secure audio recording management for researchers conducting audio recordings on dedicated zero-trust Mac computers."
+                            "Clio er et verktøy for NAV-forskere som gjennomfører intervjuer. Det støtter opptak, lokal transkribering, avidentifisering og opplasting til Teams – alt uten å sende data til eksterne tjenester."
                         )
                         .font(.body)
                         .foregroundStyle(.secondary)
@@ -2740,62 +2740,54 @@ struct AboutView: View {
 
                     // Key Features
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Key Features")
+                        Text("Funksjoner")
                             .font(.headline)
 
                         VStack(alignment: .leading, spacing: 6) {
-                            FeatureRow(
-                                icon: "shield.checkered",
-                                text: "Automatic network isolation on launch")
                             FeatureRow(
                                 icon: "mic.fill",
-                                text: "Built-in voice recorder with waveform visualization")
-                            FeatureRow(icon: "arrow.up.doc", text: "Secure file upload to Teams")
+                                text: "Lydopptak med bølgeformvisualisering")
+                            FeatureRow(
+                                icon: "waveform",
+                                text: "Lokal transkribering med NB-Whisper")
+                            FeatureRow(
+                                icon: "person.badge.minus",
+                                text: "Avidentifisering av personopplysninger")
+                            FeatureRow(
+                                icon: "arrow.up.doc",
+                                text: "Opplasting til Teams etter bekreftet avidentifisering")
                         }
                     }
 
                     Divider()
 
-                    // Security Information
+                    // Quick Start
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Security")
+                        Text("Slik kommer du i gang")
                             .font(.headline)
 
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("• WiFi, Bluetooth, and AirDrop disabled on launch")
-                            Text("• Network isolation maintained during recording")
-                            Text("• Zero-trust environment design")
-                            Text("• Dedicated machine requirement")
-                            Text("• All file operations work offline")
-                        }
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                    }
-
-                    Divider()
-
-                    // Usage Instructions
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Quick Start")
-                            .font(.headline)
-
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("1. Record Audio")
+                            Text("1. Ta opp")
                                 .fontWeight(.semibold)
-                            Text("   Click 'Record with Voice Recorder' to start")
+                            Text("   Klikk «Ta opp» for å starte et nytt intervjuopptak.")
                                 .foregroundStyle(.secondary)
-
 
                             Text("2. Transkriber")
                                 .fontWeight(.semibold)
                                 .padding(.top, 4)
-                            Text("   Velg opptaket og klikk «Transkriber med NB-Whisper»")
+                            Text("   Velg opptaket og klikk «Transkriber» for lokal tale-til-tekst.")
                                 .foregroundStyle(.secondary)
 
-                            Text("3. Upload to Teams")
+                            Text("3. Avidentifiser")
                                 .fontWeight(.semibold)
                                 .padding(.top, 4)
-                            Text("   Enable network temporarily for secure upload")
+                            Text("   Rediger transkripsjonen og bekreft avidentifisering.")
+                                .foregroundStyle(.secondary)
+
+                            Text("4. Last opp til Teams")
+                                .fontWeight(.semibold)
+                                .padding(.top, 4)
+                            Text("   Opplasting blir tilgjengelig etter bekreftet avidentifisering.")
                                 .foregroundStyle(.secondary)
                         }
                         .font(.body)
@@ -2805,30 +2797,16 @@ struct AboutView: View {
 
                     // Technologies
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Technologies")
+                        Text("Teknologi")
                             .font(.headline)
 
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("• Swift 6.1+ & SwiftUI")
-                            Text("• AVFoundation for audio recording")
-                            Text("• no-transcribe / NB-Whisper (Nasjonalbiblioteket)")
-                        }
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                    }
-
-                    Divider()
-
-                    // Contact & Support
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Contact & Support")
-                            .font(.headline)
-
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("For issues, questions, or feature requests:")
-                            Text("• Refer to SPEC.md for complete specifications")
-                            Text("• Check BACKLOG.md for planned features")
-                            Text("• Review CHANGELOG.md for recent updates")
+                            Text("• Swift & SwiftUI (macOS 14+)")
+                            Text("• AVFoundation – lydopptak")
+                            Text("• NB-Whisper via no-transcribe – norsk tale-til-tekst")
+                            Text("• no-anonymizer – BERT-basert avidentifisering")
+                            Text("• FluidAudio – lokal talegjenkjenning (diarisering)")
+                            Text("• Microsoft Graph API – opplasting til Teams")
                         }
                         .font(.body)
                         .foregroundStyle(.secondary)
@@ -2838,23 +2816,23 @@ struct AboutView: View {
 
                     // Credits
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Credits")
+                        Text("Takk til")
                             .font(.headline)
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Developed for NAV (Norwegian Labour and Welfare Administration)")
+                            Text("Utviklet for NAV – Arbeids- og velferdsetaten")
                                 .fontWeight(.semibold)
-                            Text("• NAV Design System (Aksel)")
-                            Text("• Nasjonalbiblioteket (NB-Whisper via no-transcribe)")
-                            Text("• National Library of Norway (NB-Whisper)")
-                            Text("• OpenAI (Whisper ASR)")
+                            Text("• Nasjonalbiblioteket – NB-Whisper og no-transcribe")
+                            Text("• Hugging Face – no-anonymizer")
+                            Text("• FluidAudio – CoreML-diarisering")
+                            Text("• OpenAI – Whisper ASR")
                         }
                         .font(.body)
                         .foregroundStyle(.secondary)
                     }
 
                     // Footer
-                    Text("Copyright © 2025. All rights reserved.")
+                    Text("© 2026 NAV. Med enerett.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -2925,7 +2903,7 @@ struct SidebarPanelContent: View {
 
                 SidebarMenuItem(
                     icon: "info.circle",
-                    title: "About Audio Recording Manager",
+                    title: "Om Clio",
                     action: {
                         showSidebar = false
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
