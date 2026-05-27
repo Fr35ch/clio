@@ -12,6 +12,7 @@ struct LLMSettingsSection: View {
 
     @State private var pullState: PullState = .idle
     @State private var pullProgress: String = ""
+    @State private var modelAvailability: [String: Bool] = [:]
 
     private var selectedModel: LLMModel {
         LLMModel.from(storedValue: llmModelRaw)
@@ -92,6 +93,7 @@ struct LLMSettingsSection: View {
             }
         }
         .padding(AppSpacing.lg)
+        .task { await refreshAvailability() }
     }
 
     // MARK: - Model row
@@ -99,7 +101,7 @@ struct LLMSettingsSection: View {
     @ViewBuilder
     private func modelRow(_ model: LLMModel) -> some View {
         let isSelected = selectedModel == model
-        let isPulled = OllamaManager.shared.isModelAvailable(model.ollamaId)
+        let isPulled = modelAvailability[model.ollamaId] ?? false
 
         HStack(alignment: .top, spacing: AppSpacing.md) {
             // Selection radio
@@ -183,11 +185,23 @@ struct LLMSettingsSection: View {
                 await MainActor.run {
                     pullState = .done(modelId: model.ollamaId)
                 }
+                await refreshAvailability()
             } catch {
                 await MainActor.run {
                     pullState = .failed(error.localizedDescription)
                 }
             }
         }
+    }
+
+    @MainActor
+    private func refreshAvailability() async {
+        let models = availableModels
+        let results = await Task.detached(priority: .utility) {
+            models.reduce(into: [String: Bool]()) { dict, model in
+                dict[model.ollamaId] = OllamaManager.shared.isModelAvailable(model.ollamaId)
+            }
+        }.value
+        modelAvailability = results
     }
 }
