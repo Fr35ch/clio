@@ -29,7 +29,10 @@ class DependencyManager: ObservableObject {
     @Published var overallProgress: Double = 0
     @Published var statusMessage: String = ""
 
-    private let llmModel = "qwen3:8b"
+    /// The currently configured LLM model, read from UserDefaults.
+    private var selectedLLMModel: LLMModel {
+        LLMModel.from(storedValue: UserDefaults.standard.string(forKey: "analysis.llmModel"))
+    }
 
     func runAll() async {
         for check in DependencyCheck.allCases {
@@ -38,7 +41,10 @@ class DependencyManager: ObservableObject {
             statusMessage = statusText(for: check)
 
             do {
-                try await withTimeout(seconds: check == .ollamaRunning ? 30 : 15) {
+                let timeoutSecs: TimeInterval = check == .ollamaRunning ? 30
+                    : check == .llmModelLoaded ? 600   // pull can take minutes
+                    : 15
+                try await withTimeout(seconds: timeoutSecs) {
                     try await self.runCheck(check)
                 }
                 checkResults[check] = .passed
@@ -62,7 +68,10 @@ class DependencyManager: ObservableObject {
             checkResults[check] = .running
             statusMessage = statusText(for: check)
             do {
-                try await withTimeout(seconds: check == .ollamaRunning ? 30 : 15) {
+                let timeoutSecs: TimeInterval = check == .ollamaRunning ? 30
+                    : check == .llmModelLoaded ? 600
+                    : 15
+                try await withTimeout(seconds: timeoutSecs) {
                     try await self.runCheck(check)
                 }
                 checkResults[check] = .passed
@@ -91,7 +100,6 @@ class DependencyManager: ObservableObject {
             }
 
         case .whisperModel:
-            // Check HuggingFace cache for NB-Whisper
             let hfCache = FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent(".cache/huggingface/hub")
             let exists = (try? FileManager.default.contentsOfDirectory(atPath: hfCache.path))?
@@ -101,9 +109,7 @@ class DependencyManager: ObservableObject {
             }
 
         case .ollamaRunning:
-            // Try to reach Ollama
             if await isOllamaRunning() { return }
-            // Try to start it
             if let binary = findOllama() {
                 let p = Process()
                 p.executableURL = URL(fileURLWithPath: binary)
@@ -112,35 +118,36 @@ class DependencyManager: ObservableObject {
                 p.standardError = FileHandle.nullDevice
                 try? p.run()
             } else {
-                // Ollama not installed — skip gracefully (analysis optional)
-                return
+                return  // Ollama not installed — analysis optional
             }
-            // Wait up to 20s
             for _ in 0..<40 {
                 try await Task.sleep(nanoseconds: 500_000_000)
                 if await isOllamaRunning() { return }
             }
-            // Ollama didn't come up — not fatal, analysis just won't work
-            return
+            return  // didn't come up — not fatal
 
         case .llmModelLoaded:
-            guard await isOllamaRunning() else { return }  // skip if Ollama not running
-            let url = URL(string: "http://localhost:11434/api/tags")!
-            if let (data, _) = try? await URLSession.shared.data(from: url),
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let models = json["models"] as? [[String: Any]] {
-                let has = models.contains { ($0["name"] as? String ?? "").hasPrefix(llmModel.components(separatedBy: ":").first ?? llmModel) }
-                if !has {
-                    // Pull model — not fatal if it fails
-                    statusMessage = "Laster ned \(llmModel)…"
+            guard await isOllamaRunning() else { return }
+            let model = selectedLLMModel
+            // Check if already available locally
+            let alreadyAvailable = await Task.detached(priority: .utility) {
+                OllamaManager.shared.isModelAvailable(model.ollamaId)
+            }.value
+            if alreadyAvailable { return }
+            // Pull the model — stream progress to statusMessage
+            statusMessage = "Laster ned \(model.displayName) — dette kan ta noen minutter…"
+            try await Task.detached(priority: .utility) {
+                try OllamaManager.shared.pull(modelId: model.ollamaId) { [weak self] line in
+                    Task { @MainActor [weak self] in
+                        self?.statusMessage = line
+                    }
                 }
-            }
+            }.value
 
         case .auditLog:
             let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             let dir = support.appendingPathComponent("AudioRecordingManager")
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            // Just verify we can write
             let test = dir.appendingPathComponent(".write_test")
             guard FileManager.default.createFile(atPath: test.path, contents: nil) else {
                 throw DependencyError.checkFailed("Kan ikke skrive til applikasjonsmappe")
@@ -148,7 +155,7 @@ class DependencyManager: ObservableObject {
             try? FileManager.default.removeItem(at: test)
 
         case .allClear:
-            try await Task.sleep(nanoseconds: 1_000_000_000)  // 1s pause before "Klar"
+            try await Task.sleep(nanoseconds: 1_000_000_000)
         }
     }
 

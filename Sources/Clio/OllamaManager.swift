@@ -61,4 +61,70 @@ final class OllamaManager {
         }
         return false
     }
+
+    // MARK: - Model pull
+
+    enum PullError: LocalizedError {
+        case notInstalled
+        case pullFailed(String)
+
+        var errorDescription: String? {
+            switch self {
+            case .notInstalled:
+                return "Ollama er ikke installert."
+            case .pullFailed(let msg):
+                return "Kunne ikke laste ned modellen: \(msg)"
+            }
+        }
+    }
+
+    /// Check whether a model is already available locally.
+    /// Calls `ollama list` and scans output for the model ID.
+    func isModelAvailable(_ modelId: String) -> Bool {
+        guard let binary = ollamaBinaryPath else { return false }
+        let process = Process()
+        process.launchPath = binary
+        process.arguments = ["list"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        try? process.run()
+        process.waitUntilExit()
+        let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        // Model names in `ollama list` output are colon-separated; do a simple substring check.
+        return output.localizedCaseInsensitiveContains(modelId)
+    }
+
+    /// Pull a model from Ollama Hub (or HuggingFace via `hf.co/` prefix).
+    /// Streams stderr lines to `onProgress`. Throws `PullError` on failure.
+    /// Must be called off the main thread (uses synchronous Process).
+    func pull(modelId: String, onProgress: @escaping (String) -> Void) throws {
+        guard let binary = ollamaBinaryPath else {
+            throw PullError.notInstalled
+        }
+        let process = Process()
+        process.launchPath = binary
+        process.arguments = ["pull", modelId]
+        process.standardOutput = FileHandle.nullDevice
+
+        let stderrPipe = Pipe()
+        process.standardError = stderrPipe
+
+        stderrPipe.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            guard !data.isEmpty,
+                  let line = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !line.isEmpty
+            else { return }
+            onProgress(line)
+        }
+
+        try process.run()
+        process.waitUntilExit()
+        stderrPipe.fileHandleForReading.readabilityHandler = nil
+
+        if process.terminationStatus != 0 {
+            throw PullError.pullFailed("Prosessen avsluttet med kode \(process.terminationStatus)")
+        }
+    }
 }

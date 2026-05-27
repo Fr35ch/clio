@@ -1,0 +1,193 @@
+// LLMSettingsSection.swift
+// Clio
+//
+// Settings section for LLM model selection. Shown in the main settings sheet.
+// Beta models (Borealis) are hidden unless the user has enabled beta access.
+
+import SwiftUI
+
+struct LLMSettingsSection: View {
+    @AppStorage("analysis.llmModel") private var llmModelRaw: String = LLMModel.defaultModel.rawValue
+    @AppStorage("beta.enabled") private var betaEnabled: Bool = false
+
+    @State private var pullState: PullState = .idle
+    @State private var pullProgress: String = ""
+
+    private var selectedModel: LLMModel {
+        LLMModel.from(storedValue: llmModelRaw)
+    }
+
+    private var availableModels: [LLMModel] {
+        LLMModel.available(betaEnabled: betaEnabled)
+    }
+
+    enum PullState {
+        case idle
+        case pulling(modelId: String)
+        case done(modelId: String)
+        case failed(String)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.lg) {
+
+            // MARK: Beta toggle
+            VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Beta-tilgang")
+                            .font(.headline)
+                        Text("Aktiver for å prøve Borealis — en ny norsk språkmodell fra Nasjonalbiblioteket.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Toggle("", isOn: $betaEnabled)
+                        .labelsHidden()
+                        .onChange(of: betaEnabled) { _, newValue in
+                            // If beta is disabled and a beta model is selected, revert to default
+                            if !newValue && selectedModel.isBeta {
+                                llmModelRaw = LLMModel.defaultModel.rawValue
+                            }
+                        }
+                }
+            }
+
+            Divider()
+
+            // MARK: Model picker
+            VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                Text("Språkmodell for analyse")
+                    .font(.headline)
+                Text("Modellen brukes til å analysere transkripsjoner og løse homografer under avidentifisering.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                VStack(spacing: AppSpacing.sm) {
+                    ForEach(availableModels) { model in
+                        modelRow(model)
+                    }
+                }
+                .padding(.top, AppSpacing.xs)
+            }
+
+            // MARK: Pull progress / result
+            if case .pulling(let id) = pullState, id == selectedModel.ollamaId {
+                HStack(spacing: AppSpacing.sm) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(pullProgress.isEmpty ? "Laster ned…" : pullProgress)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                .padding(.top, AppSpacing.xs)
+            }
+
+            if case .failed(let msg) = pullState {
+                Label(msg, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(AppColors.warning)
+            }
+        }
+        .padding(AppSpacing.lg)
+    }
+
+    // MARK: - Model row
+
+    @ViewBuilder
+    private func modelRow(_ model: LLMModel) -> some View {
+        let isSelected = selectedModel == model
+        let isPulled = OllamaManager.shared.isModelAvailable(model.ollamaId)
+
+        HStack(alignment: .top, spacing: AppSpacing.md) {
+            // Selection radio
+            Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
+                .foregroundStyle(isSelected ? AppColors.accent : .secondary)
+                .font(.system(size: 18))
+                .onTapGesture { llmModelRaw = model.rawValue }
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: AppSpacing.xs) {
+                    Text(model.displayName)
+                        .fontWeight(.semibold)
+                    if model.isBeta {
+                        Text("BETA")
+                            .font(.system(size: 9, weight: .bold))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(AppColors.accent.opacity(0.15), in: Capsule())
+                            .foregroundStyle(AppColors.accent)
+                    }
+                    if model.requiresNBLicense {
+                        Text("NB-lisens")
+                            .font(.system(size: 9))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.secondary.opacity(0.12), in: Capsule())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Text(model.modelDescription)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("RAM: \(model.estimatedRAM)")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+
+            Spacer()
+
+            // Pull button / status
+            if OllamaManager.shared.isInstalled {
+                if case .pulling(let id) = pullState, id == model.ollamaId {
+                    ProgressView()
+                        .controlSize(.small)
+                } else if isPulled {
+                    Label("Lastet ned", systemImage: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(AppColors.success)
+                } else {
+                    Button("Hent modell") {
+                        pullModel(model)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+        }
+        .padding(AppSpacing.sm)
+        .background(
+            isSelected ? AppColors.accent.opacity(0.07) : Color.clear,
+            in: RoundedRectangle(cornerRadius: AppRadius.small)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture { llmModelRaw = model.rawValue }
+    }
+
+    // MARK: - Pull action
+
+    private func pullModel(_ model: LLMModel) {
+        pullState = .pulling(modelId: model.ollamaId)
+        pullProgress = ""
+        Task.detached(priority: .utility) {
+            do {
+                try OllamaManager.shared.pull(modelId: model.ollamaId) { line in
+                    Task { @MainActor in
+                        self.pullProgress = line
+                    }
+                }
+                await MainActor.run {
+                    pullState = .done(modelId: model.ollamaId)
+                }
+            } catch {
+                await MainActor.run {
+                    pullState = .failed(error.localizedDescription)
+                }
+            }
+        }
+    }
+}
